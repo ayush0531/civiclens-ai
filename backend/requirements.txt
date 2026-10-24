@@ -3,6 +3,7 @@ uvicorn
 pydantic
 pydantic-settings
 sqlalchemy
+psycopg2-binary>=2.9.9; sys_platform != "darwin" or python_version < "3.13"
 python-multipart
 pyjwt
 argon2-cffi

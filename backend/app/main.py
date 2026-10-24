@@ -49,9 +49,14 @@ app = FastAPI(
 )
 
 # CORS Middleware
+origins = settings.CORS_ORIGINS
+if isinstance(origins, str):
+    origins = [orig.strip() for orig in origins.split(",") if orig.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=origins,
+    allow_origin_regex=r"https://.*\.vercel\.app|https://.*\.onrender\.com|http://localhost:\d+",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -62,12 +67,18 @@ os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
 
 # Mount frontend production assets if built
-frontend_dist_dir = os.path.join(settings.BASE_DIR, "frontend", "dist")
-frontend_assets_dir = os.path.join(frontend_dist_dir, "assets")
-if os.path.exists(frontend_assets_dir):
-    app.mount("/assets", StaticFiles(directory=frontend_assets_dir), name="assets")
+possible_dist_dirs = [
+    os.path.join(os.path.dirname(settings.BASE_DIR), "frontend", "dist"),
+    os.path.join(settings.BASE_DIR, "frontend", "dist"),
+    os.path.join(settings.BASE_DIR, "static", "dist"),
+]
+frontend_dist_dir = next((d for d in possible_dist_dirs if os.path.exists(d)), None)
 
-# Health check endpoint
+if frontend_dist_dir and os.path.exists(os.path.join(frontend_dist_dir, "assets")):
+    app.mount("/assets", StaticFiles(directory=os.path.join(frontend_dist_dir, "assets")), name="assets")
+
+# Health check endpoints
+@app.get("/health", tags=["Health"])
 @app.get("/api/v1/health", tags=["Health"])
 def health_check():
     db_status = "UNKNOWN"
@@ -107,14 +118,14 @@ def serve_spa_or_root(full_path: str):
     if full_path.startswith("api") or full_path.startswith("uploads"):
         return JSONResponse(status_code=404, content={"detail": "Not found"})
     
-    dist_dir = os.path.join(settings.BASE_DIR, "frontend", "dist")
-    target_file = os.path.join(dist_dir, full_path)
-    if os.path.isfile(target_file):
-        return FileResponse(target_file)
-    
-    index_file = os.path.join(dist_dir, "index.html")
-    if os.path.isfile(index_file):
-        return FileResponse(index_file)
+    if frontend_dist_dir:
+        target_file = os.path.join(frontend_dist_dir, full_path)
+        if full_path and os.path.isfile(target_file):
+            return FileResponse(target_file)
+        
+        index_file = os.path.join(frontend_dist_dir, "index.html")
+        if os.path.isfile(index_file):
+            return FileResponse(index_file)
         
     return {
         "project": settings.PROJECT_NAME,

@@ -12,7 +12,7 @@ import {
   ChevronRight,
   Layers
 } from 'lucide-react';
-import { api } from '../services/api';
+import { api, getImageUrl } from '../services/api';
 import { RoadDamageReport } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { DamageBadge } from '../components/DamageBadge';
@@ -177,7 +177,7 @@ export const CitizenDashboard: React.FC = () => {
                 {/* Media Preview Header */}
                 <div className="relative h-44 bg-slate-100 overflow-hidden">
                   <img
-                    src={report.annotated_image_path || report.image_path}
+                    src={getImageUrl(report.annotated_image_path || report.image_path)}
                     alt={report.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />

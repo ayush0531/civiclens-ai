@@ -149,7 +149,66 @@ Access the application at: `http://localhost:5173`
 
 ---
 
-## 4. Evaluator Credentials for Live College Defense
+## 4. Production Cloud Deployment Guide
+
+CivicLens AI 2.0 is architected for zero-configuration emergency production deployment. Choose either option below to publish online with a live public URL:
+
+### Option A: 1-Click Unified Full-Stack on Render (Recommended)
+This is the simplest, most resilient deployment. Render serves both the compiled React frontend, static uploads, and the FastAPI REST backend from a single service and single public URL — eliminating cross-origin CORS errors and asset domain mismatches.
+
+1. **Push to GitHub**:
+   Ensure your code is pushed to your GitHub repository:
+   ```bash
+   git add .
+   git commit -m "feat: production deployment ready"
+   git push origin main
+   ```
+2. **Deploy on Render ([render.com](https://render.com))**:
+   - Sign in to Render and click **New +** $\to$ **Web Service**.
+   - Connect your GitHub repository.
+   - Configure the following settings:
+     - **Name:** `civiclens-ai`
+     - **Runtime:** `Python 3`
+     - **Build Command:** `./build.sh`
+     - **Start Command:** `python3 -m uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT`
+     - **Health Check Path:** `/health`
+   - **Environment Variables**:
+     - `ENVIRONMENT` = `production`
+     - `SECRET_KEY` = *(click "Generate" or provide a secure 32-character string)*
+     - `PYTHON_VERSION` = `3.11.9`
+     - `NODE_VERSION` = `20.12.0`
+     - *(Optional)* `DATABASE_URL` = *(leave blank to use persistent SQLite, or attach a Render PostgreSQL instance)*
+   - Click **Deploy Web Service**.
+   - Render will run `./build.sh` (compiles React, installs Python packages, seeds the 25 Nagpur cases) and publish your live app at `https://civiclens-ai.onrender.com`.
+
+### Option B: Split Hosting (Vercel Frontend + Render Backend)
+If you prefer hosting the React frontend on Vercel's global CDN:
+
+1. **Deploy Backend on Render**:
+   - Follow Option A above, or set Root Directory to `backend`.
+   - Once deployed, copy your backend URL (e.g., `https://civiclens-ai-backend.onrender.com`).
+2. **Deploy Frontend on Vercel ([vercel.com](https://vercel.com))**:
+   - In Vercel, click **Add New...** $\to$ **Project** and import your repository.
+   - Set **Root Directory** to `frontend`.
+   - Under **Environment Variables**, add:
+     - `VITE_API_URL` = `https://civiclens-ai-backend.onrender.com`
+   - Click **Deploy**.
+   - The included `frontend/vercel.json` ensures client-side routes (`/map`, `/lab`, `/case/:id`) resolve smoothly to `/index.html`.
+
+### Option C: Universal Docker Deployment
+Run anywhere (Railway, Fly.io, AWS App Runner, Google Cloud Run, or local VPS):
+```bash
+# Build multi-stage production container
+docker build -t civiclens-ai .
+
+# Run on port 8000
+docker run -p 8000:8000 --name civiclens civiclens-ai
+```
+Visit `http://localhost:8000` to interact with the fully assembled system.
+
+---
+
+## 5. Evaluator Credentials for Live College Defense
 
 The application includes an **Evaluator 1-Click Role Switcher** in the top navigation bar. Alternatively, log in using:
 
@@ -161,7 +220,7 @@ The application includes an **Evaluator 1-Click Role Switcher** in the top navig
 
 ---
 
-## 5. Live Defense Walkthrough (5-Minute Viva Script)
+## 6. Live Defense Walkthrough (5-Minute Viva Script)
 
 1. **Overview & Problem Statement:** Start on the **Landing Page** (`/`). Explain the smart-city problem: unstructured citizen complaints and duplicate floods leading to subjective, delayed municipal dispatch.
 2. **Citizen Defect Submission:** Click **Report Pavement Defect** (`/report-new`). Pick the *Sitabuldi Interchange* or *Wardha Road* preset, upload an evidence image, and submit with automatic AI analysis enabled.
@@ -174,7 +233,7 @@ The application includes an **Evaluator 1-Click Role Switcher** in the top navig
 
 ---
 
-## 6. Academic Integrity & Honest AI Reporting
+## 7. Academic Integrity & Honest AI Reporting
 
 CivicLens AI strictly adheres to engineering honesty:
 * **Separation of Concerns:** Deep learning detection confidence ($0.0 - 1.0$) is mathematically separated from physical engineering distress ($0.0 - 100.0$) and multi-criteria priority dispatch ($0.0 - 100.0$).

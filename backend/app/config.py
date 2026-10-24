@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str = f"sqlite:///{PROJECT_ROOT}/civiclens.db"
     
     # Security
-    JWT_SECRET: str = os.getenv("JWT_SECRET", "civiclens_btech_capstone_secure_jwt_secret_key_2025")
+    JWT_SECRET: str = os.getenv("JWT_SECRET") or os.getenv("SECRET_KEY") or "civiclens_btech_capstone_secure_jwt_secret_key_2025"
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
     

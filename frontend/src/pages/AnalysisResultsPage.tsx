@@ -15,7 +15,7 @@ import {
   Activity,
   Sliders
 } from 'lucide-react';
-import { api } from '../services/api';
+import { api, getImageUrl } from '../services/api';
 import { ReportDetail } from '../types';
 import { DamageBadge, SeverityBadge } from '../components/DamageBadge';
 import { PriorityBadge } from '../components/PriorityBadge';
@@ -239,11 +239,11 @@ export const AnalysisResultsPage: React.FC = () => {
                 <span className="text-[10px] text-slate-400 font-mono">RGB Input</span>
               </div>
               <div
-                onClick={() => setModalImage(report.image_path)}
+                onClick={() => setModalImage(getImageUrl(report.image_path))}
                 className="relative cursor-pointer group h-72 overflow-hidden bg-slate-900 flex items-center justify-center"
               >
                 <img
-                  src={report.image_path}
+                  src={getImageUrl(report.image_path)}
                   alt="Raw uploaded road damage"
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                 />
@@ -268,11 +268,11 @@ export const AnalysisResultsPage: React.FC = () => {
                 </span>
               </div>
               <div
-                onClick={() => setModalImage(report.annotated_image_path || report.image_path)}
+                onClick={() => setModalImage(getImageUrl(report.annotated_image_path || report.image_path))}
                 className="relative cursor-pointer group h-72 overflow-hidden bg-slate-900 flex items-center justify-center"
               >
                 <img
-                  src={report.annotated_image_path || report.image_path}
+                  src={getImageUrl(report.annotated_image_path || report.image_path)}
                   alt="Annotated detection overlay"
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                 />

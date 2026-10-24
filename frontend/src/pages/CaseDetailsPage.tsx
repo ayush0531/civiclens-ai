@@ -20,7 +20,7 @@ import {
   RefreshCw,
   GitMerge
 } from 'lucide-react';
-import { api } from '../services/api';
+import { api, getImageUrl } from '../services/api';
 import { ReportDetail, User as UserType } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { DamageBadge } from '../components/DamageBadge';
@@ -392,11 +392,11 @@ export const CaseDetailsPage: React.FC = () => {
 
             <div className="grid grid-cols-2 gap-3">
               <div
-                onClick={() => setModalImage(report.image_path)}
+                onClick={() => setModalImage(getImageUrl(report.image_path))}
                 className="cursor-pointer group relative h-48 rounded-xl overflow-hidden bg-slate-900 border border-slate-200"
               >
                 <img
-                  src={report.image_path}
+                  src={getImageUrl(report.image_path)}
                   alt="Original road damage"
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                 />
@@ -406,11 +406,11 @@ export const CaseDetailsPage: React.FC = () => {
               </div>
 
               <div
-                onClick={() => setModalImage(report.annotated_image_path || report.image_path)}
+                onClick={() => setModalImage(getImageUrl(report.annotated_image_path || report.image_path))}
                 className="cursor-pointer group relative h-48 rounded-xl overflow-hidden bg-slate-900 border border-teal-300"
               >
                 <img
-                  src={report.annotated_image_path || report.image_path}
+                  src={getImageUrl(report.annotated_image_path || report.image_path)}
                   alt="AI detection overlay"
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                 />
@@ -424,11 +424,11 @@ export const CaseDetailsPage: React.FC = () => {
               <div className="pt-2 border-t border-slate-100">
                 <span className="text-xs font-bold text-emerald-800 block mb-1.5">Maintenance Resolution Photo:</span>
                 <div
-                  onClick={() => setModalImage(report.resolution_image_path!)}
+                  onClick={() => setModalImage(getImageUrl(report.resolution_image_path!))}
                   className="cursor-pointer group relative h-36 rounded-xl overflow-hidden bg-slate-900 border border-emerald-300"
                 >
                   <img
-                    src={report.resolution_image_path}
+                    src={getImageUrl(report.resolution_image_path)}
                     alt="Resolution evidence"
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                   />

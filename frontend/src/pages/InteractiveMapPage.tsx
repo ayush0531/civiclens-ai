@@ -11,7 +11,7 @@ import {
   CheckCircle2,
   Info
 } from 'lucide-react';
-import { api } from '../services/api';
+import { api, getImageUrl } from '../services/api';
 import { MapMarkerItem, SpatialCluster } from '../types';
 import { MapView } from '../components/MapView';
 import { DamageBadge, SeverityBadge } from '../components/DamageBadge';
@@ -242,7 +242,7 @@ export const InteractiveMapPage: React.FC = () => {
 
           <div className="h-32 rounded-xl overflow-hidden mb-3 bg-slate-100">
             <img
-              src={selectedMarker.image_path}
+              src={getImageUrl(selectedMarker.image_path)}
               alt={selectedMarker.title}
               className="w-full h-full object-cover"
             />

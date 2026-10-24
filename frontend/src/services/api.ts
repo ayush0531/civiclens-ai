@@ -13,7 +13,20 @@ import {
   PriorityPolicyData
 } from '../types';
 
-const API_BASE = '/api/v1';
+const VITE_API_URL = (import.meta as any).env?.VITE_API_URL || '';
+const API_BASE = VITE_API_URL ? `${VITE_API_URL.replace(/\/$/, '')}/api/v1` : '/api/v1';
+
+export const getImageUrl = (path: string | null | undefined): string => {
+  if (!path) return '';
+  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('blob:') || path.startsWith('data:')) {
+    return path;
+  }
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  if (VITE_API_URL) {
+    return `${VITE_API_URL.replace(/\/$/, '')}${cleanPath}`;
+  }
+  return cleanPath;
+};
 
 class ApiClient {
   private getToken(): string | null {

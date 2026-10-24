@@ -1,0 +1,17 @@
+node_modules
+frontend/node_modules
+frontend/dist
+.git
+.gitignore
+.env
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+.coverage
+htmlcov
+backend/civiclens.db-journal
+backend/civiclens.db-wal
+backend/civiclens.db-shm
+.DS_Store
