@@ -17,8 +17,18 @@ engine = create_engine(
 def set_sqlite_pragma(dbapi_connection, connection_record):
     if settings.DATABASE_URL.startswith("sqlite"):
         cursor = dbapi_connection.cursor()
-        cursor.execute("PRAGMA foreign_keys=ON")
-        cursor.execute("PRAGMA journal_mode=WAL")
+        try:
+            cursor.execute("PRAGMA foreign_keys=ON")
+        except Exception:
+            pass
+        try:
+            cursor.execute("PRAGMA journal_mode=WAL")
+        except Exception:
+            # Fallback for cloud-synced filesystems where WAL shared memory fails
+            try:
+                cursor.execute("PRAGMA journal_mode=DELETE")
+            except Exception:
+                pass
         cursor.close()
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
