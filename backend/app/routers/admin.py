@@ -1,6 +1,6 @@
 import os
 from typing import List, Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Body
 from sqlalchemy.orm import Session
 
 from backend.app.config import settings
@@ -9,6 +9,7 @@ from backend.app.models.models import User, RoadDamageReport, AIAnalysis, Mainte
 from backend.app.schemas.schemas import UserResponse, UserUpdateRole
 from backend.app.services.auth_service import require_roles
 from backend.app.services.ai_service import ai_service
+from backend.app.services.priority_service import priority_engine
 from backend.app.utils.seed_data import seed_database
 
 router = APIRouter(prefix="/admin", tags=["Admin & System Management"])
@@ -57,6 +58,68 @@ def update_user_role(
     return UserResponse.model_validate(user)
 
 
+@router.get("/priority-policy")
+def get_priority_policy(
+    current_user: User = Depends(require_roles(["admin", "authority"]))
+):
+    return {
+        "policy": priority_engine.get_policy(),
+        "weights_description": {
+            "w_sev": "Physical defect severity index (35%)",
+            "w_conf": "AI detection evidence clarity / confidence (15%)",
+            "w_dup": "Citizen repeat report volume signal (15%)",
+            "w_age": "Aging delay unattended penalty (15%)",
+            "w_road": "Roadway classification importance (10%)",
+            "w_traffic": "Traffic safety & pedestrian exposure risk (10%)"
+        }
+    }
+
+
+@router.put("/priority-policy")
+def update_priority_policy(
+    new_weights: Dict[str, float] = Body(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"]))
+):
+    try:
+        updated_policy = priority_engine.update_policy(new_weights)
+        
+        # Recalculate priority for all open reports
+        open_reports = db.query(RoadDamageReport).filter(
+            RoadDamageReport.workflow_status.in_(["SUBMITTED", "UNDER_REVIEW", "ASSIGNED", "IN_PROGRESS"])
+        ).all()
+
+        for rep in open_reports:
+            p_res = priority_engine.calculate_priority(
+                severity_score=rep.severity_score,
+                confidence=rep.prediction_confidence,
+                duplicate_count=1 if rep.is_duplicate else 0,
+                created_at=rep.created_at,
+                road_classification=rep.road_classification
+            )
+            rep.priority_score = p_res["priority_score"]
+
+        db.commit()
+
+        audit = AuditLog(
+            actor_id=current_user.id,
+            action="POLICY_UPDATE",
+            target_type="PriorityPolicy",
+            target_id="GLOBAL",
+            metadata_json=str(updated_policy)
+        )
+        db.add(audit)
+        db.commit()
+
+        return {
+            "message": "Priority policy successfully updated and active reports re-ranked.",
+            "policy": updated_policy,
+            "reports_recalculated": len(open_reports)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @router.post("/reseed")
 def reseed_demo_data(
     db: Session = Depends(get_db),
@@ -82,7 +145,6 @@ def get_system_status(
 ):
     engine_info = ai_service.get_engine_info()
     
-    # Calculate storage size
     upload_count = 0
     upload_size_bytes = 0
     if os.path.exists(settings.UPLOAD_DIR):

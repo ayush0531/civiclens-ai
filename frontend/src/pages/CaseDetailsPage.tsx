@@ -17,7 +17,8 @@ import {
   ExternalLink,
   ShieldAlert,
   Sparkles,
-  RefreshCw
+  RefreshCw,
+  GitMerge
 } from 'lucide-react';
 import { api } from '../services/api';
 import { ReportDetail, User as UserType } from '../types';
@@ -53,6 +54,7 @@ export const CaseDetailsPage: React.FC = () => {
   const [showResolveModal, setShowResolveModal] = useState(false);
   const [resolveNotes, setResolveNotes] = useState('');
   const [resolveImage, setResolveImage] = useState<File | null>(null);
+  const [linkingDup, setLinkingDup] = useState<number | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -155,6 +157,24 @@ export const CaseDetailsPage: React.FC = () => {
       setActionError(err.message || 'Failed to resolve case.');
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  const handleLinkDuplicate = async (targetId: number) => {
+    if (!report) return;
+    if (!window.confirm(`Link this case as duplicate of case #${targetId}? Priority score will recalculate based on citizen recurrence.`)) {
+      return;
+    }
+    setLinkingDup(targetId);
+    setActionError(null);
+    try {
+      const updated = await api.linkDuplicate(report.id, targetId);
+      setReport(updated);
+      setActionSuccess(`Case successfully linked as duplicate of case #${targetId}.`);
+    } catch (err: any) {
+      setActionError(err.message || 'Failed to link duplicate.');
+    } finally {
+      setLinkingDup(null);
     }
   };
 
@@ -445,6 +465,61 @@ export const CaseDetailsPage: React.FC = () => {
           </div>
 
         </div>
+
+        {/* Duplicate Candidates Card */}
+        {report.duplicate_candidates && report.duplicate_candidates.length > 0 && (
+          <div className="bg-white p-6 rounded-2xl border border-amber-200 shadow-sm space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-600" />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-amber-900">
+                  Potential Nearby Duplicate Reports ({report.duplicate_candidates.length})
+                </h3>
+              </div>
+              <span className="text-[11px] text-amber-800 font-medium">Haversine GPS &lt; 120m</span>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Nearby reports identified at this location. Linking duplicates merges citizen reports and increases priority score without redundant dispatch.
+            </p>
+
+            <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden">
+              {report.duplicate_candidates.map((dup) => (
+                <div key={dup.candidate_report_id} className="p-3.5 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                  <div>
+                    <span className="font-mono font-bold text-slate-900">{dup.reference_number}: </span>
+                    <span className="font-semibold text-slate-800">{dup.title}</span>
+                    <div className="flex items-center gap-3 text-[11px] text-slate-500 mt-0.5">
+                      <span>Proximity: <strong>{dup.distance_meters}m</strong></span>
+                      <span>&bull;</span>
+                      <span>Visual Similarity: <strong>{(dup.visual_similarity * 100).toFixed(0)}%</strong></span>
+                      <span>&bull;</span>
+                      <span>Status: {dup.workflow_status}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Link
+                      to={`/case/${dup.candidate_report_id}`}
+                      className="px-3 py-1.5 rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 font-semibold text-xs"
+                    >
+                      Inspect
+                    </Link>
+                    {isAuthorityOrAdmin && !report.is_duplicate && (
+                      <button
+                        onClick={() => handleLinkDuplicate(dup.candidate_report_id)}
+                        disabled={linkingDup === dup.candidate_report_id}
+                        className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-sm flex items-center gap-1"
+                      >
+                        <GitMerge className="w-3.5 h-3.5" />
+                        <span>{linkingDup === dup.candidate_report_id ? 'Linking...' : 'Link as Duplicate'}</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Explainable Multi-Criteria Priority Engine Breakdown */}
         {report.priority_breakdown && (

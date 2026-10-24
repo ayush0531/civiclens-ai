@@ -1,11 +1,12 @@
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from backend.app.database import get_db
 from backend.app.models.models import RoadDamageReport
 from backend.app.schemas.schemas import MapReportMarker
+from backend.app.services.cluster_service import cluster_service
 
-router = APIRouter(prefix="/map", tags=["Geospatial Map"])
+router = APIRouter(prefix="/map", tags=["Geospatial Map & Hotspots"])
 
 @router.get("/reports", response_model=List[MapReportMarker])
 def get_map_markers(
@@ -46,3 +47,14 @@ def get_map_markers(
         ))
 
     return markers
+
+@router.get("/clusters")
+def get_spatial_clusters(
+    radius_meters: float = Query(450.0, ge=100.0, le=2000.0),
+    min_points: int = Query(2, ge=2, le=10),
+    db: Session = Depends(get_db)
+) -> List[Dict[str, Any]]:
+    """
+    Returns spatial clusters computed via Haversine DBSCAN on defect coordinates.
+    """
+    return cluster_service.find_clusters(db=db, eps_meters=radius_meters, min_samples=min_points)

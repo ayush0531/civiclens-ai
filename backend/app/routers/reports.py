@@ -372,6 +372,43 @@ def update_report(
     return ReportResponse.model_validate(report)
 
 
+@router.post("/{id}/link-duplicate", response_model=ReportDetailResponse)
+def link_duplicate_report(
+    id: int,
+    payload: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["authority", "admin"]))
+):
+    report = db.query(RoadDamageReport).filter(RoadDamageReport.id == id).first()
+    if not report:
+        raise HTTPException(status_code=404, detail="Source report not found")
+
+    target_id = payload.get("target_report_id")
+    if not target_id:
+        raise HTTPException(status_code=400, detail="target_report_id is required")
+
+    target = db.query(RoadDamageReport).filter(RoadDamageReport.id == int(target_id)).first()
+    if not target:
+        raise HTTPException(status_code=404, detail="Target duplicate report not found")
+
+    report.is_duplicate = True
+    report.duplicate_reference_id = target.id
+    report.duplicate_confidence = 0.95
+
+    # Log audit
+    audit = AuditLog(
+        actor_id=current_user.id,
+        action="REPORT_LINK_DUPLICATE",
+        target_type="RoadDamageReport",
+        target_id=str(report.id),
+        metadata_json=f'{{"linked_to": "{target.reference_number}"}}'
+    )
+    db.add(audit)
+    db.commit()
+
+    return get_report_detail(report.id, db)
+
+
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_report(
     id: int,

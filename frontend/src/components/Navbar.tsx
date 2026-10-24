@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   ShieldAlert, 
@@ -13,19 +13,56 @@ import {
   ChevronDown, 
   Menu, 
   X,
-  Sparkles
+  Sparkles,
+  Search,
+  Cpu,
+  FlaskConical,
+  Activity
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { UserRole } from '../types';
+import { api } from '../services/api';
+import { GlobalSearchModal } from './GlobalSearchModal';
+import { AIEngineModal } from './AIEngineModal';
 
 export const Navbar: React.FC = () => {
   const { user, logout, quickDemoLogin } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [demoMenuOpen, setDemoMenuOpen] = useState(false);
+  const [searchModalOpen, setSearchModalOpen] = useState(false);
+  const [aiModalOpen, setAiModalOpen] = useState(false);
+  const [aiStatus, setAiStatus] = useState<{ mode: string; is_demo_mode: boolean } | null>(null);
 
   const isActive = (path: string) => location.pathname === path;
+
+  // Poll or fetch AI engine status on mount
+  const refreshAIStatus = async () => {
+    try {
+      const res = await api.getAIStatus();
+      setAiStatus({ mode: res.mode, is_demo_mode: res.is_demo_mode });
+    } catch (e) {
+      // ignore in offline/initial load
+    }
+  };
+
+  useEffect(() => {
+    refreshAIStatus();
+  }, [location.pathname]);
+
+  // Global keyboard shortcut for search (Cmd+K or Ctrl+K)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setSearchModalOpen(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const handleRoleSwitch = async (role: UserRole) => {
     setDemoMenuOpen(false);
@@ -35,268 +72,393 @@ export const Navbar: React.FC = () => {
     else if (role === 'admin') navigate('/admin');
   };
 
+  const isRealAI = aiStatus?.mode === 'REAL';
+
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200 shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          
-          {/* Logo & Brand */}
-          <Link to="/" className="flex items-center gap-2.5 group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-navy-900 flex items-center justify-center text-white shadow-md shadow-teal-500/20 group-hover:scale-105 transition-transform">
-              <ShieldAlert className="w-5 h-5 text-teal-200" />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-extrabold text-lg tracking-tight text-navy-900 font-sans">CivicLens</span>
-                <span className="bg-teal-600 text-white text-[10px] font-mono font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">AI</span>
-              </div>
-              <p className="text-[10px] text-slate-500 hidden sm:block tracking-wide">Intelligent Road Damage System</p>
-            </div>
-          </Link>
-
-          {/* Desktop Navigation Links */}
-          <nav className="hidden md:flex items-center gap-1">
-            <Link
-              to="/"
-              className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-                isActive('/') ? 'text-teal-700 bg-teal-50/80 font-semibold' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
-              Overview
-            </Link>
-            <Link
-              to="/map"
-              className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors flex items-center gap-1.5 ${
-                isActive('/map') ? 'text-teal-700 bg-teal-50/80 font-semibold' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
-              <MapPin className="w-4 h-4 text-teal-600" />
-              Damage Map
-            </Link>
-            <Link
-              to="/analytics"
-              className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors flex items-center gap-1.5 ${
-                isActive('/analytics') ? 'text-teal-700 bg-teal-50/80 font-semibold' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
-              <BarChart3 className="w-4 h-4 text-teal-600" />
-              Analytics
-            </Link>
-            <Link
-              to="/about"
-              className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors flex items-center gap-1.5 ${
-                isActive('/about') ? 'text-teal-700 bg-teal-50/80 font-semibold' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              }`}
-            >
-              <BookOpen className="w-4 h-4 text-teal-600" />
-              Methodology
-            </Link>
-          </nav>
-
-          {/* Right Action Bar */}
-          <div className="hidden lg:flex items-center gap-3">
+    <>
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
             
-            {/* Quick Demo Role Switcher for College Evaluation */}
-            <div className="relative">
+            {/* Logo & Brand Identity */}
+            <div className="flex items-center gap-6">
+              <Link to="/" className="flex items-center gap-2.5 group">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-navy-900 flex items-center justify-center text-white shadow-md shadow-teal-500/20 group-hover:scale-105 transition-transform">
+                  <ShieldAlert className="w-5 h-5 text-teal-200" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-extrabold text-lg tracking-tight text-navy-900">CivicLens</span>
+                    <span className="bg-gradient-to-r from-teal-600 to-teal-700 text-white text-[10px] font-mono font-bold px-1.5 py-0.5 rounded shadow-xs uppercase tracking-wider">
+                      AI 2.0
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-500 hidden sm:block tracking-wide">
+                    Road Distress & Maintenance Intelligence
+                  </p>
+                </div>
+              </Link>
+
+              {/* Desktop Navigation Links */}
+              <nav className="hidden lg:flex items-center gap-1">
+                <Link
+                  to="/"
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+                    isActive('/') ? 'text-teal-700 bg-teal-50/90 font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                >
+                  Overview
+                </Link>
+                <Link
+                  to="/map"
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 ${
+                    isActive('/map') ? 'text-teal-700 bg-teal-50/90 font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                >
+                  <MapPin className="w-3.5 h-3.5 text-teal-600" />
+                  Map & Clusters
+                </Link>
+                <Link
+                  to="/lab"
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 ${
+                    isActive('/lab') ? 'text-teal-700 bg-teal-50/90 font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                >
+                  <FlaskConical className="w-3.5 h-3.5 text-teal-600" />
+                  <span>Model Lab</span>
+                  <span className="text-[9px] px-1 py-0.2 bg-teal-100 text-teal-800 rounded font-mono font-bold">mAP</span>
+                </Link>
+                <Link
+                  to="/analytics"
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 ${
+                    isActive('/analytics') ? 'text-teal-700 bg-teal-50/90 font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                >
+                  <BarChart3 className="w-3.5 h-3.5 text-teal-600" />
+                  Analytics
+                </Link>
+                <Link
+                  to="/about"
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 ${
+                    isActive('/about') ? 'text-teal-700 bg-teal-50/90 font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                >
+                  <BookOpen className="w-3.5 h-3.5 text-teal-600" />
+                  Defense & Specs
+                </Link>
+              </nav>
+            </div>
+
+            {/* Middle Quick Search Bar */}
+            <div className="hidden md:flex items-center">
               <button
-                onClick={() => setDemoMenuOpen(!demoMenuOpen)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-teal-200 bg-teal-50 text-teal-800 hover:bg-teal-100 transition-colors shadow-sm"
-                title="Quick demo role switcher for evaluators"
+                onClick={() => setSearchModalOpen(true)}
+                className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-slate-500 bg-slate-100/90 hover:bg-slate-200/80 border border-slate-200 rounded-xl transition-colors w-48 xl:w-60 justify-between group"
               >
-                <Sparkles className="w-3.5 h-3.5 text-teal-600" />
-                <span>Demo Switcher</span>
-                <ChevronDown className="w-3 h-3 text-teal-600" />
+                <span className="flex items-center gap-2 truncate">
+                  <Search className="w-3.5 h-3.5 text-slate-400 group-hover:text-teal-600" />
+                  <span className="truncate">Search defects, streets...</span>
+                </span>
+                <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono text-slate-400 bg-white border border-slate-200 rounded shadow-2xs">
+                  ⌘K
+                </kbd>
+              </button>
+            </div>
+
+            {/* Right Action Bar */}
+            <div className="hidden md:flex items-center gap-2.5">
+              
+              {/* Active AI Engine Indicator Pill */}
+              <button
+                onClick={() => setAiModalOpen(true)}
+                className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono font-medium rounded-lg border transition-all ${
+                  isRealAI
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+                    : 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
+                }`}
+                title="Click to view AI Runtime & ONNX Model Specifications"
+              >
+                <span className={`w-2 h-2 rounded-full ${isRealAI ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+                <span className="font-bold">{isRealAI ? 'ONNX YOLOv8' : 'HEURISTIC DEMO'}</span>
+                <Cpu className="w-3 h-3 text-slate-500" />
               </button>
 
-              {demoMenuOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-200 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-                  <div className="px-3 py-1.5 border-b border-slate-100">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Evaluator Role Selector</p>
+              {/* Evaluator Quick Role Switcher */}
+              <div className="relative">
+                <button
+                  onClick={() => setDemoMenuOpen(!demoMenuOpen)}
+                  className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg border border-teal-200 bg-teal-50 text-teal-800 hover:bg-teal-100 transition-colors shadow-2xs"
+                  title="Quick evaluator role switcher for college defense"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-teal-600" />
+                  <span className="hidden xl:inline">Evaluator</span>
+                  <span>Roles</span>
+                  <ChevronDown className="w-3 h-3 text-teal-600" />
+                </button>
+
+                {demoMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-60 bg-white rounded-xl shadow-xl border border-slate-200 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                    <div className="px-3 py-1.5 border-b border-slate-100">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">1-Click Evaluator Switcher</p>
+                    </div>
+                    <button
+                      onClick={() => handleRoleSwitch('citizen')}
+                      className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-50 flex items-center justify-between ${
+                        user?.role === 'citizen' ? 'bg-teal-50/50 text-teal-900 font-semibold' : 'text-slate-700'
+                      }`}
+                    >
+                      <div>
+                        <span className="font-bold block">Citizen Reporter</span>
+                        <span className="text-[10px] text-slate-500">Submit reports & view case timeline</span>
+                      </div>
+                      {user?.role === 'citizen' && <span className="w-2 h-2 rounded-full bg-teal-500"></span>}
+                    </button>
+                    <button
+                      onClick={() => handleRoleSwitch('authority')}
+                      className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-50 flex items-center justify-between ${
+                        user?.role === 'authority' ? 'bg-teal-50/50 text-teal-900 font-semibold' : 'text-slate-700'
+                      }`}
+                    >
+                      <div>
+                        <span className="font-bold block">Municipal Authority</span>
+                        <span className="text-[10px] text-slate-500">Triage queue, assign crews, resolve</span>
+                      </div>
+                      {user?.role === 'authority' && <span className="w-2 h-2 rounded-full bg-teal-500"></span>}
+                    </button>
+                    <button
+                      onClick={() => handleRoleSwitch('admin')}
+                      className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-50 flex items-center justify-between ${
+                        user?.role === 'admin' ? 'bg-teal-50/50 text-teal-900 font-semibold' : 'text-slate-700'
+                      }`}
+                    >
+                      <div>
+                        <span className="font-bold block">System Administrator</span>
+                        <span className="text-[10px] text-slate-500">Tune priority policy weights & users</span>
+                      </div>
+                      {user?.role === 'admin' && <span className="w-2 h-2 rounded-full bg-teal-500"></span>}
+                    </button>
                   </div>
-                  <button
-                    onClick={() => handleRoleSwitch('citizen')}
-                    className="w-full text-left px-3 py-2 text-xs hover:bg-slate-50 flex items-center justify-between text-slate-700"
-                  >
-                    <div>
-                      <span className="font-bold text-slate-900 block">Citizen Reporter</span>
-                      <span className="text-[10px] text-slate-500">citizen@civiclens.ai</span>
+                )}
+              </div>
+
+              {/* Report Damage CTA */}
+              <Link
+                to="/report-new"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-teal-600 text-white hover:bg-teal-700 shadow-2xs transition-colors shrink-0"
+              >
+                <PlusCircle className="w-3.5 h-3.5" />
+                <span>Report Defect</span>
+              </Link>
+
+              {/* User Dashboard / Auth State */}
+              {user ? (
+                <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200">
+                  {user.role === 'citizen' && (
+                    <Link
+                      to="/citizen"
+                      className={`px-2.5 py-1 text-xs font-semibold rounded-lg border transition-colors ${
+                        isActive('/citizen') ? 'bg-navy-900 text-white border-navy-900' : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                      }`}
+                    >
+                      My Reports
+                    </Link>
+                  )}
+                  {user.role === 'authority' && (
+                    <Link
+                      to="/authority"
+                      className={`px-2.5 py-1 text-xs font-semibold rounded-lg border transition-colors flex items-center gap-1.5 ${
+                        isActive('/authority') ? 'bg-navy-900 text-white border-navy-900' : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                      }`}
+                    >
+                      <Layers className="w-3 h-3 text-teal-400" />
+                      Operations
+                    </Link>
+                  )}
+                  {user.role === 'admin' && (
+                    <Link
+                      to="/admin"
+                      className={`px-2.5 py-1 text-xs font-semibold rounded-lg border transition-colors flex items-center gap-1.5 ${
+                        isActive('/admin') ? 'bg-navy-900 text-white border-navy-900' : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                      }`}
+                    >
+                      <Settings className="w-3 h-3 text-teal-400" />
+                      Admin
+                    </Link>
+                  )}
+
+                  <div className="flex items-center gap-1.5 pl-1.5">
+                    <div className="text-right hidden xl:block">
+                      <span className="text-xs font-bold text-slate-900 block leading-tight">{user.name.split(' ')[0]}</span>
+                      <span className="text-[10px] text-teal-700 uppercase font-mono font-bold">{user.role}</span>
                     </div>
-                    {user?.role === 'citizen' && <span className="w-2 h-2 rounded-full bg-teal-500"></span>}
-                  </button>
-                  <button
-                    onClick={() => handleRoleSwitch('authority')}
-                    className="w-full text-left px-3 py-2 text-xs hover:bg-slate-50 flex items-center justify-between text-slate-700"
-                  >
-                    <div>
-                      <span className="font-bold text-slate-900 block">Municipal Authority</span>
-                      <span className="text-[10px] text-slate-500">authority@civiclens.ai</span>
-                    </div>
-                    {user?.role === 'authority' && <span className="w-2 h-2 rounded-full bg-teal-500"></span>}
-                  </button>
-                  <button
-                    onClick={() => handleRoleSwitch('admin')}
-                    className="w-full text-left px-3 py-2 text-xs hover:bg-slate-50 flex items-center justify-between text-slate-700"
-                  >
-                    <div>
-                      <span className="font-bold text-slate-900 block">System Administrator</span>
-                      <span className="text-[10px] text-slate-500">admin@civiclens.ai</span>
-                    </div>
-                    {user?.role === 'admin' && <span className="w-2 h-2 rounded-full bg-teal-500"></span>}
-                  </button>
+                    <button
+                      onClick={logout}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                      title="Sign Out"
+                    >
+                      <LogOut className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
+              ) : (
+                <Link
+                  to="/auth"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors"
+                >
+                  <UserIcon className="w-3.5 h-3.5" />
+                  <span>Sign In</span>
+                </Link>
               )}
             </div>
 
-            {/* Role Dashboards & Report CTA */}
-            <Link
-              to="/report-new"
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold rounded-lg bg-teal-600 text-white hover:bg-teal-700 shadow-sm transition-colors"
-            >
-              <PlusCircle className="w-4 h-4" />
-              Report Damage
-            </Link>
+            {/* Mobile Header Controls */}
+            <div className="flex items-center gap-2 md:hidden">
+              <button
+                onClick={() => setSearchModalOpen(true)}
+                className="p-2 rounded-lg text-slate-600 hover:bg-slate-100"
+              >
+                <Search className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="p-2 rounded-lg text-slate-600 hover:bg-slate-100"
+              >
+                {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              </button>
+            </div>
 
-            {user ? (
-              <div className="flex items-center gap-2 pl-2 border-l border-slate-200">
-                {user.role === 'citizen' && (
-                  <Link
-                    to="/citizen"
-                    className={`px-2.5 py-1.5 text-xs font-semibold rounded-lg border transition-colors ${
-                      isActive('/citizen') ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
-                    }`}
-                  >
-                    My Reports
-                  </Link>
-                )}
-                {user.role === 'authority' && (
-                  <Link
-                    to="/authority"
-                    className={`px-2.5 py-1.5 text-xs font-semibold rounded-lg border transition-colors flex items-center gap-1.5 ${
-                      isActive('/authority') ? 'bg-navy-900 text-white border-navy-900' : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
-                    }`}
-                  >
-                    <Layers className="w-3.5 h-3.5 text-teal-400" />
-                    Operations Queue
-                  </Link>
-                )}
-                {user.role === 'admin' && (
-                  <Link
-                    to="/admin"
-                    className={`px-2.5 py-1.5 text-xs font-semibold rounded-lg border transition-colors flex items-center gap-1.5 ${
-                      isActive('/admin') ? 'bg-navy-900 text-white border-navy-900' : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
-                    }`}
-                  >
-                    <Settings className="w-3.5 h-3.5 text-teal-400" />
-                    Admin
-                  </Link>
-                )}
+          </div>
+        </div>
 
-                <div className="flex items-center gap-2 pl-2">
-                  <div className="text-right">
-                    <span className="text-xs font-bold text-slate-900 block leading-tight">{user.name.split(' ')[0]}</span>
-                    <span className="text-[10px] text-teal-700 uppercase font-mono font-semibold">{user.role}</span>
-                  </div>
+        {/* Mobile Navigation Drawer */}
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t border-slate-200 bg-white px-4 pt-3 pb-6 space-y-3">
+            <div className="grid grid-cols-2 gap-2">
+              <Link
+                to="/"
+                onClick={() => setMobileMenuOpen(false)}
+                className="px-3 py-2 text-xs font-semibold rounded-lg text-slate-700 hover:bg-slate-100"
+              >
+                Overview
+              </Link>
+              <Link
+                to="/map"
+                onClick={() => setMobileMenuOpen(false)}
+                className="px-3 py-2 text-xs font-semibold rounded-lg text-slate-700 hover:bg-slate-100"
+              >
+                Map & Clusters
+              </Link>
+              <Link
+                to="/lab"
+                onClick={() => setMobileMenuOpen(false)}
+                className="px-3 py-2 text-xs font-semibold rounded-lg text-slate-700 hover:bg-slate-100 flex items-center gap-1"
+              >
+                <FlaskConical className="w-3.5 h-3.5 text-teal-600" />
+                AI Model Lab
+              </Link>
+              <Link
+                to="/analytics"
+                onClick={() => setMobileMenuOpen(false)}
+                className="px-3 py-2 text-xs font-semibold rounded-lg text-slate-700 hover:bg-slate-100"
+              >
+                Analytics
+              </Link>
+              <Link
+                to="/about"
+                onClick={() => setMobileMenuOpen(false)}
+                className="px-3 py-2 text-xs font-semibold rounded-lg text-slate-700 hover:bg-slate-100 col-span-2"
+              >
+                Defense & Specifications
+              </Link>
+            </div>
+
+            {/* Quick Engine Indicator & Role Switcher */}
+            <div className="p-3 bg-slate-50 rounded-xl space-y-2 border border-slate-100">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-500 uppercase">AI Engine Status</span>
+                <button
+                  onClick={() => { setMobileMenuOpen(false); setAiModalOpen(true); }}
+                  className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded ${
+                    isRealAI ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                  }`}
+                >
+                  {isRealAI ? '● ONNX YOLOv8' : '● DEMO HEURISTIC'}
+                </button>
+              </div>
+
+              <div className="pt-2 border-t border-slate-200">
+                <span className="text-[11px] font-bold text-slate-500 uppercase block mb-1">Evaluator 1-Click Role</span>
+                <div className="grid grid-cols-3 gap-1.5">
                   <button
-                    onClick={logout}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                    title="Log out"
+                    onClick={() => { setMobileMenuOpen(false); handleRoleSwitch('citizen'); }}
+                    className="py-1 text-center text-[11px] font-medium bg-white border border-slate-200 rounded hover:bg-teal-50"
                   >
-                    <LogOut className="w-4 h-4" />
+                    Citizen
+                  </button>
+                  <button
+                    onClick={() => { setMobileMenuOpen(false); handleRoleSwitch('authority'); }}
+                    className="py-1 text-center text-[11px] font-medium bg-white border border-slate-200 rounded hover:bg-teal-50"
+                  >
+                    Authority
+                  </button>
+                  <button
+                    onClick={() => { setMobileMenuOpen(false); handleRoleSwitch('admin'); }}
+                    className="py-1 text-center text-[11px] font-medium bg-white border border-slate-200 rounded hover:bg-teal-50"
+                  >
+                    Admin
                   </button>
                 </div>
               </div>
-            ) : (
+            </div>
+
+            {/* CTA Buttons */}
+            <div className="space-y-2 pt-2">
               <Link
-                to="/auth"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors"
-              >
-                <UserIcon className="w-3.5 h-3.5" />
-                Sign In
-              </Link>
-            )}
-          </div>
-
-          {/* Mobile menu button */}
-          <div className="flex items-center gap-2 md:hidden">
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 rounded-lg text-slate-600 hover:bg-slate-100"
-            >
-              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
-          </div>
-
-        </div>
-      </div>
-
-      {/* Mobile Drawer */}
-      {mobileMenuOpen && (
-        <div className="md:hidden border-t border-slate-200 bg-white px-4 pt-3 pb-6 space-y-3">
-          <div className="grid grid-cols-2 gap-2">
-            <Link
-              to="/"
-              onClick={() => setMobileMenuOpen(false)}
-              className="px-3 py-2 text-sm font-medium rounded-lg text-slate-700 hover:bg-slate-100"
-            >
-              Overview
-            </Link>
-            <Link
-              to="/map"
-              onClick={() => setMobileMenuOpen(false)}
-              className="px-3 py-2 text-sm font-medium rounded-lg text-slate-700 hover:bg-slate-100"
-            >
-              Damage Map
-            </Link>
-            <Link
-              to="/analytics"
-              onClick={() => setMobileMenuOpen(false)}
-              className="px-3 py-2 text-sm font-medium rounded-lg text-slate-700 hover:bg-slate-100"
-            >
-              Analytics
-            </Link>
-            <Link
-              to="/about"
-              onClick={() => setMobileMenuOpen(false)}
-              className="px-3 py-2 text-sm font-medium rounded-lg text-slate-700 hover:bg-slate-100"
-            >
-              Methodology
-            </Link>
-          </div>
-
-          <div className="pt-2 border-t border-slate-100 flex flex-col gap-2">
-            <Link
-              to="/report-new"
-              onClick={() => setMobileMenuOpen(false)}
-              className="w-full text-center py-2 text-sm font-semibold rounded-lg bg-teal-600 text-white shadow"
-            >
-              + Report Road Damage
-            </Link>
-
-            {user ? (
-              <div className="pt-2 flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-bold text-slate-900">{user.name}</p>
-                  <p className="text-[10px] text-teal-600 uppercase font-mono">{user.role}</p>
-                </div>
-                <button
-                  onClick={() => { logout(); setMobileMenuOpen(false); }}
-                  className="px-3 py-1 text-xs text-rose-600 bg-rose-50 rounded border border-rose-200 font-semibold"
-                >
-                  Log Out
-                </button>
-              </div>
-            ) : (
-              <Link
-                to="/auth"
+                to="/report-new"
                 onClick={() => setMobileMenuOpen(false)}
-                className="w-full text-center py-2 text-sm font-semibold rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50"
+                className="w-full flex items-center justify-center gap-1.5 py-2.5 text-xs font-bold rounded-xl bg-teal-600 text-white shadow-sm"
               >
-                Sign In
+                <PlusCircle className="w-4 h-4" />
+                Report Road Damage
               </Link>
-            )}
+
+              {user ? (
+                <div className="flex items-center justify-between p-2 bg-slate-100 rounded-xl">
+                  <div>
+                    <span className="text-xs font-bold block">{user.name}</span>
+                    <span className="text-[10px] text-teal-700 font-mono font-bold uppercase">{user.role}</span>
+                  </div>
+                  <button
+                    onClick={() => { setMobileMenuOpen(false); logout(); }}
+                    className="text-xs text-rose-600 font-medium hover:underline"
+                  >
+                    Log Out
+                  </button>
+                </div>
+              ) : (
+                <Link
+                  to="/auth"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="w-full text-center block py-2 text-xs font-semibold rounded-xl border border-slate-300 text-slate-700"
+                >
+                  Sign In
+                </Link>
+              )}
+            </div>
           </div>
-        </div>
-      )}
-    </header>
+        )}
+      </header>
+
+      {/* Global Modals */}
+      <GlobalSearchModal 
+        isOpen={searchModalOpen} 
+        onClose={() => setSearchModalOpen(false)} 
+      />
+      <AIEngineModal 
+        isOpen={aiModalOpen} 
+        onClose={() => setAiModalOpen(false)} 
+        onModeChanged={refreshAIStatus}
+      />
+    </>
   );
 };

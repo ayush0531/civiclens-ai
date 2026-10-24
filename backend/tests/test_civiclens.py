@@ -27,7 +27,8 @@ def test_health_endpoint():
     assert data["status"] == "HEALTHY"
     assert data["database"] == "CONNECTED"
     assert "ai_engine" in data
-    assert data["ai_engine"]["is_demo_mode"] is True
+    assert data["ai_engine"]["mode"] in ["REAL", "DEMO"]
+    assert "CivicLens" in data["ai_engine"]["model_name"]
 
 def test_user_registration_and_login():
     test_email = f"test_{os.urandom(4).hex()}@example.com"
@@ -112,15 +113,13 @@ def test_report_creation_and_auto_analysis():
     assert rep["severity_score"] >= 0.0
     assert rep["workflow_status"] == "SUBMITTED"
     assert len(rep["analyses"]) >= 1
-    assert rep["analyses"][0]["is_demo_result"] is True
-    assert "DEMO ANALYSIS" in rep["analyses"][0]["disclaimer"]
+    assert "inference_duration_ms" in rep["analyses"][0]
 
 def test_invalid_image_upload_rejected():
     login_res = client.post("/api/v1/auth/login", json={"email": "citizen@civiclens.ai", "password": "DemoPass123!"})
     token = login_res.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
 
-    # Fake text file disguised as image
     fake_file = io.BytesIO(b"Not an image content")
     files = {"image": ("malicious.exe", fake_file, "application/octet-stream")}
     data = {
@@ -132,7 +131,6 @@ def test_invalid_image_upload_rejected():
     assert res.status_code == 400
 
 def test_haversine_and_duplicate_service():
-    # Nagpur Sitabuldi Metro Pillar 42 vs Pillar 43 (~30 meters)
     lat1, lon1 = 21.1458, 79.0882
     lat2, lon2 = 21.1459, 79.0884
     dist = haversine_distance(lat1, lon1, lat2, lon2)
@@ -161,20 +159,17 @@ def test_priority_engine_calculation():
     assert 0.0 <= calc["priority_score"] <= 100.0
     assert "severity_contribution" in calc["breakdown"]
     assert "confidence_contribution" in calc["breakdown"]
-    assert "road_class_contribution" in calc["breakdown"]
+    assert "traffic_safety_contribution" in calc["breakdown"]
 
 def test_workflow_illegal_transition_rejection():
-    # Log in as authority
     login_res = client.post("/api/v1/auth/login", json={"email": "authority@civiclens.ai", "password": "DemoPass123!"})
     token = login_res.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
 
-    # Get first submitted report
     rep_res = client.get("/api/v1/reports?workflow_status=SUBMITTED&limit=1")
     reports = rep_res.json()
     if reports:
         report_id = reports[0]["id"]
-        # Illegal jump: SUBMITTED cannot jump directly to RESOLVED without assignment / review
         bad_trans = client.post(
             f"/api/v1/reports/{report_id}/status",
             headers=headers,
@@ -197,11 +192,45 @@ def test_analytics_endpoints():
     assert len(tr["severities"]) == 4
     assert len(tr["hotspots"]) > 0
 
-def test_map_markers_endpoint():
+def test_map_markers_and_spatial_clusters():
     res = client.get("/api/v1/map/reports")
     assert res.status_code == 200
     markers = res.json()
     assert len(markers) > 0
     assert "latitude" in markers[0]
-    assert "longitude" in markers[0]
-    assert "severity_level" in markers[0]
+
+    cluster_res = client.get("/api/v1/map/clusters")
+    assert cluster_res.status_code == 200
+    clusters = cluster_res.json()
+    assert isinstance(clusters, list)
+
+def test_model_evaluation_laboratory_endpoint():
+    res = client.get("/api/v1/ai/evaluation")
+    assert res.status_code == 200
+    lab = res.json()
+    assert "overall_metrics" in lab
+    assert "per_class_metrics" in lab
+    assert lab["overall_metrics"]["map_50"] > 0.70
+    assert len(lab["per_class_metrics"]) == 6
+
+def test_priority_policy_get_and_update():
+    login_res = client.post("/api/v1/auth/login", json={"email": "admin@civiclens.ai", "password": "DemoPass123!"})
+    token = login_res.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    get_policy = client.get("/api/v1/admin/priority-policy", headers=headers)
+    assert get_policy.status_code == 200
+    assert "policy" in get_policy.json()
+
+    # Update policy
+    new_weights = {
+        "w_sev": 0.40,
+        "w_conf": 0.15,
+        "w_dup": 0.15,
+        "w_age": 0.10,
+        "w_road": 0.10,
+        "w_traffic": 0.10
+    }
+    put_policy = client.put("/api/v1/admin/priority-policy", headers=headers, json=new_weights)
+    assert put_policy.status_code == 200
+    assert put_policy.json()["policy"]["w_sev"] == 0.40

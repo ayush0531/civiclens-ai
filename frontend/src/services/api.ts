@@ -4,10 +4,13 @@ import {
   RoadDamageReport,
   ReportDetail,
   MapMarkerItem,
+  SpatialCluster,
   OverviewStats,
   AnalyticsTrends,
   AuditLogItem,
-  AIAnalysis
+  AIAnalysis,
+  ModelEvaluationData,
+  PriorityPolicyData
 } from '../types';
 
 const API_BASE = '/api/v1';
@@ -120,10 +123,32 @@ class ApiClient {
     });
   }
 
-  // --- AI Analysis ---
+  async linkDuplicate(id: number, targetReportId: number): Promise<ReportDetail> {
+    return this.request<ReportDetail>(`/reports/${id}/link-duplicate`, {
+      method: 'POST',
+      body: JSON.stringify({ target_report_id: targetReportId }),
+    });
+  }
+
+  // --- AI Analysis & Lab ---
   async runAnalysis(id: number): Promise<AIAnalysis> {
     return this.request<AIAnalysis>(`/reports/${id}/analyze`, {
       method: 'POST',
+    });
+  }
+
+  async getModelEvaluation(): Promise<ModelEvaluationData> {
+    return this.request<ModelEvaluationData>('/ai/evaluation');
+  }
+
+  async getAIStatus(): Promise<any> {
+    return this.request('/ai/status');
+  }
+
+  async setAIMode(mode: 'REAL' | 'DEMO'): Promise<any> {
+    return this.request('/ai/mode', {
+      method: 'POST',
+      body: JSON.stringify({ mode }),
     });
   }
 
@@ -149,7 +174,7 @@ class ApiClient {
     });
   }
 
-  // --- Geospatial Map ---
+  // --- Geospatial Map & Clusters ---
   async getMapMarkers(params?: { category?: string; severity_level?: string; workflow_status?: string }): Promise<MapMarkerItem[]> {
     const query = new URLSearchParams();
     if (params) {
@@ -161,6 +186,10 @@ class ApiClient {
     return this.request<MapMarkerItem[]>(`/map/reports${qs}`);
   }
 
+  async getSpatialClusters(radiusMeters: number = 450.0, minPoints: number = 2): Promise<SpatialCluster[]> {
+    return this.request<SpatialCluster[]>(`/map/clusters?radius_meters=${radiusMeters}&min_points=${minPoints}`);
+  }
+
   // --- Analytics & KPIs ---
   async getOverviewStats(): Promise<OverviewStats> {
     return this.request<OverviewStats>('/analytics/overview');
@@ -170,7 +199,7 @@ class ApiClient {
     return this.request<AnalyticsTrends>('/analytics/trends');
   }
 
-  // --- Admin ---
+  // --- Admin & Policy Governance ---
   async getAllUsers(): Promise<User[]> {
     return this.request<User[]>('/admin/users');
   }
@@ -179,6 +208,17 @@ class ApiClient {
     return this.request<User>(`/admin/users/${id}/role`, {
       method: 'PATCH',
       body: JSON.stringify(data),
+    });
+  }
+
+  async getPriorityPolicy(): Promise<PriorityPolicyData> {
+    return this.request<PriorityPolicyData>('/admin/priority-policy');
+  }
+
+  async updatePriorityPolicy(weights: Record<string, number>): Promise<any> {
+    return this.request('/admin/priority-policy', {
+      method: 'PUT',
+      body: JSON.stringify(weights),
     });
   }
 

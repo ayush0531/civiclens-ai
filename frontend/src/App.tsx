@@ -15,6 +15,7 @@ import { CaseDetailsPage } from './pages/CaseDetailsPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
 import { AdminPage } from './pages/AdminPage';
 import { AboutPage } from './pages/AboutPage';
+import { ModelLabPage } from './pages/ModelLabPage';
 
 export const App: React.FC = () => {
   return (
@@ -32,6 +33,7 @@ export const App: React.FC = () => {
               <Route path="/map" element={<InteractiveMapPage />} />
               <Route path="/authority" element={<AuthorityDashboard />} />
               <Route path="/case/:id" element={<CaseDetailsPage />} />
+              <Route path="/lab" element={<ModelLabPage />} />
               <Route path="/analytics" element={<AnalyticsPage />} />
               <Route path="/admin" element={<AdminPage />} />
               <Route path="/about" element={<AboutPage />} />

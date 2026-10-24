@@ -156,6 +156,20 @@ export interface MapMarkerItem {
   created_at: string;
 }
 
+export interface SpatialCluster {
+  cluster_id: number;
+  area_name: string;
+  centroid_latitude: number;
+  centroid_longitude: number;
+  radius_meters: number;
+  report_count: number;
+  average_severity: number;
+  hazard_level: string;
+  dominant_category: string;
+  report_ids: number[];
+  reference_numbers: string[];
+}
+
 export interface OverviewStats {
   total_reports: number;
   pending_review: number;
@@ -213,4 +227,58 @@ export interface AuditLogItem {
   metadata_json?: string | null;
   ip_address?: string | null;
   timestamp: string;
+}
+
+export interface PerClassMetric {
+  class_name: string;
+  code: string;
+  samples: number;
+  precision: number;
+  recall: number;
+  f1_score: number;
+  map_50: number;
+}
+
+export interface ModelEvaluationData {
+  model_metadata: {
+    architecture: string;
+    framework: string;
+    weights_file: string;
+    dataset_name: string;
+    dataset_size_images: number;
+    validation_size_images: number;
+    input_resolution: string;
+    quantization: string;
+    training_epochs: number;
+    batch_size: number;
+    evaluation_date: string;
+  };
+  overall_metrics: {
+    map_50: number;
+    map_50_95: number;
+    precision: number;
+    recall: number;
+    f1_score: number;
+    mean_latency_ms: number;
+    p90_latency_ms: number;
+    p99_latency_ms: number;
+    fps_cpu: number;
+    model_size_mb: number;
+  };
+  per_class_metrics: PerClassMetric[];
+  confusion_matrix: {
+    classes: string[];
+    matrix: number[][];
+  };
+  training_history: {
+    epoch: number;
+    box_loss: number;
+    cls_loss: number;
+    map_50: number;
+  }[];
+}
+
+export interface PriorityPolicyData {
+  policy: Record<string, number>;
+  weights_description: Record<string, string>;
 }

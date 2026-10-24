@@ -26,17 +26,19 @@ class Settings(BaseSettings):
     MAX_UPLOAD_SIZE_BYTES: int = 10 * 1024 * 1024  # 10 MB
     ALLOWED_IMAGE_TYPES: list[str] = ["image/jpeg", "image/png", "image/webp"]
     
-    # AI Engine Configuration
-    AI_INFERENCE_MODE: str = os.getenv("AI_INFERENCE_MODE", "DEMO")  # "DEMO" or "REAL"
-    AI_MODEL_NAME: str = "CivicLens-EdgeCV-v1.2 (Deterministic Heuristic Engine)"
-    AI_MODEL_VERSION: str = "1.2.0"
+    # AI Engine Configuration ("REAL" for ONNX model or "DEMO" for heuristic fallback)
+    AI_INFERENCE_MODE: str = os.getenv("AI_INFERENCE_MODE", "REAL")
+    AI_MODEL_NAME: str = "CivicLens-YOLOv8-RDD2022 (ONNX Deep Learning Engine)"
+    AI_MODEL_VERSION: str = "2.0.0"
+    AI_ONNX_MODEL_PATH: str = str(PROJECT_ROOT / "models" / "road_damage_yolo.onnx")
     
-    # Priority Engine Weights (Explainable multicriteria formula)
-    WEIGHT_SEVERITY: float = 0.40
-    WEIGHT_CONFIDENCE: float = 0.20
+    # Priority Engine Weights (Explainable multicriteria formula - 6 factors)
+    WEIGHT_SEVERITY: float = 0.35
+    WEIGHT_CONFIDENCE: float = 0.15
     WEIGHT_DUPLICATES: float = 0.15
     WEIGHT_AGING: float = 0.15
     WEIGHT_ROAD_CLASS: float = 0.10
+    WEIGHT_TRAFFIC_SAFETY: float = 0.10
     
     # CORS
     CORS_ORIGINS: list[str] = [

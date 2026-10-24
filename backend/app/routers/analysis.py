@@ -1,20 +1,21 @@
 import os
 import json
 import uuid
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Dict, Any
+from fastapi import APIRouter, Depends, HTTPException, status, Body
 from sqlalchemy.orm import Session
 from backend.app.config import settings
 from backend.app.database import get_db
 from backend.app.models.models import RoadDamageReport, AIAnalysis, AuditLog, User
 from backend.app.schemas.schemas import AIAnalysisResponse
-from backend.app.services.auth_service import get_current_user
+from backend.app.services.auth_service import get_current_user, require_roles
 from backend.app.services.ai_service import ai_service
 from backend.app.services.duplicate_service import duplicate_service
 from backend.app.services.priority_service import priority_engine
 
-router = APIRouter(prefix="/reports", tags=["AI Road Damage Inference"])
+router = APIRouter(tags=["AI Road Damage Inference & Evaluation"])
 
-@router.post("/{id}/analyze", response_model=AIAnalysisResponse)
+@router.post("/reports/{id}/analyze", response_model=AIAnalysisResponse)
 def run_ai_analysis(
     id: int,
     db: Session = Depends(get_db),
@@ -114,3 +115,29 @@ def run_ai_analysis(
         disclaimer=analysis_rec.disclaimer,
         created_at=analysis_rec.created_at
     )
+
+
+@router.get("/ai/evaluation")
+def get_model_evaluation_benchmarks() -> Dict[str, Any]:
+    """
+    Returns empirical evaluation laboratory metrics for YOLOv8-RDD2022.
+    """
+    return ai_service.get_evaluation_laboratory_benchmarks()
+
+
+@router.get("/ai/status")
+def get_ai_status() -> Dict[str, Any]:
+    return ai_service.get_engine_info()
+
+
+@router.post("/ai/mode")
+def set_ai_inference_mode(
+    payload: Dict[str, str] = Body(...),
+    current_user: User = Depends(require_roles(["admin", "authority"]))
+):
+    target_mode = payload.get("mode", "REAL")
+    ai_service.set_mode(target_mode)
+    return {
+        "message": f"AI Inference mode switched to {ai_service.mode}",
+        "engine_info": ai_service.get_engine_info()
+    }
