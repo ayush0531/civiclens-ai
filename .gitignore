@@ -1,0 +1,19 @@
+# Node & Frontend
+frontend/node_modules/
+frontend/dist/
+.DS_Store
+
+# Python & Backend
+__pycache__/
+*/__pycache__/
+*/*/__pycache__/
+*/*/*/__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+venv/
+.venv/
+
+# Uploads (keep directory structure but ignore massive temp files if any)
+# backend/uploads/*
+# !backend/uploads/.gitkeep
