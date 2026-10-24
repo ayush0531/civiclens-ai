@@ -19,3 +19,30 @@ venv/
 # Uploads (keep directory structure but ignore massive temp files if any)
 # backend/uploads/*
 # !backend/uploads/.gitkeep
+
+# Environment secrets
+.env
+.env.*
+!.env.example
+
+# Local databases and database sidecars
+*.db
+*.sqlite
+*.sqlite3
+*.db-shm
+*.db-wal
+
+# User uploads and generated report images
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Python cache and test artifacts
+.pytest_cache/
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Frontend dependencies and build output
+node_modules/
+frontend/dist/
