@@ -14,3 +14,5 @@ pytest
 httpx
 email-validator
 onnxruntime
+
+scikit-learn
