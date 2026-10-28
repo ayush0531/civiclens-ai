@@ -24,6 +24,7 @@ export const InteractiveMapPage: React.FC = () => {
   const [markers, setMarkers] = useState<MapMarkerItem[]>([]);
   const [clusters, setClusters] = useState<SpatialCluster[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [activeLayer, setActiveLayer] = useState<'all' | 'markers' | 'clusters'>('all');
   const [clusterRadius, setClusterRadius] = useState<number>(450.0);
   const [selectedCategory, setSelectedCategory] = useState<string>('');
@@ -38,6 +39,7 @@ export const InteractiveMapPage: React.FC = () => {
 
   const fetchData = async () => {
     setLoading(true);
+    setError(null);
     try {
       const [markerData, clusterData] = await Promise.all([
         api.getMapMarkers({
@@ -49,8 +51,9 @@ export const InteractiveMapPage: React.FC = () => {
       ]);
       setMarkers(markerData);
       setClusters(clusterData);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to load map data', err);
+      setError(err.message || 'Failed to load geospatial data from server.');
     } finally {
       setLoading(false);
     }
@@ -73,7 +76,7 @@ export const InteractiveMapPage: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-[calc(100vh-4rem)] relative bg-slate-100">
+    <div className="flex-1 flex flex-col h-[calc(100vh-4rem)] min-h-[600px] relative bg-slate-100 min-h-0">
       
       {/* Top Floating Control Bar */}
       <div className="absolute top-4 left-4 right-4 z-20 flex flex-wrap items-center justify-between gap-3 bg-white/95 backdrop-blur-md px-4 py-3 rounded-2xl border border-slate-200 shadow-sm">
@@ -87,6 +90,12 @@ export const InteractiveMapPage: React.FC = () => {
               <span className="text-[10px] font-mono font-bold bg-teal-100 text-teal-800 px-1.5 py-0.2 rounded">
                 DBSCAN Active
               </span>
+              {loading && (
+                <div className="flex items-center gap-1.5 text-[10px] text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200">
+                  <div className="w-2.5 h-2.5 border-2 border-teal-600 border-t-transparent rounded-full animate-spin"></div>
+                  <span>Syncing...</span>
+                </div>
+              )}
             </div>
             <p className="text-[11px] text-slate-500 font-medium">
               <strong className="text-slate-800 font-mono">{markers.length}</strong> geocoded defect pins •{' '}
@@ -179,8 +188,24 @@ export const InteractiveMapPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Network Error Notification Banner */}
+      {error && (
+        <div className="absolute top-20 left-4 right-4 z-20 bg-rose-50 border border-rose-300 p-3 rounded-xl text-xs text-rose-900 shadow-md flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Info className="w-4 h-4 text-rose-600 shrink-0" />
+            <span>{error}</span>
+          </div>
+          <button
+            onClick={fetchData}
+            className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-lg shadow-xs shrink-0"
+          >
+            Retry Sync
+          </button>
+        </div>
+      )}
+
       {/* Map Canvas */}
-      <div className="flex-1 w-full h-full">
+      <div className="flex-1 w-full h-full relative min-h-0 min-h-[500px]">
         <MapView
           markers={markers}
           clusters={clusters}
