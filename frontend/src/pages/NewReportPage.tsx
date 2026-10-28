@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { api, getImageUrl } from '../services/api';
 import { MapView } from '../components/MapView';
+import { NMCHandoffCard } from '../components/NMCHandoffCard';
 import { QuickInspectResult } from '../types';
 
 interface NagpurPreset {
@@ -901,76 +902,34 @@ export const NewReportPage: React.FC = () => {
         )}
 
         {/* ========================================================= */}
-        {/* STEP 5: CONFIRMATION & REFERENCE NUMBER */}
+        {/* STEP 5: CIVICLENS REPORT & OFFICIAL NMC HANDOFF */}
         {/* ========================================================= */}
         {currentStep === 5 && createdReport && (
-          <div className="bg-white p-6 sm:p-10 rounded-2xl border border-slate-200 shadow-xs text-center space-y-6">
-            
-            {/* Green Check Circle */}
-            <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center mx-auto shadow-xs">
-              <CheckCircle2 className="w-9 h-9" />
-            </div>
-
-            <div className="space-y-2 max-w-lg mx-auto">
-              <span className="text-xs font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
-                Complaint Registered Successfully
+          <div className="space-y-6">
+            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-6 text-center space-y-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-emerald-800 bg-emerald-100 px-3 py-1 rounded-full border border-emerald-300 inline-block">
+                ✓ Report Successfully Saved in CivicLens.AI
               </span>
-              <h2 className="text-2xl sm:text-3xl font-black text-navy-900 tracking-tight">
-                Report Logged in Triage Queue
+              <h2 className="text-xl sm:text-2xl font-black text-navy-900">
+                CivicLens Reference Generated • Ready for Official NMC Handoff
               </h2>
-              <p className="text-xs sm:text-sm text-slate-600">
-                Your report has been analyzed by the computer vision pipeline and entered into the municipal review workflow.
+              <p className="text-xs sm:text-sm text-slate-600 max-w-xl mx-auto leading-relaxed">
+                Your photograph has been analyzed by the ONNX computer vision engine. Review your report in Section A below, then continue to Nagpur Municipal Corporation's official portal in Section B to register your grievance.
               </p>
             </div>
 
-            {/* Reference ID Banner */}
-            <div className="max-w-md mx-auto p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
-                Your Unique Tracking Reference Number
-              </span>
-              <div className="flex items-center justify-center gap-3">
-                <span className="font-mono text-xl sm:text-2xl font-black text-navy-900 tracking-wide">
-                  {createdReport.reference_number || `CVL-${createdReport.id}`}
-                </span>
-                <button
-                  onClick={() => handleCopyReference(createdReport.reference_number || `CVL-${createdReport.id}`)}
-                  className="px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-colors"
-                >
-                  {copied ? (
-                    <>
-                      <Check className="w-3.5 h-3.5 text-emerald-600" />
-                      <span className="text-emerald-700">Copied!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-3.5 h-3.5" />
-                      <span>Copy</span>
-                    </>
-                  )}
-                </button>
-              </div>
-              <div className="inline-flex items-center gap-1.5 text-xs text-slate-500 pt-1">
-                <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                <span>Initial Status: <strong>Submitted (Pending Review)</strong></span>
-              </div>
-            </div>
+            <NMCHandoffCard
+              report={createdReport}
+              onOfficialReferenceSaved={(updated) => setCreatedReport(updated)}
+            />
 
-            {/* Demonstration notice reminder */}
-            <div className="max-w-xl mx-auto p-3.5 rounded-xl bg-teal-50/70 border border-teal-200 text-xs text-teal-900 text-left flex items-start gap-3">
-              <Building2 className="w-5 h-5 text-teal-700 shrink-0 mt-0.5" />
-              <p className="text-[11px] leading-relaxed">
-                <strong>Municipal Demonstration Notice:</strong> This report is recorded in CivicLens AI for review within this application. Official submission to Nagpur Municipal Corporation is not enabled or confirmed.
-              </p>
-            </div>
-
-            {/* CTAs */}
-            <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 bg-white rounded-2xl border border-slate-200">
               <Link
                 to={`/track/${encodeURIComponent(createdReport.reference_number || createdReport.id)}`}
-                className="w-full sm:w-auto px-6 py-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-md shadow-teal-600/20 transition-all flex items-center justify-center gap-2"
+                className="w-full sm:w-auto px-6 py-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-md shadow-teal-600/20 flex items-center justify-center gap-2"
               >
                 <Search className="w-4 h-4" />
-                <span>Track This Complaint Now</span>
+                <span>Go to Live Complaint Tracking Page</span>
               </Link>
 
               <button
@@ -981,7 +940,6 @@ export const NewReportPage: React.FC = () => {
                 Submit Another Report
               </button>
             </div>
-
           </div>
         )}
 

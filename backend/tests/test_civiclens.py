@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 
 from backend.app.main import app
 from backend.app.config import settings
-from backend.app.database import engine, Base, SessionLocal
+from backend.app.database import engine, Base, SessionLocal, check_and_apply_migrations
 from backend.app.models.models import User, RoadDamageReport
 from backend.app.services.ai_service import ai_service
 from backend.app.services.duplicate_service import haversine_distance, duplicate_service
@@ -18,6 +18,7 @@ client = TestClient(app)
 @pytest.fixture(scope="session", autouse=True)
 def setup_db():
     Base.metadata.create_all(bind=engine)
+    check_and_apply_migrations(engine)
     yield
 
 def test_health_endpoint():
@@ -281,5 +282,52 @@ def test_ai_quick_inspect_endpoint():
     assert "severity_level" in data
     assert "bounding_boxes" in data
     assert isinstance(data["bounding_boxes"], list)
+
+
+def test_nmc_integration_spec_endpoint():
+    res = client.get("/api/v1/reports/nmc/integration-spec")
+    assert res.status_code == 200
+    data = res.json()
+    assert data["current_mode"] in ["CITIZEN_HANDOFF", "CITIZEN_ASSISTED_HANDOFF"]
+    assert data["is_direct_api_active"] is False
+    assert "https://nmcnagpur.gov.in" in data["official_portal_url"]
+    assert "1800 233 0080" in data["pwd_helpline"]
+    assert len(data["requirements_for_real_integration"]) >= 4
+
+
+def test_record_external_reference_and_dual_status():
+    res = client.get("/api/v1/map/reports")
+    assert res.status_code == 200
+    report_id = res.json()[0]["id"]
+
+    ext_ref = f"NMC-2026-{os.urandom(3).hex().upper()}"
+    payload = {
+        "external_reference_id": ext_ref,
+        "notes": "Citizen verified with OTP on nmcnagpur.gov.in",
+        "road_jurisdiction": "NMC"
+    }
+    post_res = client.post(f"/api/v1/reports/{report_id}/external-reference", json=payload)
+    assert post_res.status_code == 200
+    data = post_res.json()
+    assert data["external_reference_id"] == ext_ref
+    assert data["external_submission_status"] == "CITIZEN_REPORTED_UNVERIFIED"
+    assert "unverified" in data["external_submission_label"].lower()
+    assert data["road_jurisdiction"] == "NMC"
+
+    # Track by this new external reference
+    track_res = client.get(f"/api/v1/reports/track/{ext_ref}")
+    assert track_res.status_code == 200
+    track_data = track_res.json()
+    assert track_data["id"] == report_id
+    assert track_data["external_reference_id"] == ext_ref
+
+    # Plain text summary download
+    summary_res = client.get(f"/api/v1/reports/{report_id}/summary-text")
+    assert summary_res.status_code == 200
+    text_content = summary_res.text
+    assert "CIVICLENS.AI — ROAD DEFECT COMPLAINT SUMMARY" in text_content
+    assert ext_ref in text_content or track_data["reference_number"] in text_content
+    assert "https://nmcnagpur.gov.in" in text_content
+    assert "1800 233 0080" in text_content
 
 

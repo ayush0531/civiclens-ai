@@ -28,12 +28,17 @@ export type DamageCategory =
 export type SeverityLevel = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' | 'PENDING';
 
 export type WorkflowStatus = 
+  | 'SAVED'
   | 'SUBMITTED'
+  | 'AWAITING_OFFICIAL_REGISTRATION'
+  | 'OFFICIAL_REFERENCE_RECORDED'
+  | 'MONITORING'
   | 'UNDER_REVIEW'
   | 'ACTION_PLANNED'
   | 'ASSIGNED'
   | 'IN_PROGRESS'
   | 'RESOLVED'
+  | 'CLOSED_INTERNAL'
   | 'REJECTED';
 
 export interface BoundingBox {
@@ -131,7 +136,15 @@ export interface RoadDamageReport {
   is_duplicate: boolean;
   duplicate_confidence: number;
   external_submission_status?: string | null;
+  external_submission_label?: string | null;
+  internal_status_label?: string | null;
+  official_portal_url?: string | null;
+  pwd_toll_free_number?: string | null;
+  pwd_portal_url?: string | null;
   external_reference_id?: string | null;
+  external_reference_notes?: string | null;
+  external_reference_recorded_at?: string | null;
+  road_jurisdiction?: string | null;
   is_demo_data: boolean;
   created_at: string;
   updated_at: string;
@@ -151,6 +164,7 @@ export interface PublicTrackReport {
   area_locality?: string | null;
   city?: string | null;
   road_classification: string;
+  road_jurisdiction?: string | null;
   predicted_damage_category: DamageCategory;
   prediction_confidence: number;
   severity_score: number;
@@ -164,8 +178,31 @@ export interface PublicTrackReport {
   resolution_image_path?: string | null;
   status_history: StatusHistoryItem[];
   analyses: AIAnalysis[];
+  external_reference_id?: string | null;
+  external_reference_notes?: string | null;
+  external_reference_recorded_at?: string | null;
   external_submission_status: string;
+  external_submission_label?: string;
+  internal_status_label?: string;
+  official_portal_url?: string;
+  pwd_toll_free_number?: string;
+  pwd_portal_url?: string;
   external_submission_notice: string;
+}
+
+export interface NMCIntegrationSpec {
+  current_mode: string;
+  is_direct_api_active: boolean;
+  reason: string;
+  requirements_for_real_integration: string[];
+  official_portal_url: string;
+  pwd_helpline: string;
+}
+
+export interface ExternalReferencePayload {
+  external_reference_id: string;
+  notes?: string;
+  road_jurisdiction?: string;
 }
 
 export interface QuickInspectResult {

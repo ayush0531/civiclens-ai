@@ -5,6 +5,8 @@ import {
   ReportDetail,
   PublicTrackReport,
   QuickInspectResult,
+  ExternalReferencePayload,
+  NMCIntegrationSpec,
   MapMarkerItem,
   SpatialCluster,
   OverviewStats,
@@ -120,6 +122,23 @@ class ApiClient {
 
   async trackReport(identifier: string): Promise<PublicTrackReport> {
     return this.request<PublicTrackReport>(`/reports/track/${encodeURIComponent(identifier.trim())}`);
+  }
+
+  async recordExternalReference(id: number, data: ExternalReferencePayload): Promise<ReportDetail> {
+    return this.request<ReportDetail>(`/reports/${id}/external-reference`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getComplaintSummaryText(id: number): Promise<string> {
+    const res = await fetch(`${API_BASE}/reports/${id}/summary-text`);
+    if (!res.ok) throw new Error('Failed to download complaint summary');
+    return res.text();
+  }
+
+  async getNMCIntegrationSpec(): Promise<NMCIntegrationSpec> {
+    return this.request<NMCIntegrationSpec>('/reports/nmc/integration-spec');
   }
 
   async createReport(formData: FormData): Promise<ReportDetail> {

@@ -87,7 +87,19 @@ export const AuthorityDashboard: React.FC = () => {
   });
 
   const handleExportCSV = () => {
-    const headers = ['Reference', 'Title', 'Address', 'Category', 'SeverityScore', 'PriorityScore', 'Status', 'AssignedTo'];
+    const headers = [
+      'Reference',
+      'Title',
+      'Address',
+      'Category',
+      'SeverityScore',
+      'PriorityScore',
+      'InternalStatus',
+      'OfficialStatus',
+      'OfficialRefID',
+      'Jurisdiction',
+      'AssignedTo'
+    ];
     const rows = filteredQueue.map(r => [
       r.reference_number,
       `"${r.title.replace(/"/g, '""')}"`,
@@ -96,6 +108,9 @@ export const AuthorityDashboard: React.FC = () => {
       r.severity_score,
       r.priority_score,
       r.workflow_status,
+      r.external_submission_status || 'NOT_REGISTERED',
+      `"${(r.external_reference_id || 'None').replace(/"/g, '""')}"`,
+      r.road_jurisdiction || 'NMC',
       `"${(r.assigned_authority_name || 'Unassigned').replace(/"/g, '""')}"`
     ]);
     const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
@@ -146,6 +161,24 @@ export const AuthorityDashboard: React.FC = () => {
             >
               Analytics
             </Link>
+          </div>
+        </div>
+
+        {/* Demonstration Operations Center Notice Banner */}
+        <div className="bg-gradient-to-r from-teal-900 to-navy-900 text-white rounded-2xl p-4 sm:p-5 shadow-xs border border-teal-700/50 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-teal-500/20 text-teal-300 border border-teal-400/30 flex items-center justify-center shrink-0">
+            <Building2 className="w-5 h-5" />
+          </div>
+          <div className="flex-1 space-y-0.5">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-teal-300 bg-teal-500/20 px-2 py-0.5 rounded">
+                Simulated Demonstration Operations Center
+              </span>
+              <span className="text-xs font-bold text-slate-200">Nagpur Municipal Corridor (Pilot)</span>
+            </div>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Triage, prioritization, and field assignments performed in this dashboard represent an internal engineering simulation. Citizen handoffs to the official NMC grievance channel require external verification.
+            </p>
           </div>
         </div>
 
@@ -373,7 +406,18 @@ export const AuthorityDashboard: React.FC = () => {
                       </td>
 
                       <td className="px-4 py-3 whitespace-nowrap">
-                        <StatusBadge status={item.workflow_status} size="sm" />
+                        <div className="space-y-1">
+                          <StatusBadge status={item.workflow_status} size="sm" />
+                          {item.external_reference_id ? (
+                            <span className="block text-[10px] font-bold text-amber-700 font-mono">
+                              NMC: {item.external_reference_id}
+                            </span>
+                          ) : (
+                            <span className="block text-[10px] text-slate-400">
+                              Unregistered (NMC)
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       <td className="px-4 py-3 text-slate-600 whitespace-nowrap">

@@ -17,12 +17,17 @@ from backend.app.routers.reports import get_report_detail
 router = APIRouter(prefix="/reports", tags=["Maintenance Workflow & Assignments"])
 
 VALID_TRANSITIONS = {
-    "SUBMITTED": ["UNDER_REVIEW", "ACTION_PLANNED", "ASSIGNED", "REJECTED"],
+    "SUBMITTED": ["UNDER_REVIEW", "ACTION_PLANNED", "ASSIGNED", "REJECTED", "AWAITING_OFFICIAL_REGISTRATION", "OFFICIAL_REFERENCE_RECORDED"],
+    "SAVED": ["AWAITING_OFFICIAL_REGISTRATION", "OFFICIAL_REFERENCE_RECORDED", "UNDER_REVIEW", "ACTION_PLANNED", "REJECTED"],
+    "AWAITING_OFFICIAL_REGISTRATION": ["OFFICIAL_REFERENCE_RECORDED", "UNDER_REVIEW", "REJECTED"],
+    "OFFICIAL_REFERENCE_RECORDED": ["UNDER_REVIEW", "ACTION_PLANNED", "ASSIGNED", "MONITORING", "REJECTED"],
+    "MONITORING": ["RESOLVED", "CLOSED_INTERNAL", "UNDER_REVIEW"],
     "UNDER_REVIEW": ["ACTION_PLANNED", "ASSIGNED", "REJECTED", "IN_PROGRESS"],
     "ACTION_PLANNED": ["ASSIGNED", "IN_PROGRESS", "UNDER_REVIEW", "REJECTED"],
     "ASSIGNED": ["IN_PROGRESS", "ACTION_PLANNED", "UNDER_REVIEW", "REJECTED"],
     "IN_PROGRESS": ["RESOLVED", "ACTION_PLANNED", "UNDER_REVIEW", "ASSIGNED"],
     "RESOLVED": ["UNDER_REVIEW"],  # Reopen on citizen appeal
+    "CLOSED_INTERNAL": ["UNDER_REVIEW"],
     "REJECTED": ["UNDER_REVIEW"]   # Reopen on reassessment
 }
 
@@ -191,7 +196,7 @@ def resolve_report(
         previous_status=cur_status,
         new_status="RESOLVED",
         changed_by_id=current_user.id,
-        notes=f"Resolved with maintenance evidence: {notes}"
+        notes=f"[Simulated Demonstration Workflow] Internal resolution recorded with maintenance evidence: {notes}"
     )
     db.add(status_entry)
 

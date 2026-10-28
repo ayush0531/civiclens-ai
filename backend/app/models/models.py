@@ -57,9 +57,12 @@ class RoadDamageReport(Base):
     reporter_contact = Column(String(100), nullable=True)
     incident_date = Column(DateTime, nullable=True)
 
-    # Municipal Integration State (NMC Demonstration)
-    external_submission_status = Column(String(60), default="DEMO_ENVIRONMENT", nullable=False)
-    external_reference_id = Column(String(100), nullable=True)
+    # Municipal Integration State (NMC Handoff & Grievance Records)
+    external_submission_status = Column(String(60), default="NOT_REGISTERED", nullable=False)
+    external_reference_id = Column(String(100), nullable=True, index=True)
+    external_reference_notes = Column(Text, nullable=True)
+    external_reference_recorded_at = Column(DateTime, nullable=True)
+    road_jurisdiction = Column(String(60), default="NMC", nullable=False)
     
     # AI Prediction & Severity
     predicted_damage_category = Column(String(80), default="Unanalyzed")

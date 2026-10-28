@@ -18,7 +18,11 @@ import {
   ShieldAlert,
   Sparkles,
   RefreshCw,
-  GitMerge
+  GitMerge,
+  Copy,
+  Check,
+  Download,
+  Phone
 } from 'lucide-react';
 import { api, getImageUrl } from '../services/api';
 import { ReportDetail, User as UserType } from '../types';
@@ -55,6 +59,40 @@ export const CaseDetailsPage: React.FC = () => {
   const [resolveNotes, setResolveNotes] = useState('');
   const [resolveImage, setResolveImage] = useState<File | null>(null);
   const [linkingDup, setLinkingDup] = useState<number | null>(null);
+  const [copiedSummary, setCopiedSummary] = useState(false);
+
+  const handleCopySummary = async () => {
+    if (!report) return;
+    try {
+      const summary = await api.getComplaintSummaryText(report.id);
+      await navigator.clipboard.writeText(summary);
+      setCopiedSummary(true);
+      setTimeout(() => setCopiedSummary(false), 2000);
+    } catch {
+      const text = `CivicLens Ref: ${report.reference_number}\nTitle: ${report.title}\nSeverity: ${report.severity_score}/100\nPriority: ${report.priority_score}/100`;
+      await navigator.clipboard.writeText(text);
+      setCopiedSummary(true);
+      setTimeout(() => setCopiedSummary(false), 2000);
+    }
+  };
+
+  const handleDownloadSummary = async () => {
+    if (!report) return;
+    try {
+      const summary = await api.getComplaintSummaryText(report.id);
+      const blob = new Blob([summary], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `CivicLens_Case_${report.reference_number || report.id}.txt`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   useEffect(() => {
     if (id) {
@@ -248,12 +286,15 @@ export const CaseDetailsPage: React.FC = () => {
         )}
 
         {/* Case Header Card */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
           <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
             <div className="space-y-2">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="font-mono text-xs font-bold text-slate-900 bg-slate-100 px-2.5 py-0.5 rounded border border-slate-200">
                   {report.reference_number}
+                </span>
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-teal-800 bg-teal-100 px-2 py-0.5 rounded border border-teal-200">
+                  CivicLens Internal ID
                 </span>
                 <StatusBadge status={report.workflow_status} />
                 <PriorityBadge score={report.priority_score} />
@@ -263,10 +304,36 @@ export const CaseDetailsPage: React.FC = () => {
                   </span>
                 )}
               </div>
+
+              {/* Dual Status Bar */}
+              <div className="flex items-center gap-2 flex-wrap pt-1">
+                <span className="text-[11px] font-bold text-slate-400 uppercase">Official Status:</span>
+                {report.external_reference_id ? (
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-300">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                    <span>Official NMC Ref: {report.external_reference_id} ({report.external_submission_label || 'Registration reported by citizen — unverified'})</span>
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                    <span>Not registered with NMC</span>
+                  </span>
+                )}
+                <span className="text-[11px] font-bold text-slate-400 uppercase ml-2">Authority:</span>
+                <span className="text-xs font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                  {report.road_jurisdiction || 'NMC (Nagpur Municipal Corporation)'}
+                </span>
+              </div>
+
               <h1 className="text-2xl font-extrabold text-navy-900 tracking-tight">{report.title}</h1>
               <p className="text-xs text-slate-600 max-w-3xl leading-relaxed">
                 {report.description || 'No detailed citizen notes provided.'}
               </p>
+
+              {report.external_reference_notes && (
+                <div className="p-2.5 rounded-xl bg-amber-50/60 border border-amber-200 text-xs text-amber-900 max-w-2xl">
+                  <strong>Citizen Handoff Filing Note:</strong> {report.external_reference_notes}
+                </div>
+              )}
             </div>
 
             {/* Quick Metadata Column */}
@@ -287,17 +354,66 @@ export const CaseDetailsPage: React.FC = () => {
               )}
             </div>
           </div>
+
+          {/* Quick Handoff Action Strip */}
+          <div className="pt-3 border-t border-slate-100 flex flex-wrap items-center gap-2">
+            <a
+              href="https://nmcnagpur.gov.in/grievance/complaint_form.php"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-2xs transition-colors"
+            >
+              <span>Open Official NMC Portal</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+
+            <button
+              type="button"
+              onClick={handleCopySummary}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs shadow-2xs transition-colors"
+            >
+              {copiedSummary ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-slate-500" />}
+              <span>{copiedSummary ? 'Summary Copied!' : 'Copy Summary'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleDownloadSummary}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs shadow-2xs transition-colors"
+            >
+              <Download className="w-3.5 h-3.5 text-slate-500" />
+              <span>Download (.txt)</span>
+            </button>
+
+            <a
+              href="tel:18002330080"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 font-semibold text-xs ml-auto transition-colors"
+              title="Maharashtra PWD Nagpur Regional Toll-Free Pothole Helpline"
+            >
+              <Phone className="w-3.5 h-3.5 text-slate-500" />
+              <span>PWD Helpline: 1800 233 0080</span>
+            </a>
+          </div>
         </div>
 
         {/* Authority Maintenance Action Bar */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+          
+          {/* Demonstration Notice Banner */}
+          <div className="p-3.5 rounded-xl bg-amber-50/80 border border-amber-200 flex items-start gap-2.5 text-xs text-amber-900">
+            <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <div className="leading-relaxed">
+              <strong>[Simulated Demonstration Workflow]</strong> Maintenance operations and status shifts executed here reflect internal CivicLens AI triage for college evaluation. Actions taken in this demonstration dashboard do not modify official government records on the NMC portal without an authorized municipal API gateway agreement.
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between">
             <div>
               <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                 <Building2 className="w-4 h-4 text-teal-600" />
                 Municipal Maintenance Workflow Control
               </h2>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-500 mt-0.5">
                 Enforce legal lifecycle state transitions: SUBMITTED &rarr; UNDER_REVIEW &rarr; ASSIGNED &rarr; IN_PROGRESS &rarr; RESOLVED
               </p>
             </div>

@@ -138,8 +138,16 @@ class ReportResponse(BaseModel):
     city: Optional[str] = "Nagpur"
     road_classification: str
     incident_date: Optional[datetime] = None
-    external_submission_status: Optional[str] = "DEMO_ENVIRONMENT"
+    external_submission_status: Optional[str] = "NOT_REGISTERED"
     external_reference_id: Optional[str] = None
+    external_reference_notes: Optional[str] = None
+    external_reference_recorded_at: Optional[datetime] = None
+    road_jurisdiction: Optional[str] = "NMC"
+    external_submission_label: Optional[str] = "Not yet registered through NMC"
+    internal_status_label: Optional[str] = "Saved within CivicLens"
+    official_portal_url: Optional[str] = "https://nmcnagpur.gov.in/grievance/complaint_form.php"
+    pwd_toll_free_number: Optional[str] = "1800 233 0080"
+    pwd_portal_url: Optional[str] = "https://pwd.maharashtra.gov.in/en/toll-free-numbers-for-registering-pothole-complaints-on-pwd-roads/"
     predicted_damage_category: str
     prediction_confidence: float
     severity_score: float
@@ -184,13 +192,28 @@ class PublicTrackResponse(BaseModel):
     resolution_image_path: Optional[str] = None
     status_history: List[StatusHistoryResponse] = []
     analyses: List[AIAnalysisResponse] = []
-    external_submission_status: str = "DEMO_ENVIRONMENT"
+    external_reference_id: Optional[str] = None
+    external_reference_notes: Optional[str] = None
+    external_reference_recorded_at: Optional[datetime] = None
+    road_jurisdiction: Optional[str] = "NMC"
+    external_submission_status: str = "NOT_REGISTERED"
+    external_submission_label: str = "Not yet registered through NMC"
+    internal_status_label: str = "Saved within CivicLens"
+    official_portal_url: str = "https://nmcnagpur.gov.in/grievance/complaint_form.php"
+    pwd_toll_free_number: str = "1800 233 0080"
+    pwd_portal_url: str = "https://pwd.maharashtra.gov.in/en/toll-free-numbers-for-registering-pothole-complaints-on-pwd-roads/"
     external_submission_notice: str = (
-        "Demonstration environment: This report is recorded in CivicLens AI for review within this application. "
-        "Official submission to Nagpur Municipal Corporation is not enabled or confirmed."
+        "Demonstration & handoff environment: This report is recorded in CivicLens AI for review within this application. "
+        "Official submission to Nagpur Municipal Corporation requires continuing to the official portal at "
+        "https://nmcnagpur.gov.in/grievance/complaint_form.php and completing mobile OTP verification."
     )
 
     model_config = ConfigDict(from_attributes=True)
+
+class ExternalReferenceRequest(BaseModel):
+    external_reference_id: str
+    notes: Optional[str] = None
+    road_jurisdiction: Optional[str] = "NMC"
 
 class QuickInspectResponse(BaseModel):
     predicted_damage_category: str

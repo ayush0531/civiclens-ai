@@ -24,6 +24,8 @@ import {
 } from 'lucide-react';
 import { api, getImageUrl } from '../services/api';
 import { PublicTrackReport, WorkflowStatus } from '../types';
+import { NMCHandoffCard } from '../components/NMCHandoffCard';
+import { StatusBadge } from '../components/StatusBadge';
 
 interface StepDefinition {
   key: WorkflowStatus;
@@ -271,12 +273,15 @@ export const TrackComplaintPage: React.FC = () => {
 
             {/* Complaint Header Card */}
             <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-4 border-b border-slate-100">
                 <div>
-                  <div className="flex items-center gap-2.5">
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Reference ID:</span>
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">CivicLens Ref:</span>
                     <span className="font-mono text-base sm:text-lg font-black text-navy-900 bg-slate-100 px-3 py-1 rounded-lg border border-slate-200">
                       {report.reference_number}
+                    </span>
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-teal-800 bg-teal-100 px-2 py-0.5 rounded border border-teal-200">
+                      Internal ID
                     </span>
                     <button
                       onClick={() => handleCopyReference(report.reference_number)}
@@ -292,11 +297,26 @@ export const TrackComplaintPage: React.FC = () => {
                   )}
                 </div>
 
-                <div className="flex flex-col sm:items-end gap-1.5">
-                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border uppercase tracking-wider ${getStatusBadgeStyle(report.workflow_status)}`}>
-                    <span className="w-2 h-2 rounded-full bg-current"></span>
-                    {report.workflow_status.replace('_', ' ')}
-                  </span>
+                <div className="flex flex-col sm:items-end gap-2 shrink-0">
+                  <div className="flex flex-col sm:items-end gap-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">Internal:</span>
+                      <StatusBadge status={report.workflow_status} size="sm" />
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">Official:</span>
+                      {report.external_reference_id ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-300">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                          <span>NMC Ref: {report.external_reference_id} (Unverified)</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                          <span>Not registered with NMC</span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
                   <span className="text-[11px] text-slate-400 flex items-center gap-1">
                     <Calendar className="w-3.5 h-3.5" />
                     Submitted: {new Date(report.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
@@ -305,7 +325,7 @@ export const TrackComplaintPage: React.FC = () => {
               </div>
 
               {/* Location & Locality Chips */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 pt-2 text-xs">
                 <div className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50 border border-slate-200">
                   <MapPin className="w-4 h-4 text-teal-600 shrink-0" />
                   <div>
@@ -329,8 +349,23 @@ export const TrackComplaintPage: React.FC = () => {
                     <span className="font-semibold text-slate-800">{report.road_classification}</span>
                   </div>
                 </div>
+
+                <div className="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                  <Building2 className="w-4 h-4 text-teal-600 shrink-0" />
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 block">Jurisdiction Authority</span>
+                    <span className="font-semibold text-teal-900">{report.road_jurisdiction || 'NMC (Nagpur)'}</span>
+                  </div>
+                </div>
               </div>
             </div>
+
+            {/* Assisted Citizen Handoff to Official NMC Grievance Portal */}
+            <NMCHandoffCard
+              report={report}
+              onOfficialReferenceSaved={(updated) => setReport((prev) => prev ? ({ ...prev, ...updated }) : updated)}
+              showContinueTrackingButton={false}
+            />
 
             {/* Lifecycle Progress Stepper (5 Municipal Steps) */}
             <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-6">
@@ -338,10 +373,10 @@ export const TrackComplaintPage: React.FC = () => {
                 <div>
                   <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                     <Clock className="w-4 h-4 text-teal-600" />
-                    Municipal Resolution Stepper
+                    Municipal Resolution Stepper [Internal Demonstration Lifecycle]
                   </h3>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    Transparent milestone tracking through the NMC review and field repair cycle
+                    Milestone tracking through the internal CivicLens simulated triage and dispatch cycle
                   </p>
                 </div>
                 {report.workflow_status === 'RESOLVED' && (

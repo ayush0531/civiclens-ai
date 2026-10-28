@@ -4,6 +4,7 @@ import uuid
 import datetime
 from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form, Query
+from fastapi.responses import PlainTextResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, desc, asc
 
@@ -14,7 +15,7 @@ from backend.app.models.models import (
 )
 from backend.app.schemas.schemas import (
     ReportResponse, ReportDetailResponse, ReportUpdate, AIAnalysisResponse,
-    AssignmentResponse, StatusHistoryResponse, PublicTrackResponse
+    AssignmentResponse, StatusHistoryResponse, PublicTrackResponse, ExternalReferenceRequest
 )
 from backend.app.services.auth_service import (
     get_current_user, get_current_user_optional, require_roles
@@ -22,6 +23,9 @@ from backend.app.services.auth_service import (
 from backend.app.services.ai_service import ai_service
 from backend.app.services.duplicate_service import duplicate_service
 from backend.app.services.priority_service import priority_engine
+from backend.app.services.nmc_service import (
+    nmc_service, NMCIntegrationService, OFFICIAL_STATUS_LABELS, CIVICLENS_INTERNAL_STATUS_LABELS
+)
 from backend.app.utils.file_storage import save_upload_image
 
 router = APIRouter(prefix="/reports", tags=["Road Damage Reports"])
@@ -107,6 +111,7 @@ def create_report(
     area_locality: Optional[str] = Form("Nagpur Central"),
     city: Optional[str] = Form("Nagpur"),
     road_classification: Optional[str] = Form("LOCAL"),
+    road_jurisdiction: Optional[str] = Form("NMC"),
     reporter_name: Optional[str] = Form(None),
     reporter_contact: Optional[str] = Form(None),
     incident_date: Optional[str] = Form(None),
@@ -144,10 +149,11 @@ def create_report(
         area_locality=area_locality.strip() if area_locality else "Nagpur Central",
         city=city.strip() if city else "Nagpur",
         road_classification=(road_classification or "LOCAL").upper(),
+        road_jurisdiction=(road_jurisdiction or "NMC").upper(),
         reporter_name=reporter_name.strip() if reporter_name else (current_user.name if current_user else None),
         reporter_contact=reporter_contact.strip() if reporter_contact else (current_user.email if current_user else None),
         incident_date=parsed_date or datetime.datetime.utcnow(),
-        external_submission_status="DEMO_ENVIRONMENT",
+        external_submission_status="NOT_REGISTERED",
         workflow_status="SUBMITTED",
         is_demo_data=False
     )
@@ -251,9 +257,10 @@ def create_report(
 def track_report_public(identifier: str, db: Session = Depends(get_db)):
     """
     Public Citizen Complaint Tracking Endpoint.
-    Accepts either a complaint reference number (e.g., CVL-2026-0001) or a numeric ID.
-    Returns complaint progress, status history timeline, AI detection summary, and verified
-    resolution photos while strictly protecting sensitive citizen contact information.
+    Accepts:
+    1. CivicLens Reference Number (e.g., CVL-2026-0001)
+    2. Database Numeric ID (e.g. 1)
+    3. Official NMC Complaint Reference (e.g., NMC-2026-XXXX)
     """
     clean_id = identifier.strip()
     report = db.query(RoadDamageReport).filter(
@@ -266,9 +273,14 @@ def track_report_public(identifier: str, db: Session = Depends(get_db)):
         ).first()
 
     if not report:
+        report = db.query(RoadDamageReport).filter(
+            RoadDamageReport.external_reference_id.ilike(clean_id)
+        ).first()
+
+    if not report:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Complaint reference '{clean_id}' was not found in the CivicLens AI system. Please verify your complaint ID."
+            detail=f"Complaint reference '{clean_id}' was not found in the CivicLens AI system. Please verify your complaint ID or official reference."
         )
 
     # Format public status history
@@ -305,6 +317,10 @@ def track_report_public(identifier: str, db: Session = Depends(get_db)):
             created_at=a.created_at
         ))
 
+    ext_status = report.external_submission_status or "NOT_REGISTERED"
+    ext_label = OFFICIAL_STATUS_LABELS.get(ext_status, "Not yet registered through NMC")
+    int_label = CIVICLENS_INTERNAL_STATUS_LABELS.get(report.workflow_status, "Saved within CivicLens")
+
     return PublicTrackResponse(
         id=report.id,
         reference_number=report.reference_number,
@@ -332,8 +348,103 @@ def track_report_public(identifier: str, db: Session = Depends(get_db)):
         resolution_image_path=report.resolution_image_path,
         status_history=history_resp,
         analyses=analyses_resp,
-        external_submission_status=report.external_submission_status or "DEMO_ENVIRONMENT"
+        external_reference_id=report.external_reference_id,
+        external_reference_notes=report.external_reference_notes,
+        external_reference_recorded_at=report.external_reference_recorded_at,
+        road_jurisdiction=report.road_jurisdiction or "NMC",
+        external_submission_status=ext_status,
+        external_submission_label=ext_label,
+        internal_status_label=int_label,
+        official_portal_url=nmc_service.get_official_portal_url(),
+        pwd_toll_free_number=nmc_service.get_pwd_helpline()["toll_free_number"],
+        pwd_portal_url=nmc_service.get_pwd_helpline()["official_url"],
+        external_submission_notice=(
+            "Official registration notice: CivicLens AI prepares your road-defect telemetry. "
+            "To lodge an official civic complaint with Nagpur Municipal Corporation, continue to "
+            "the official portal at https://nmcnagpur.gov.in/grievance/complaint_form.php and complete mobile OTP verification."
+        )
     )
+
+
+@router.post("/{id}/external-reference", response_model=ReportDetailResponse)
+def record_external_reference(
+    id: int,
+    payload: ExternalReferenceRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Records an official NMC complaint reference number entered by the citizen.
+    Links the official government reference with the CivicLens AI record while
+    truthfully marking the official state as 'Registration reported by citizen — unverified'.
+    """
+    report = db.query(RoadDamageReport).filter(RoadDamageReport.id == id).first()
+    if not report:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Report with ID {id} not found."
+        )
+
+    ref_clean = payload.external_reference_id.strip()
+    if not ref_clean:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Official reference ID cannot be empty.")
+
+    prev_wf = report.workflow_status
+    report.external_reference_id = ref_clean
+    report.external_submission_status = "CITIZEN_REPORTED_UNVERIFIED"
+    report.external_reference_notes = payload.notes.strip() if payload.notes else None
+    report.external_reference_recorded_at = datetime.datetime.utcnow()
+    if payload.road_jurisdiction:
+        report.road_jurisdiction = payload.road_jurisdiction.strip().upper()
+
+    if report.workflow_status in ["SAVED", "SUBMITTED", "AWAITING_OFFICIAL_REGISTRATION"]:
+        report.workflow_status = "OFFICIAL_REFERENCE_RECORDED"
+
+    # Status History entry
+    status_entry = StatusHistory(
+        report_id=report.id,
+        previous_status=prev_wf,
+        new_status=report.workflow_status,
+        changed_by_id=report.reporter_id or 1,
+        notes=f"Citizen recorded official complaint reference: {ref_clean} (Status: Registration reported by citizen — unverified)"
+    )
+    db.add(status_entry)
+
+    # Audit Log
+    audit = AuditLog(
+        actor_id=report.reporter_id,
+        action="EXTERNAL_REFERENCE_RECORDED",
+        target_type="RoadDamageReport",
+        target_id=str(report.id),
+        metadata_json=f'{{"external_ref": "{ref_clean}", "status": "CITIZEN_REPORTED_UNVERIFIED"}}'
+    )
+    db.add(audit)
+    db.commit()
+    db.refresh(report)
+
+    return get_report_detail(report.id, db)
+
+
+@router.get("/{id}/summary-text", response_class=PlainTextResponse)
+def get_complaint_summary_text(id: int, db: Session = Depends(get_db)):
+    """
+    Returns a structured, formatted plain text summary of the complaint
+    for easy copying, sharing, or downloading without third-party dependencies.
+    """
+    report = db.query(RoadDamageReport).filter(RoadDamageReport.id == id).first()
+    if not report:
+        raise HTTPException(status_code=404, detail="Report not found")
+    summary_str = nmc_service.format_complaint_summary(report)
+    return PlainTextResponse(content=summary_str, media_type="text/plain; charset=utf-8")
+
+
+@router.get("/nmc/integration-spec")
+def get_nmc_integration_spec():
+    """
+    Returns the real-world NMC integration boundary status, official links,
+    and requirements for a direct API connection.
+    """
+    return nmc_service.get_authorized_integration_spec()
+
 
 
 @router.get("/{id}", response_model=ReportDetailResponse)
@@ -433,8 +544,22 @@ def get_report_detail(id: int, db: Session = Depends(get_db)):
         city=report.city or "Nagpur",
         road_classification=report.road_classification,
         incident_date=report.incident_date,
-        external_submission_status=report.external_submission_status or "DEMO_ENVIRONMENT",
+        external_submission_status=report.external_submission_status or "NOT_REGISTERED",
         external_reference_id=report.external_reference_id,
+        external_reference_notes=report.external_reference_notes,
+        external_reference_recorded_at=report.external_reference_recorded_at,
+        road_jurisdiction=report.road_jurisdiction or "NMC",
+        external_submission_label=NMCIntegrationService.OFFICIAL_STATUS_LABELS.get(
+            report.external_submission_status or "NOT_REGISTERED",
+            report.external_submission_status
+        ),
+        internal_status_label=NMCIntegrationService.INTERNAL_STATUS_LABELS.get(
+            report.workflow_status,
+            report.workflow_status
+        ),
+        official_portal_url=NMCIntegrationService.OFFICIAL_PORTAL_URL,
+        pwd_toll_free_number=NMCIntegrationService.PWD_TOLL_FREE_NUMBER,
+        pwd_portal_url=NMCIntegrationService.PWD_OFFICIAL_URL,
         predicted_damage_category=report.predicted_damage_category,
         prediction_confidence=report.prediction_confidence,
         severity_score=report.severity_score,

@@ -9,8 +9,15 @@ interface Props {
 export const StatusBadge: React.FC<Props> = ({ status, size = 'md' }) => {
   const getStyle = () => {
     switch (status) {
+      case 'SAVED':
       case 'SUBMITTED':
         return 'bg-blue-50 text-blue-700 border-blue-200';
+      case 'AWAITING_OFFICIAL_REGISTRATION':
+        return 'bg-amber-50 text-amber-800 border-amber-300';
+      case 'OFFICIAL_REFERENCE_RECORDED':
+        return 'bg-teal-50 text-teal-800 border-teal-300';
+      case 'MONITORING':
+        return 'bg-cyan-50 text-cyan-800 border-cyan-300';
       case 'UNDER_REVIEW':
         return 'bg-purple-50 text-purple-700 border-purple-200';
       case 'ACTION_PLANNED':
@@ -19,6 +26,7 @@ export const StatusBadge: React.FC<Props> = ({ status, size = 'md' }) => {
         return 'bg-amber-50 text-amber-700 border-amber-200';
       case 'IN_PROGRESS':
         return 'bg-indigo-50 text-indigo-700 border-indigo-200';
+      case 'CLOSED_INTERNAL':
       case 'RESOLVED':
         return 'bg-emerald-50 text-emerald-700 border-emerald-200';
       case 'REJECTED':

@@ -59,8 +59,11 @@ def check_and_apply_migrations(eng: Engine):
                 ("reporter_name", "VARCHAR(120)"),
                 ("reporter_contact", "VARCHAR(100)"),
                 ("incident_date", "DATETIME"),
-                ("external_submission_status", "VARCHAR(60) DEFAULT 'DEMO_ENVIRONMENT'"),
+                ("external_submission_status", "VARCHAR(60) DEFAULT 'NOT_REGISTERED'"),
                 ("external_reference_id", "VARCHAR(100)"),
+                ("external_reference_notes", "TEXT"),
+                ("external_reference_recorded_at", "DATETIME"),
+                ("road_jurisdiction", "VARCHAR(60) DEFAULT 'NMC'"),
             ]
             with eng.connect() as conn:
                 for col_name, col_type in cols_to_add:
