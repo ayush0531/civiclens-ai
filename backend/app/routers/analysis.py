@@ -2,16 +2,17 @@ import os
 import json
 import uuid
 from typing import Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, status, Body
+from fastapi import APIRouter, Depends, HTTPException, status, Body, UploadFile, File
 from sqlalchemy.orm import Session
 from backend.app.config import settings
 from backend.app.database import get_db
 from backend.app.models.models import RoadDamageReport, AIAnalysis, AuditLog, User
-from backend.app.schemas.schemas import AIAnalysisResponse
+from backend.app.schemas.schemas import AIAnalysisResponse, QuickInspectResponse
 from backend.app.services.auth_service import get_current_user, require_roles
 from backend.app.services.ai_service import ai_service
 from backend.app.services.duplicate_service import duplicate_service
 from backend.app.services.priority_service import priority_engine
+from backend.app.utils.file_storage import save_upload_image
 
 router = APIRouter(tags=["AI Road Damage Inference & Evaluation"])
 
@@ -114,6 +115,43 @@ def run_ai_analysis(
         is_demo_result=analysis_rec.is_demo_result,
         disclaimer=analysis_rec.disclaimer,
         created_at=analysis_rec.created_at
+    )
+
+
+@router.post("/ai/quick-inspect", response_model=QuickInspectResponse)
+def quick_inspect_image(
+    image: UploadFile = File(...)
+):
+    """
+    Pre-submission instant AI road-defect analysis.
+    Allows citizens and reviewers to preview bounding box overlays, distress category,
+    confidence, and estimated severity before committing a report to the database.
+    """
+    image_rel_path = save_upload_image(image)
+    image_abs_path = os.path.join(settings.BASE_DIR, image_rel_path.lstrip("/"))
+
+    annotated_filename = f"{uuid.uuid4().hex}_annotated.jpg"
+    annotated_abs_path = os.path.join(settings.UPLOAD_DIR, annotated_filename)
+    annotated_rel_path = f"/uploads/{annotated_filename}"
+
+    analysis_result = ai_service.analyze_image(
+        image_path=image_abs_path,
+        output_annotated_path=annotated_abs_path
+    )
+
+    return QuickInspectResponse(
+        predicted_damage_category=analysis_result["predicted_damage_category"],
+        prediction_confidence=analysis_result["prediction_confidence"],
+        severity_score=analysis_result["severity_score"],
+        severity_level=analysis_result["severity_level"],
+        severity_breakdown=analysis_result["severity_breakdown"],
+        bounding_boxes=analysis_result["bounding_boxes"],
+        annotated_image_path=annotated_rel_path,
+        inference_duration_ms=analysis_result["inference_duration_ms"],
+        inference_mode=analysis_result["inference_mode"],
+        model_identifier=analysis_result["model_identifier"],
+        is_demo_result=analysis_result["is_demo_result"],
+        disclaimer=analysis_result["disclaimer"]
     )
 
 

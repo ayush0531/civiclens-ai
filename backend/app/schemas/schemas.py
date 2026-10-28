@@ -80,7 +80,7 @@ class StatusHistoryResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 class StatusTransitionRequest(BaseModel):
-    new_status: str = Field(..., pattern="^(SUBMITTED|UNDER_REVIEW|ASSIGNED|IN_PROGRESS|RESOLVED|REJECTED)$")
+    new_status: str = Field(..., pattern="^(SUBMITTED|UNDER_REVIEW|ACTION_PLANNED|ASSIGNED|IN_PROGRESS|RESOLVED|REJECTED)$")
     notes: Optional[str] = None
     resolution_image_path: Optional[str] = None
 
@@ -133,7 +133,13 @@ class ReportResponse(BaseModel):
     latitude: float
     longitude: float
     address_text: Optional[str] = None
+    landmark: Optional[str] = None
+    area_locality: Optional[str] = "Nagpur Central"
+    city: Optional[str] = "Nagpur"
     road_classification: str
+    incident_date: Optional[datetime] = None
+    external_submission_status: Optional[str] = "DEMO_ENVIRONMENT"
+    external_reference_id: Optional[str] = None
     predicted_damage_category: str
     prediction_confidence: float
     severity_score: float
@@ -150,6 +156,55 @@ class ReportResponse(BaseModel):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+class PublicTrackResponse(BaseModel):
+    id: int
+    reference_number: str
+    title: str
+    description: Optional[str] = None
+    image_path: str
+    annotated_image_path: Optional[str] = None
+    latitude: float
+    longitude: float
+    address_text: Optional[str] = None
+    landmark: Optional[str] = None
+    area_locality: Optional[str] = "Nagpur Central"
+    city: Optional[str] = "Nagpur"
+    road_classification: str
+    predicted_damage_category: str
+    prediction_confidence: float
+    severity_score: float
+    severity_level: str
+    priority_score: float
+    workflow_status: str
+    created_at: datetime
+    updated_at: datetime
+    resolved_at: Optional[datetime] = None
+    resolution_notes: Optional[str] = None
+    resolution_image_path: Optional[str] = None
+    status_history: List[StatusHistoryResponse] = []
+    analyses: List[AIAnalysisResponse] = []
+    external_submission_status: str = "DEMO_ENVIRONMENT"
+    external_submission_notice: str = (
+        "Demonstration environment: This report is recorded in CivicLens AI for review within this application. "
+        "Official submission to Nagpur Municipal Corporation is not enabled or confirmed."
+    )
+
+    model_config = ConfigDict(from_attributes=True)
+
+class QuickInspectResponse(BaseModel):
+    predicted_damage_category: str
+    prediction_confidence: float
+    severity_score: float
+    severity_level: str
+    severity_breakdown: Dict[str, Any]
+    bounding_boxes: List[Dict[str, Any]]
+    annotated_image_path: str
+    inference_duration_ms: float
+    inference_mode: str
+    model_identifier: str
+    is_demo_result: bool
+    disclaimer: str
 
 class ReportDetailResponse(ReportResponse):
     analyses: List[AIAnalysisResponse] = []

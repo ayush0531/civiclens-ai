@@ -30,6 +30,7 @@ export type SeverityLevel = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' | 'PENDING';
 export type WorkflowStatus = 
   | 'SUBMITTED'
   | 'UNDER_REVIEW'
+  | 'ACTION_PLANNED'
   | 'ASSIGNED'
   | 'IN_PROGRESS'
   | 'RESOLVED'
@@ -105,6 +106,7 @@ export interface RoadDamageReport {
   reference_number: string;
   reporter_id?: number | null;
   reporter_name?: string | null;
+  reporter_contact?: string | null;
   title: string;
   description?: string | null;
   image_path: string;
@@ -112,6 +114,10 @@ export interface RoadDamageReport {
   latitude: number;
   longitude: number;
   address_text?: string | null;
+  landmark?: string | null;
+  area_locality?: string | null;
+  city?: string | null;
+  incident_date?: string | null;
   road_classification: string;
   predicted_damage_category: DamageCategory;
   prediction_confidence: number;
@@ -124,9 +130,57 @@ export interface RoadDamageReport {
   duplicate_reference_id?: number | null;
   is_duplicate: boolean;
   duplicate_confidence: number;
+  external_submission_status?: string | null;
+  external_reference_id?: string | null;
   is_demo_data: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface PublicTrackReport {
+  id: number;
+  reference_number: string;
+  title: string;
+  description?: string | null;
+  image_path: string;
+  annotated_image_path?: string | null;
+  latitude: number;
+  longitude: number;
+  address_text?: string | null;
+  landmark?: string | null;
+  area_locality?: string | null;
+  city?: string | null;
+  road_classification: string;
+  predicted_damage_category: DamageCategory;
+  prediction_confidence: number;
+  severity_score: number;
+  severity_level: SeverityLevel;
+  priority_score: number;
+  workflow_status: WorkflowStatus;
+  created_at: string;
+  updated_at: string;
+  resolved_at?: string | null;
+  resolution_notes?: string | null;
+  resolution_image_path?: string | null;
+  status_history: StatusHistoryItem[];
+  analyses: AIAnalysis[];
+  external_submission_status: string;
+  external_submission_notice: string;
+}
+
+export interface QuickInspectResult {
+  predicted_damage_category: string;
+  prediction_confidence: number;
+  severity_score: number;
+  severity_level: SeverityLevel;
+  severity_breakdown: Record<string, any>;
+  bounding_boxes: BoundingBox[];
+  annotated_image_path: string;
+  inference_duration_ms: number;
+  inference_mode: string;
+  model_identifier: string;
+  is_demo_result: boolean;
+  disclaimer: string;
 }
 
 export interface ReportDetail extends RoadDamageReport {

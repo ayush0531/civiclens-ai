@@ -17,10 +17,11 @@ from backend.app.routers.reports import get_report_detail
 router = APIRouter(prefix="/reports", tags=["Maintenance Workflow & Assignments"])
 
 VALID_TRANSITIONS = {
-    "SUBMITTED": ["UNDER_REVIEW", "ASSIGNED", "REJECTED"],
-    "UNDER_REVIEW": ["ASSIGNED", "REJECTED", "IN_PROGRESS"],
-    "ASSIGNED": ["IN_PROGRESS", "UNDER_REVIEW", "REJECTED"],
-    "IN_PROGRESS": ["RESOLVED", "UNDER_REVIEW", "ASSIGNED"],
+    "SUBMITTED": ["UNDER_REVIEW", "ACTION_PLANNED", "ASSIGNED", "REJECTED"],
+    "UNDER_REVIEW": ["ACTION_PLANNED", "ASSIGNED", "REJECTED", "IN_PROGRESS"],
+    "ACTION_PLANNED": ["ASSIGNED", "IN_PROGRESS", "UNDER_REVIEW", "REJECTED"],
+    "ASSIGNED": ["IN_PROGRESS", "ACTION_PLANNED", "UNDER_REVIEW", "REJECTED"],
+    "IN_PROGRESS": ["RESOLVED", "ACTION_PLANNED", "UNDER_REVIEW", "ASSIGNED"],
     "RESOLVED": ["UNDER_REVIEW"],  # Reopen on citizen appeal
     "REJECTED": ["UNDER_REVIEW"]   # Reopen on reassessment
 }

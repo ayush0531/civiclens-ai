@@ -3,6 +3,8 @@ import {
   User,
   RoadDamageReport,
   ReportDetail,
+  PublicTrackReport,
+  QuickInspectResult,
   MapMarkerItem,
   SpatialCluster,
   OverviewStats,
@@ -116,6 +118,10 @@ class ApiClient {
     return this.request<ReportDetail>(`/reports/${id}`);
   }
 
+  async trackReport(identifier: string): Promise<PublicTrackReport> {
+    return this.request<PublicTrackReport>(`/reports/track/${encodeURIComponent(identifier.trim())}`);
+  }
+
   async createReport(formData: FormData): Promise<ReportDetail> {
     return this.request<ReportDetail>('/reports', {
       method: 'POST',
@@ -144,6 +150,15 @@ class ApiClient {
   }
 
   // --- AI Analysis & Lab ---
+  async quickInspectImage(file: File): Promise<QuickInspectResult> {
+    const formData = new FormData();
+    formData.append('image', file);
+    return this.request<QuickInspectResult>('/ai/quick-inspect', {
+      method: 'POST',
+      body: formData,
+    });
+  }
+
   async runAnalysis(id: number): Promise<AIAnalysis> {
     return this.request<AIAnalysis>(`/reports/${id}/analyze`, {
       method: 'POST',

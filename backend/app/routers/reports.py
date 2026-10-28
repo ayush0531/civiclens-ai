@@ -14,7 +14,7 @@ from backend.app.models.models import (
 )
 from backend.app.schemas.schemas import (
     ReportResponse, ReportDetailResponse, ReportUpdate, AIAnalysisResponse,
-    AssignmentResponse, StatusHistoryResponse
+    AssignmentResponse, StatusHistoryResponse, PublicTrackResponse
 )
 from backend.app.services.auth_service import (
     get_current_user, get_current_user_optional, require_roles
@@ -103,7 +103,13 @@ def create_report(
     longitude: float = Form(..., ge=-180.0, le=180.0),
     description: Optional[str] = Form(None),
     address_text: Optional[str] = Form(None),
+    landmark: Optional[str] = Form(None),
+    area_locality: Optional[str] = Form("Nagpur Central"),
+    city: Optional[str] = Form("Nagpur"),
     road_classification: Optional[str] = Form("LOCAL"),
+    reporter_name: Optional[str] = Form(None),
+    reporter_contact: Optional[str] = Form(None),
+    incident_date: Optional[str] = Form(None),
     auto_analyze: bool = Form(True),
     image: UploadFile = File(...),
     db: Session = Depends(get_db),
@@ -116,6 +122,14 @@ def create_report(
     ref_no = generate_reference_number(db)
     reporter_id = current_user.id if current_user else None
 
+    # Parse optional incident date
+    parsed_date = None
+    if incident_date:
+        try:
+            parsed_date = datetime.datetime.fromisoformat(incident_date)
+        except Exception:
+            parsed_date = datetime.datetime.utcnow()
+
     # Initial report record
     report = RoadDamageReport(
         reference_number=ref_no,
@@ -126,7 +140,14 @@ def create_report(
         latitude=latitude,
         longitude=longitude,
         address_text=address_text.strip() if address_text else None,
+        landmark=landmark.strip() if landmark else None,
+        area_locality=area_locality.strip() if area_locality else "Nagpur Central",
+        city=city.strip() if city else "Nagpur",
         road_classification=(road_classification or "LOCAL").upper(),
+        reporter_name=reporter_name.strip() if reporter_name else (current_user.name if current_user else None),
+        reporter_contact=reporter_contact.strip() if reporter_contact else (current_user.email if current_user else None),
+        incident_date=parsed_date or datetime.datetime.utcnow(),
+        external_submission_status="DEMO_ENVIRONMENT",
         workflow_status="SUBMITTED",
         is_demo_data=False
     )
@@ -226,6 +247,95 @@ def create_report(
     return get_report_detail(report.id, db)
 
 
+@router.get("/track/{identifier}", response_model=PublicTrackResponse)
+def track_report_public(identifier: str, db: Session = Depends(get_db)):
+    """
+    Public Citizen Complaint Tracking Endpoint.
+    Accepts either a complaint reference number (e.g., CVL-2026-0001) or a numeric ID.
+    Returns complaint progress, status history timeline, AI detection summary, and verified
+    resolution photos while strictly protecting sensitive citizen contact information.
+    """
+    clean_id = identifier.strip()
+    report = db.query(RoadDamageReport).filter(
+        RoadDamageReport.reference_number.ilike(clean_id)
+    ).first()
+
+    if not report and clean_id.isdigit():
+        report = db.query(RoadDamageReport).filter(
+            RoadDamageReport.id == int(clean_id)
+        ).first()
+
+    if not report:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Complaint reference '{clean_id}' was not found in the CivicLens AI system. Please verify your complaint ID."
+        )
+
+    # Format public status history
+    history_resp = []
+    for sh in report.status_history:
+        history_resp.append(StatusHistoryResponse(
+            id=sh.id,
+            report_id=sh.report_id,
+            previous_status=sh.previous_status,
+            new_status=sh.new_status,
+            changed_by_name="Municipal Authority" if (sh.changed_by and sh.changed_by.role != "citizen") else "Citizen Reporter",
+            changed_by_role=sh.changed_by.role if sh.changed_by else "system",
+            notes=sh.notes,
+            timestamp=sh.timestamp
+        ))
+
+    # Format public AI analysis summary
+    analyses_resp = []
+    for a in report.analyses:
+        analyses_resp.append(AIAnalysisResponse(
+            id=a.id,
+            report_id=a.report_id,
+            model_identifier=a.model_identifier,
+            model_version=a.model_version,
+            inference_mode=a.inference_mode,
+            predicted_classes=json.loads(a.predicted_classes) if a.predicted_classes else [],
+            confidence_scores=json.loads(a.confidence_scores) if a.confidence_scores else [],
+            bounding_boxes=json.loads(a.bounding_boxes) if a.bounding_boxes else [],
+            severity_breakdown=json.loads(a.severity_breakdown) if a.severity_breakdown else {},
+            analysis_metadata={},
+            inference_duration_ms=a.inference_duration_ms,
+            is_demo_result=a.is_demo_result,
+            disclaimer=a.disclaimer,
+            created_at=a.created_at
+        ))
+
+    return PublicTrackResponse(
+        id=report.id,
+        reference_number=report.reference_number,
+        title=report.title,
+        description=report.description,
+        image_path=report.image_path,
+        annotated_image_path=report.annotated_image_path,
+        latitude=report.latitude,
+        longitude=report.longitude,
+        address_text=report.address_text,
+        landmark=report.landmark,
+        area_locality=report.area_locality or "Nagpur Central",
+        city=report.city or "Nagpur",
+        road_classification=report.road_classification,
+        predicted_damage_category=report.predicted_damage_category,
+        prediction_confidence=report.prediction_confidence,
+        severity_score=report.severity_score,
+        severity_level=report.severity_level,
+        priority_score=report.priority_score,
+        workflow_status=report.workflow_status,
+        created_at=report.created_at,
+        updated_at=report.updated_at,
+        resolved_at=report.resolved_at,
+        resolution_notes=report.resolution_notes,
+        resolution_image_path=report.resolution_image_path,
+        status_history=history_resp,
+        analyses=analyses_resp,
+        external_submission_status=report.external_submission_status or "DEMO_ENVIRONMENT"
+    )
+
+
 @router.get("/{id}", response_model=ReportDetailResponse)
 def get_report_detail(id: int, db: Session = Depends(get_db)):
     report = db.query(RoadDamageReport).filter(RoadDamageReport.id == id).first()
@@ -318,7 +428,13 @@ def get_report_detail(id: int, db: Session = Depends(get_db)):
         latitude=report.latitude,
         longitude=report.longitude,
         address_text=report.address_text,
+        landmark=report.landmark,
+        area_locality=report.area_locality or "Nagpur Central",
+        city=report.city or "Nagpur",
         road_classification=report.road_classification,
+        incident_date=report.incident_date,
+        external_submission_status=report.external_submission_status or "DEMO_ENVIRONMENT",
+        external_reference_id=report.external_reference_id,
         predicted_damage_category=report.predicted_damage_category,
         prediction_confidence=report.prediction_confidence,
         severity_score=report.severity_score,

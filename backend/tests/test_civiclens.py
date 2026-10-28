@@ -234,3 +234,52 @@ def test_priority_policy_get_and_update():
     put_policy = client.put("/api/v1/admin/priority-policy", headers=headers, json=new_weights)
     assert put_policy.status_code == 200
     assert put_policy.json()["policy"]["w_sev"] == 0.40
+
+def test_public_tracking_endpoint():
+    # Fetch seeded reports from map or DB to get an identifier
+    res = client.get("/api/v1/map/reports")
+    assert res.status_code == 200
+    reports = res.json()
+    assert len(reports) > 0
+    first_id = reports[0]["id"]
+    first_ref = reports[0].get("reference_number")
+
+    # Track by integer ID
+    track_res1 = client.get(f"/api/v1/reports/track/{first_id}")
+    assert track_res1.status_code == 200
+    data1 = track_res1.json()
+    assert data1["id"] == first_id
+    assert "workflow_status" in data1
+    assert "status_history" in data1
+    assert "external_submission_notice" in data1
+    assert "Nagpur Municipal Corporation" in data1["external_submission_notice"]
+
+    # Track by reference_number if present
+    if first_ref:
+        track_res2 = client.get(f"/api/v1/reports/track/{first_ref}")
+        assert track_res2.status_code == 200
+        assert track_res2.json()["id"] == first_id
+
+    # 404 on invalid identifier
+    bad_res = client.get("/api/v1/reports/track/NON_EXISTENT_99999")
+    assert bad_res.status_code == 404
+
+def test_ai_quick_inspect_endpoint():
+    # Create test image in memory
+    img = Image.new("RGB", (200, 200), color=(120, 120, 120))
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG")
+    buf.seek(0)
+
+    files = {"image": ("test_road.jpg", buf, "image/jpeg")}
+    res = client.post("/api/v1/ai/quick-inspect", files=files)
+    assert res.status_code == 200
+    data = res.json()
+    assert "predicted_damage_category" in data
+    assert "prediction_confidence" in data
+    assert "severity_score" in data
+    assert "severity_level" in data
+    assert "bounding_boxes" in data
+    assert isinstance(data["bounding_boxes"], list)
+
+

@@ -320,7 +320,17 @@ export const CaseDetailsPage: React.FC = () => {
               </button>
             )}
 
-            {['SUBMITTED', 'UNDER_REVIEW', 'ASSIGNED'].includes(report.workflow_status) && (
+            {report.workflow_status === 'UNDER_REVIEW' && (
+              <button
+                onClick={() => handleStatusTransition('ACTION_PLANNED')}
+                disabled={!isAuthorityOrAdmin || actionLoading}
+                className="px-4 py-2 text-xs font-bold rounded-lg bg-violet-600 hover:bg-violet-700 text-white shadow-sm transition-colors disabled:opacity-40"
+              >
+                Schedule Action Planned
+              </button>
+            )}
+
+            {['SUBMITTED', 'UNDER_REVIEW', 'ACTION_PLANNED', 'ASSIGNED'].includes(report.workflow_status) && (
               <button
                 onClick={() => setShowAssignModal(true)}
                 disabled={!isAuthorityOrAdmin || actionLoading}
@@ -331,7 +341,7 @@ export const CaseDetailsPage: React.FC = () => {
               </button>
             )}
 
-            {report.workflow_status === 'ASSIGNED' && (
+            {['ASSIGNED', 'ACTION_PLANNED'].includes(report.workflow_status) && (
               <button
                 onClick={() => handleStatusTransition('IN_PROGRESS')}
                 disabled={!isAuthorityOrAdmin || actionLoading}
@@ -341,7 +351,7 @@ export const CaseDetailsPage: React.FC = () => {
               </button>
             )}
 
-            {['IN_PROGRESS', 'ASSIGNED', 'UNDER_REVIEW'].includes(report.workflow_status) && (
+            {['IN_PROGRESS', 'ASSIGNED', 'ACTION_PLANNED', 'UNDER_REVIEW'].includes(report.workflow_status) && (
               <button
                 onClick={() => setShowResolveModal(true)}
                 disabled={!isAuthorityOrAdmin || actionLoading}

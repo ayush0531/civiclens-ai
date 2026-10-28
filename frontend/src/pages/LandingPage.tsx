@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { 
   ShieldCheck, 
   MapPin, 
@@ -16,14 +16,21 @@ import {
   BarChart3, 
   Activity,
   Zap,
-  Radio
+  Radio,
+  Search,
+  AlertTriangle,
+  Clock,
+  Compass,
+  Check
 } from 'lucide-react';
 import { api } from '../services/api';
 import { OverviewStats } from '../types';
 
 export const LandingPage: React.FC = () => {
+  const navigate = useNavigate();
   const [stats, setStats] = useState<OverviewStats | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [quickTrackId, setQuickTrackId] = useState('');
 
   useEffect(() => {
     const fetchOverview = async () => {
@@ -39,6 +46,12 @@ export const LandingPage: React.FC = () => {
     fetchOverview();
   }, []);
 
+  const handleQuickTrackSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickTrackId.trim()) return;
+    navigate(`/track/${encodeURIComponent(quickTrackId.trim())}`);
+  };
+
   return (
     <div className="flex-1 flex flex-col bg-white">
       
@@ -49,57 +62,216 @@ export const LandingPage: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
           <div className="text-center max-w-3xl mx-auto space-y-6">
             
-            {/* Project Badge */}
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-teal-200 bg-teal-50 text-teal-800 text-xs font-semibold shadow-2xs">
-              <Sparkles className="w-3.5 h-3.5 text-teal-600" />
-              <span>CivicLens AI 2.0 • B.Tech Artificial Intelligence Capstone</span>
+            {/* Project Identity Pill */}
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-teal-200 bg-teal-50 text-teal-900 text-xs font-semibold shadow-xs">
+              <Sparkles className="w-4 h-4 text-teal-600" />
+              <span className="font-bold">CivicLens.AI — RoadDefect Intelligence</span>
               <span className="w-1.5 h-1.5 rounded-full bg-teal-600"></span>
-              <span className="text-slate-600 font-mono">ONNX YOLOv8 + DBSCAN</span>
+              <span className="text-teal-700 font-mono">B.Tech AI Capstone</span>
             </div>
 
-            {/* Headline */}
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-navy-900 tracking-tight leading-tight">
-              Intelligent Road Distress Detection & Maintenance Dispatch
-            </h1>
+            {/* Headline & Tagline */}
+            <div className="space-y-3">
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-navy-900 tracking-tight leading-tight">
+                Report. Detect. Prioritize. Improve Our Roads.
+              </h1>
+              <p className="text-base sm:text-lg text-slate-600 leading-relaxed font-normal max-w-2xl mx-auto">
+                An intelligent civic infrastructure platform connecting citizens with municipal maintenance teams. 
+                Upload photographs of potholes, receive instant deep-learning damage triage, and follow complaints transparently from submission to asphalt repair.
+              </p>
+            </div>
 
-            {/* Description */}
-            <p className="text-base sm:text-lg text-slate-600 leading-relaxed font-normal">
-              An enterprise smart-city platform combining deep learning computer vision, 
-              spatial DBSCAN clustering, Haversine duplicate detection, and an explainable 6-factor 
-              priority engine to automate municipal pavement maintenance.
-            </p>
-
-            {/* Action Buttons */}
+            {/* Dual CTAs & Quick Track Bar */}
             <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
               <Link
                 to="/report-new"
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm shadow-md shadow-teal-600/20 transition-all hover:scale-[1.02]"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm shadow-md shadow-teal-600/20 transition-all hover:scale-[1.02]"
               >
                 <Camera className="w-4 h-4" />
-                Report Pavement Defect
+                Report a Road Defect
                 <ArrowRight className="w-4 h-4" />
               </Link>
               <Link
-                to="/map"
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-white hover:bg-slate-50 text-slate-800 font-bold text-sm border border-slate-300 shadow-2xs transition-all"
+                to="/track"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl bg-white hover:bg-slate-50 text-slate-800 font-bold text-sm border border-slate-300 shadow-2xs transition-all hover:scale-[1.02]"
               >
-                <MapPin className="w-4 h-4 text-teal-600" />
-                Map & DBSCAN Hotspots
-              </Link>
-              <Link
-                to="/lab"
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-navy-900 hover:bg-navy-800 text-white font-bold text-sm shadow-2xs transition-all"
-              >
-                <FlaskConical className="w-4 h-4 text-teal-400" />
-                AI Model Lab (mAP)
+                <Search className="w-4 h-4 text-teal-600" />
+                Track My Complaint
               </Link>
             </div>
 
-            {/* Advisory disclaimer */}
+            {/* Inline Quick Track Form right on Hero */}
+            <div className="max-w-lg mx-auto pt-3">
+              <form onSubmit={handleQuickTrackSubmit} className="flex gap-2 p-1.5 bg-white border border-slate-200 rounded-2xl shadow-sm">
+                <input
+                  type="text"
+                  value={quickTrackId}
+                  onChange={(e) => setQuickTrackId(e.target.value)}
+                  placeholder="Enter Reference (e.g. CVL-2025-0001)..."
+                  className="flex-1 px-3.5 py-2 text-xs font-mono rounded-xl focus:outline-none"
+                />
+                <button
+                  type="submit"
+                  disabled={!quickTrackId.trim()}
+                  className="px-4 py-2 rounded-xl bg-navy-900 hover:bg-navy-800 text-white font-bold text-xs uppercase tracking-wider transition-all disabled:opacity-50 shrink-0"
+                >
+                  Track Now
+                </button>
+              </form>
+            </div>
+
+            {/* Target Demonstration Scope */}
             <p className="text-xs text-slate-400 italic">
-              Prototype system engineered for academic viva and smart-city municipal evaluation.
+              Demonstration target: Nagpur Municipal Corporation (NMC), Nagpur, Maharashtra, India.
             </p>
           </div>
+        </div>
+      </section>
+
+      {/* Road-Safety Alert Panel */}
+      <section className="py-8 bg-amber-500/10 border-b border-amber-200/80">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6 bg-white p-6 sm:p-8 rounded-2xl border border-amber-200 shadow-xs">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-amber-500/20">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              <div className="space-y-1">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900 text-[10px] font-bold uppercase tracking-wider">
+                  Road Safety & Civic Alert
+                </div>
+                <h3 className="text-lg sm:text-xl font-black text-navy-900">
+                  SPOT A POTHOLE? REPORT IT.
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-600 max-w-2xl leading-relaxed">
+                  Every unaddressed road defect increases the risk of two-wheeler skids, vehicular suspension breakdown, and severe monsoon accidents. 
+                  Reporting defects takes less than 60 seconds and arms civic authorities with verified, geo-tagged telemetry to schedule rapid repairs.
+                </p>
+              </div>
+            </div>
+
+            <div className="shrink-0 flex sm:flex-col gap-2 w-full md:w-auto">
+              <Link
+                to="/report-new"
+                className="flex-1 md:flex-initial text-center px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shadow-sm transition-colors"
+              >
+                Submit Citizen Report
+              </Link>
+              <Link
+                to="/track"
+                className="flex-1 md:flex-initial text-center px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition-colors"
+              >
+                Check Complaint Status
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Municipal Workflow Panel (NMC Demonstration Workflow) */}
+      <section className="py-16 bg-white border-b border-slate-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          
+          <div className="text-center max-w-3xl mx-auto mb-12 space-y-3">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-teal-50 text-teal-800 border border-teal-200 text-xs font-semibold">
+              <Building2 className="w-3.5 h-3.5 text-teal-600" />
+              <span>NMC-STYLE MUNICIPAL REVIEW WORKFLOW</span>
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-black text-navy-900 tracking-tight">
+              From Citizen Incident to Verified Road Restoration
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+              CivicLens.AI transforms raw smartphone photos into actionable engineering tickets through five interconnected operational stages.
+            </p>
+          </div>
+
+          {/* 5-Step Visual Workflow Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-3 relative">
+              <div className="w-9 h-9 rounded-xl bg-blue-600 text-white font-black text-sm flex items-center justify-center">
+                1
+              </div>
+              <h3 className="font-bold text-navy-900 text-sm">Citizen Ingestion</h3>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Citizens capture roadway photos with GPS coordinates, landmark reference, and Nagpur locality.
+              </p>
+              <span className="text-[10px] font-mono text-blue-700 bg-blue-50 px-2 py-0.5 rounded block">
+                Status: SUBMITTED
+              </span>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-3 relative">
+              <div className="w-9 h-9 rounded-xl bg-teal-600 text-white font-black text-sm flex items-center justify-center">
+                2
+              </div>
+              <h3 className="font-bold text-navy-900 text-sm">Computer Vision Triage</h3>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                YOLOv8 deep learning infers distress class (pothole, crack) and bounds coordinates within 15 ms.
+              </p>
+              <span className="text-[10px] font-mono text-teal-700 bg-teal-50 px-2 py-0.5 rounded block">
+                Status: UNDER_REVIEW
+              </span>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-3 relative">
+              <div className="w-9 h-9 rounded-xl bg-purple-600 text-white font-black text-sm flex items-center justify-center">
+                3
+              </div>
+              <h3 className="font-bold text-navy-900 text-sm">Action Planning</h3>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                6-factor engine computes severity index and checks for duplicate reports within 25 meters.
+              </p>
+              <span className="text-[10px] font-mono text-purple-700 bg-purple-50 px-2 py-0.5 rounded block">
+                Status: ACTION_PLANNED
+              </span>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-3 relative">
+              <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white font-black text-sm flex items-center justify-center">
+                4
+              </div>
+              <h3 className="font-bold text-navy-900 text-sm">Crew Dispatch</h3>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                NMC zonal field crew is dispatched with required cold-mix asphalt, compaction tools, and work order.
+              </p>
+              <span className="text-[10px] font-mono text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded block">
+                Status: IN_PROGRESS
+              </span>
+            </div>
+
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-3 relative">
+              <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white font-black text-sm flex items-center justify-center">
+                5
+              </div>
+              <h3 className="font-bold text-navy-900 text-sm">Photo Closure</h3>
+              <p className="text-xs text-slate-600 leading-relaxed">
+                Repairs are verified with timestamped after-repair photographs and marked resolved.
+              </p>
+              <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded block">
+                Status: RESOLVED
+              </span>
+            </div>
+
+          </div>
+
+          {/* Honest NMC Demonstration Disclaimer Banner */}
+          <div className="mt-8 p-4 sm:p-5 rounded-2xl bg-slate-50 border border-slate-200 text-slate-700 text-xs flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            <Building2 className="w-6 h-6 text-teal-600 shrink-0" />
+            <div className="flex-1">
+              <span className="font-bold text-slate-900 block">Demonstration Environment Notice:</span>
+              <p className="text-slate-600 leading-relaxed mt-0.5">
+                This report is recorded in CivicLens AI for review within this application. Official submission to Nagpur Municipal Corporation is not enabled or confirmed.
+              </p>
+            </div>
+            <Link
+              to="/about"
+              className="text-xs font-bold text-teal-700 hover:text-teal-800 underline shrink-0"
+            >
+              Learn about pilot research &rarr;
+            </Link>
+          </div>
+
         </div>
       </section>
 
@@ -155,7 +327,7 @@ export const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* 4 Pillars of CivicLens AI 2.0 */}
+      {/* 4 Pillars of CivicLens AI */}
       <section className="py-16 bg-white border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-2xl mx-auto mb-14">
@@ -191,7 +363,7 @@ export const LandingPage: React.FC = () => {
               </div>
               <h3 className="font-bold text-navy-900 text-base">DBSCAN Spatial Hotspots</h3>
               <p className="text-xs text-slate-600 leading-relaxed">
-                Density-Based Spatial Clustering of Applications with Noise (DBSCAN) discovers contiguous road deterioration corridors and calculates cluster centroids and radii.
+                Density-Based Spatial Clustering discovers contiguous road deterioration corridors and calculates cluster centroids and radii in Nagpur.
               </p>
               <Link to="/map" className="text-xs font-bold text-teal-700 hover:text-teal-800 inline-flex items-center gap-1">
                 <span>View Map Clusters</span> &rarr;
@@ -226,36 +398,6 @@ export const LandingPage: React.FC = () => {
               </Link>
             </div>
 
-          </div>
-        </div>
-      </section>
-
-      {/* Damage Taxonomy & Computer Vision Capabilities */}
-      <section className="py-16 bg-slate-50/70 border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-2xl mx-auto mb-12">
-            <span className="text-xs font-bold uppercase tracking-wider text-teal-700">Supported Taxonomy</span>
-            <h2 className="text-2xl font-extrabold text-navy-900 mt-1">Standardized Pavement Distress Categories</h2>
-            <p className="text-xs text-slate-600 mt-2">
-              Aligned with Indian Road Congress (IRC:SP:72-2015) and ASTM D6433 road distress inspection codes.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
-            {[
-              { name: 'Pothole (D40)', factor: '1.00', color: 'border-rose-300 bg-rose-50/50', desc: 'Cavity with vertical edges' },
-              { name: 'Alligator cracking (D20)', factor: '0.85', color: 'border-orange-300 bg-orange-50/50', desc: 'Interconnected fatigue mesh' },
-              { name: 'Transverse crack (D10)', factor: '0.70', color: 'border-amber-300 bg-amber-50/50', desc: 'Perpendicular thermal fissure' },
-              { name: 'Longitudinal crack (D00)', factor: '0.65', color: 'border-yellow-300 bg-yellow-50/50', desc: 'Parallel wheelpath fracture' },
-              { name: 'Surface deterioration (D30)', factor: '0.50', color: 'border-cyan-300 bg-cyan-50/50', desc: 'Raveling & binder stripping' },
-              { name: 'Other / uncertain (D99)', factor: '0.30', color: 'border-slate-300 bg-slate-50/50', desc: 'Ambiguous or non-structural' },
-            ].map((cat) => (
-              <div key={cat.name} className={`p-4 rounded-xl border ${cat.color} text-center shadow-2xs`}>
-                <span className="text-xs font-bold text-slate-900 block leading-tight">{cat.name}</span>
-                <span className="text-[10px] text-teal-800 font-mono font-bold mt-1 block">Severity Factor: {cat.factor}</span>
-                <p className="text-[11px] text-slate-600 mt-2 leading-tight">{cat.desc}</p>
-              </div>
-            ))}
           </div>
         </div>
       </section>

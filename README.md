@@ -1,14 +1,18 @@
-# CivicLens AI 2.0 — Intelligent Road Damage Detection & Maintenance Prioritization System
+# CivicLens.AI — RoadDefect Intelligence
+### *Report. Detect. Prioritize. Improve Our Roads.*
 
 [![B.Tech Capstone Project](https://img.shields.io/badge/Project-B.Tech%20Final%20Year%20Capstone-teal.svg)](https://github.com)
 [![FastAPI](https://img.shields.io/badge/Backend-FastAPI%20v0.115-009688.svg?logo=fastapi)](https://fastapi.tiangolo.com)
 [![React](https://img.shields.io/badge/Frontend-React%2018%20%2B%20TypeScript-61DAFB.svg?logo=react)](https://react.dev)
 [![ONNX Runtime](https://img.shields.io/badge/Inference-ONNX%20Runtime%201.31.0-blue.svg)](https://onnxruntime.ai)
 [![YOLOv8](https://img.shields.io/badge/Model-YOLOv8--RDD2022-brightgreen.svg)](#deep-learning-architecture)
-[![Tests](https://img.shields.io/badge/Tests-14%20Passed%20(100%25)-emerald.svg)](backend/tests)
-[![Evaluation Pilot](https://img.shields.io/badge/Pilot%20Region-Nagpur%20Metro-amber.svg)](#nagpur-demonstration-dataset)
+[![Tests](https://img.shields.io/badge/Tests-16%20Passed%20(100%25)-emerald.svg)](backend/tests)
+[![Evaluation Pilot](https://img.shields.io/badge/Demonstration%20Target-Nagpur%20Municipal%20Corporation%20(NMC)-amber.svg)](#nagpur-demonstration-dataset)
 
-**CivicLens AI 2.0** is an enterprise smart-city infrastructure intelligence platform engineered as a research-grade final-year B.Tech Artificial Intelligence capstone project. It couples deep learning computer vision (YOLOv8-RDD2022 via ONNX Runtime), density-based spatial clustering (DBSCAN), Haversine perceptual duplicate elimination, and an explainable 6-factor multi-criteria priority dispatch engine to automate municipal road maintenance.
+> **Demonstration Environment Notice:**  
+> This application is engineered for academic evaluation and technical demonstration under the municipal operational context of the **Nagpur Municipal Corporation (NMC)**, Nagpur, Maharashtra, India. All defect reports and maintenance records submitted within this system are stored and processed internally within CivicLens.AI for review; official transmission to or confirmation by the Nagpur Municipal Corporation is not enabled or implied.
+
+**CivicLens.AI — RoadDefect Intelligence** is an enterprise smart-city infrastructure intelligence platform engineered as a research-grade final-year B.Tech Artificial Intelligence capstone project. It couples deep learning computer vision (YOLOv8-RDD2022 via ONNX Runtime), density-based spatial clustering (DBSCAN), Haversine perceptual duplicate elimination, a dedicated 6-stage public complaint tracking portal, and an explainable 6-factor multi-criteria priority dispatch engine to modernize municipal roadway maintenance.
 
 ---
 
@@ -25,31 +29,44 @@ flowchart LR
 ```
 
 ### Key Technical Pillars:
-1. **Real Deep Learning Inference (ONNX Runtime):**
+1. **Multi-Step Citizen Reporting Wizard (`/reports/new`):**
+   - **Step 1: Photographic Evidence Intake:** Drag-and-drop JPEG/PNG/WebP with file size validation (max 10MB) and instant preview/replace.
+   - **Step 2: Geocoded Incident Details:** Street address, prominent landmark (e.g., "Near Sitabuldi Metro Pillar 42"), Nagpur locality selection (14 zones), road classification, optional citizen contact, and interactive GPS Leaflet map with 6 Nagpur presets.
+   - **Step 3: Instant AI Computer Vision Inspection:** Pre-submission evaluation via `POST /api/v1/ai/quick-inspect` generating bounding boxes, distress category, confidence %, and physical severity index.
+   - **Step 4: Review & Municipal Dispatch:** Summary review card with photo, coordinates, severity classification, and prominent NMC demonstration notice.
+   - **Step 5: Confirmation & Reference ID:** Unique tracking reference (e.g. `CVL-2026-0026`), 1-click Copy ID button, direct "Track This Complaint" navigation, and localStorage persistence.
+
+2. **Dedicated Public Complaint Tracking Portal (`/track` and `/track/:id`):**
+   - Public lookup by Reference ID (`CVL-2025-0001`) or integer ID.
+   - Interactive 6-stage lifecycle progress stepper (`SUBMITTED` $\to$ `UNDER_REVIEW` $\to$ `ACTION_PLANNED` $\to$ `IN_PROGRESS` $\to$ `RESOLVED` or `REJECTED`).
+   - Side-by-side photographic evidence: original photo with AI bounding box overlay and verified after-repair closure proof.
+   - AI telemetry display: distress category (IRC:SP:72-2015), confidence softmax, physical severity score, and 6-factor priority index.
+   - Chronological audit log with municipal reviewer notes and timestamps.
+   - Citizen Privacy Protection: masks personal phone numbers and identities on public tracking views.
+
+3. **Real Deep Learning Inference (ONNX Runtime):**
    - Native execution via `onnxruntime` on commodity CPU hardware with single-thread latency of **~14.8 ms** (~67 FPS).
    - Input resolution of $640 \times 640 \times 3$ float32 tensors with letterboxing and aspect-ratio preservation.
    - Decoupled anchor-free head with Non-Maximum Suppression (NMS) at $\text{IoU} = 0.45, \text{conf} = 0.25$.
    - Transparent runtime switcher allowing instant toggle between ONNX Runtime Deep Learning and an honest labeled Heuristic fallback.
-2. **Model Evaluation Laboratory (`/lab`):**
+4. **Model Evaluation Laboratory (`/lab`):**
    - Empirical benchmark metrics: **mAP@0.50: 74.2%**, **mAP@0.50:0.95: 51.8%**, **Precision: 78.4%**, **Recall: 71.2%**, **F1-Score: 74.6%**.
    - Per-class metrics table (Pothole D40, Alligator Crack D20, Longitudinal Crack D00, Transverse Crack D10, Surface Deterioration D30, Other D99).
    - $6 \times 6$ normalized multiclass confusion matrix visualizer with true-positive diagonal highlights.
    - 50-epoch loss convergence (CIoU Box Loss + BCE Classification Loss) and mAP progression curves rendered via Recharts.
-3. **Geospatial Hotspot Discovery (DBSCAN Engine):**
+5. **Geospatial Hotspot Discovery (DBSCAN Engine):**
    - Density-Based Spatial Clustering of Applications with Noise (DBSCAN) clustering GPS coordinates with $\epsilon = 450$ meters and $\text{MinPts} = 2$.
    - Calculates cluster centroids, bounding radii in meters, defect counts, dominant distress classes, and hazard ratings.
    - Interactive Leaflet layer switching between individual defect pins and spatial cluster density rings.
-4. **Explainable 6-Factor Maintenance Priority Engine:**
+6. **Explainable 6-Factor Maintenance Priority Engine:**
    - Separates model detection certainty ($C_{\text{ai}}$) from civil engineering distress ($S_{\text{phys}}$).
    - Formula:
      $$P_{\text{maint}} = w_{\text{sev}} \cdot S_{\text{phys}} + w_{\text{conf}} \cdot C_{\text{ai}} + w_{\text{dup}} \cdot D_{\text{rep}} + w_{\text{age}} \cdot A_{\text{sla}} + w_{\text{road}} \cdot R_{\text{class}} + w_{\text{traffic}} \cdot T_{\text{vuln}}$$
    - Administrator-tunable weight sliders with live sum validation ($\sum w_i = 1.00$) and instant recalculation across all open municipal cases.
-5. **Spatial & Visual Duplicate Management:**
+7. **Spatial & Visual Duplicate Management:**
    - Haversine distance ($< 120$m) and 64-bit difference hash (dHash) texture similarity to flag potential duplicates.
    - One-click duplicate linking (`POST /api/v1/reports/{id}/link-duplicate`) elevates priority without generating redundant contractor work orders.
-6. **Global Search Modal (`Cmd+K` / `Ctrl+K`):**
-   - Instant search across case references (`REP-2026-XXXX`), street names, landmarks, and defect categories.
-7. **Municipal Governance & Auditability:**
+8. **Municipal Governance & Auditability:**
    - Strict server-side role-based access control (Citizen, Municipal Authority, System Administrator).
    - Immutable audit log timeline capturing every status change, actor identity, timestamp, and metadata payload.
 
@@ -78,7 +95,7 @@ final year project/
 │   ├── models/
 │   │   └── road_damage_yolo.onnx     # Serialized YOLOv8 ONNX model graph (FP32, 640x640)
 │   ├── tests/
-│   │   └── test_civiclens.py         # 14 comprehensive automated Pytest test cases
+│   │   └── test_civiclens.py         # 16 comprehensive automated Pytest test cases
 │   ├── uploads/                      # Uploaded citizen evidence & annotated bounding box overlays
 │   ├── requirements.txt              # Backend dependencies (fastapi, onnxruntime, onnx, pillow, etc.)
 │   └── civiclens.db                  # Persistent SQLite database with 25 seeded Nagpur records
@@ -86,10 +103,11 @@ final year project/
 │   ├── src/
 │   │   ├── components/               # Navbar, MapView, GlobalSearchModal, AIEngineModal, Badges
 │   │   ├── pages/
-│   │   │   ├── LandingPage.tsx       # Smart-city municipal overview & live statistics
+│   │   │   ├── LandingPage.tsx       # Smart-city municipal overview, road-safety alert, dual CTAs
+│   │   │   ├── TrackComplaintPage.tsx# Dedicated 6-stage complaint tracking portal & audit log
+│   │   │   ├── NewReportPage.tsx     # 5-step citizen reporting wizard with instant AI scan
 │   │   │   ├── AuthPage.tsx          # JWT authentication with 1-click evaluator login
 │   │   │   ├── CitizenDashboard.tsx  # Citizen report filing & tracking portal
-│   │   │   ├── NewReportPage.tsx     # Drag-and-drop upload with GPS map picker & presets
 │   │   │   ├── AnalysisResultsPage.tsx # Bounding box list, latency telemetry, priority breakdown
 │   │   │   ├── InteractiveMapPage.tsx# Full-screen Leaflet map with DBSCAN cluster rings
 │   │   │   ├── AuthorityDashboard.tsx# Operations triage Command Center with CSV export
@@ -125,7 +143,7 @@ pip install -r requirements.txt
 # 2. Seed database with 25 realistic Nagpur road distress cases
 python3 seed.py
 
-# 3. Run automated test suite (all 14 tests must pass)
+# 3. Run automated test suite (all 16 tests must pass)
 python3 -m pytest tests/test_civiclens.py -v
 
 # 4. Start FastAPI server

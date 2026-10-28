@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
 from backend.app.config import settings
-from backend.app.database import engine, Base, SessionLocal
+from backend.app.database import engine, Base, SessionLocal, check_and_apply_migrations
 from backend.app.routers import (
     auth, reports, analysis, assignments, map as map_router,
     analytics, admin, audit
@@ -18,8 +18,9 @@ from backend.app.utils.seed_data import seed_database
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Initialize database tables
+    # Initialize database tables and run safe schema migrations
     Base.metadata.create_all(bind=engine)
+    check_and_apply_migrations(engine)
     
     # Auto-seed if database is empty
     db = SessionLocal()

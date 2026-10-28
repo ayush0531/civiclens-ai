@@ -47,7 +47,19 @@ class RoadDamageReport(Base):
     latitude = Column(Float, nullable=False, index=True)
     longitude = Column(Float, nullable=False, index=True)
     address_text = Column(String(255), nullable=True)
+    landmark = Column(String(200), nullable=True)
+    area_locality = Column(String(100), default="Nagpur Central", nullable=True)
+    city = Column(String(100), default="Nagpur", nullable=True)
     road_classification = Column(String(50), default="LOCAL")  # HIGHWAY, ARTERIAL, COLLECTOR, LOCAL
+    
+    # Optional Citizen Contact Info (Protected from Public Display)
+    reporter_name = Column(String(120), nullable=True)
+    reporter_contact = Column(String(100), nullable=True)
+    incident_date = Column(DateTime, nullable=True)
+
+    # Municipal Integration State (NMC Demonstration)
+    external_submission_status = Column(String(60), default="DEMO_ENVIRONMENT", nullable=False)
+    external_reference_id = Column(String(100), nullable=True)
     
     # AI Prediction & Severity
     predicted_damage_category = Column(String(80), default="Unanalyzed")

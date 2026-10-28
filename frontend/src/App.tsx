@@ -16,6 +16,7 @@ import { AnalyticsPage } from './pages/AnalyticsPage';
 import { AdminPage } from './pages/AdminPage';
 import { AboutPage } from './pages/AboutPage';
 import { ModelLabPage } from './pages/ModelLabPage';
+import { TrackComplaintPage } from './pages/TrackComplaintPage';
 
 export const App: React.FC = () => {
   return (
@@ -29,6 +30,9 @@ export const App: React.FC = () => {
               <Route path="/auth" element={<AuthPage />} />
               <Route path="/citizen" element={<CitizenDashboard />} />
               <Route path="/report-new" element={<NewReportPage />} />
+              <Route path="/reports/new" element={<NewReportPage />} />
+              <Route path="/track" element={<TrackComplaintPage />} />
+              <Route path="/track/:identifier" element={<TrackComplaintPage />} />
               <Route path="/analysis/:id" element={<AnalysisResultsPage />} />
               <Route path="/map" element={<InteractiveMapPage />} />
               <Route path="/authority" element={<AuthorityDashboard />} />

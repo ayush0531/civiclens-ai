@@ -88,13 +88,13 @@ export const Navbar: React.FC = () => {
                 </div>
                 <div>
                   <div className="flex items-center gap-1.5">
-                    <span className="font-extrabold text-lg tracking-tight text-navy-900">CivicLens</span>
+                    <span className="font-extrabold text-lg tracking-tight text-navy-900">CivicLens.AI</span>
                     <span className="bg-gradient-to-r from-teal-600 to-teal-700 text-white text-[10px] font-mono font-bold px-1.5 py-0.5 rounded shadow-xs uppercase tracking-wider">
-                      AI 2.0
+                      RoadDefect
                     </span>
                   </div>
                   <p className="text-[10px] text-slate-500 hidden sm:block tracking-wide">
-                    Road Distress & Maintenance Intelligence
+                    Report. Detect. Prioritize. Improve Our Roads.
                   </p>
                 </div>
               </Link>
@@ -108,6 +108,15 @@ export const Navbar: React.FC = () => {
                   }`}
                 >
                   Overview
+                </Link>
+                <Link
+                  to="/track"
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 ${
+                    isActive('/track') ? 'text-teal-700 bg-teal-50/90 font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                >
+                  <Search className="w-3.5 h-3.5 text-teal-600" />
+                  Track Complaint
                 </Link>
                 <Link
                   to="/map"
@@ -340,6 +349,14 @@ export const Navbar: React.FC = () => {
                 className="px-3 py-2 text-xs font-semibold rounded-lg text-slate-700 hover:bg-slate-100"
               >
                 Overview
+              </Link>
+              <Link
+                to="/track"
+                onClick={() => setMobileMenuOpen(false)}
+                className="px-3 py-2 text-xs font-semibold rounded-lg text-slate-700 hover:bg-slate-100 flex items-center gap-1"
+              >
+                <Search className="w-3.5 h-3.5 text-teal-600" />
+                Track Complaint
               </Link>
               <Link
                 to="/map"

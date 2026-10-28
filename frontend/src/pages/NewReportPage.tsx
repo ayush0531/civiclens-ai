@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { 
   Camera, 
   MapPin, 
@@ -7,52 +7,149 @@ import {
   AlertCircle, 
   Sparkles, 
   CheckCircle2, 
-  Navigation,
-  FileText,
-  Layers
+  ArrowRight, 
+  ArrowLeft,
+  FileText, 
+  Layers,
+  Copy,
+  Check,
+  Building2,
+  Calendar,
+  User as UserIcon,
+  Phone,
+  RefreshCw,
+  Cpu,
+  ShieldCheck,
+  Search
 } from 'lucide-react';
-import { api } from '../services/api';
+import { api, getImageUrl } from '../services/api';
 import { MapView } from '../components/MapView';
+import { QuickInspectResult } from '../types';
 
 interface NagpurPreset {
   name: string;
   lat: number;
   lng: number;
   address: string;
+  locality: string;
+  landmark: string;
   roadClass: string;
 }
 
+const NAGPUR_LOCALITIES = [
+  'Sitabuldi Central',
+  'Dharampeth West',
+  'Sadar Commercial',
+  'Dhantoli Medical Zone',
+  'Wardha Road Corridor',
+  'Mahal Heritage Area',
+  'Gandhibagh Market',
+  'Lakadganj Industrial Area',
+  'Mangalwari Zone',
+  'Nehru Nagar East',
+  'Hanuman Nagar',
+  'Ashi Nagar North',
+  'Satranjipura Zone',
+  'Gayatri Nagar IT Park'
+];
+
 const NAGPUR_PRESETS: NagpurPreset[] = [
-  { name: 'Sitabuldi Interchange', lat: 21.1458, lng: 79.0882, address: 'Sitabuldi Metro Station, Wardha Road Junction, Nagpur', roadClass: 'ARTERIAL' },
-  { name: 'Dharampeth Shopping Hub', lat: 21.1420, lng: 79.0620, address: 'West High Court Road, Dharampeth, Nagpur', roadClass: 'COLLECTOR' },
-  { name: 'Sadar Commercial Zone', lat: 21.1610, lng: 79.0820, address: 'Mount Road, Sadar, Nagpur', roadClass: 'COLLECTOR' },
-  { name: 'Wardha Road Bus Corridor', lat: 21.1180, lng: 79.0740, address: 'Wardha Road, Near Rahate Colony Square, Nagpur', roadClass: 'HIGHWAY' },
-  { name: 'Medical Square Trauma Area', lat: 21.1280, lng: 79.0960, address: 'Medical Square, Near GMC Casualty Gate, Nagpur', roadClass: 'ARTERIAL' },
-  { name: 'Gayatri Nagar IT Park', lat: 21.1230, lng: 79.0510, address: 'Gayatri Nagar IT Park Link Road, Nagpur', roadClass: 'LOCAL' },
+  { 
+    name: 'Sitabuldi Interchange', 
+    lat: 21.1458, 
+    lng: 79.0882, 
+    address: 'Sitabuldi Metro Station, Wardha Road Junction, Nagpur', 
+    locality: 'Sitabuldi Central',
+    landmark: 'Opposite Sitabuldi Metro Station Entrance Gate 2',
+    roadClass: 'ARTERIAL' 
+  },
+  { 
+    name: 'Dharampeth Shopping Hub', 
+    lat: 21.1420, 
+    lng: 79.0620, 
+    address: 'West High Court Road, Dharampeth, Nagpur', 
+    locality: 'Dharampeth West',
+    landmark: 'Near Coffee House Square, WHC Road',
+    roadClass: 'COLLECTOR' 
+  },
+  { 
+    name: 'Sadar Commercial Zone', 
+    lat: 21.1610, 
+    lng: 79.0820, 
+    address: 'Mount Road, Sadar, Nagpur', 
+    locality: 'Sadar Commercial',
+    landmark: 'Opposite Sadar Police Station, Mount Road',
+    roadClass: 'COLLECTOR' 
+  },
+  { 
+    name: 'Wardha Road Corridor', 
+    lat: 21.1180, 
+    lng: 79.0740, 
+    address: 'Wardha Road, Near Rahate Colony Square, Nagpur', 
+    locality: 'Wardha Road Corridor',
+    landmark: 'Near Rahate Colony Square Metro Pillar 114',
+    roadClass: 'HIGHWAY' 
+  },
+  { 
+    name: 'Medical Square Trauma Area', 
+    lat: 21.1280, 
+    lng: 79.0960, 
+    address: 'Medical Square, Near GMC Casualty Gate, Nagpur', 
+    locality: 'Dhantoli Medical Zone',
+    landmark: 'Outside GMC Casualty Gate, Medical Square',
+    roadClass: 'ARTERIAL' 
+  },
+  { 
+    name: 'Gayatri Nagar IT Park', 
+    lat: 21.1230, 
+    lng: 79.0510, 
+    address: 'Gayatri Nagar IT Park Link Road, Nagpur', 
+    locality: 'Gayatri Nagar IT Park',
+    landmark: 'Adjacent to IT Park Main Security Arch',
+    roadClass: 'LOCAL' 
+  },
 ];
 
 export const NewReportPage: React.FC = () => {
   const navigate = useNavigate();
 
+  // Wizard Step (1: Upload, 2: Incident Details, 3: AI Analysis, 4: Review & Submit, 5: Confirmation)
+  const [currentStep, setCurrentStep] = useState<number>(1);
+
+  // Step 1: Photo
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  // Step 2: Incident Details
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [landmark, setLandmark] = useState('');
+  const [areaLocality, setAreaLocality] = useState('Sitabuldi Central');
+  const [city] = useState('Nagpur');
+  const [incidentDate, setIncidentDate] = useState(new Date().toISOString().split('T')[0]);
+  const [reporterName, setReporterName] = useState('');
+  const [reporterContact, setReporterContact] = useState('');
   const [latitude, setLatitude] = useState<number>(21.1458);
   const [longitude, setLongitude] = useState<number>(79.0882);
   const [addressText, setAddressText] = useState('Sitabuldi Interchange, Nagpur');
   const [roadClass, setRoadClass] = useState('ARTERIAL');
-  const [autoAnalyze, setAutoAnalyze] = useState(true);
 
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  // Step 3: Quick AI Inspection
+  const [aiInspectResult, setAiInspectResult] = useState<QuickInspectResult | null>(null);
+  const [inspecting, setInspecting] = useState(false);
+  const [inspectError, setInspectError] = useState<string | null>(null);
+
+  // Step 4 & 5: Submission & Confirmation
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [createdReport, setCreatedReport] = useState<any | null>(null);
+  const [copied, setCopied] = useState(false);
 
+  // Handle Photo selection
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setError(null);
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      
-      // Validation
       if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
         setError('Please upload a valid JPEG, PNG, or WebP image.');
         return;
@@ -61,9 +158,9 @@ export const NewReportPage: React.FC = () => {
         setError('Image file size exceeds the 10MB limit.');
         return;
       }
-
       setSelectedFile(file);
       setPreviewUrl(URL.createObjectURL(file));
+      setAiInspectResult(null); // Reset quick inspection if file changed
     }
   };
 
@@ -77,20 +174,53 @@ export const NewReportPage: React.FC = () => {
     setLatitude(preset.lat);
     setLongitude(preset.lng);
     setAddressText(preset.address);
+    setAreaLocality(preset.locality);
+    setLandmark(preset.landmark);
     setRoadClass(preset.roadClass);
     if (!title) {
-      setTitle(`Pavement Defect at ${preset.name}`);
+      setTitle(`Pavement Distress at ${preset.name}`);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedFile) {
-      setError('Please attach an image of the road damage.');
+  // Run quick AI inspection on photo
+  const runQuickInspection = async () => {
+    if (!selectedFile) return;
+    setInspecting(true);
+    setInspectError(null);
+    try {
+      const result = await api.quickInspectImage(selectedFile);
+      setAiInspectResult(result);
+    } catch (err: any) {
+      console.warn('Quick inspect fallback', err);
+      setInspectError(err.message || 'Instant AI inspection temporarily delayed. Proceeding will still analyze upon submission.');
+    } finally {
+      setInspecting(false);
+    }
+  };
+
+  // Advance to Step 3 and trigger AI inspect
+  const handleGoToStep3 = () => {
+    if (!title.trim() || title.trim().length < 5) {
+      setError('Please provide a descriptive title of at least 5 characters.');
       return;
     }
-    if (title.trim().length < 5) {
-      setError('Title must be at least 5 characters long.');
+    setError(null);
+    setCurrentStep(3);
+    if (!aiInspectResult && !inspecting) {
+      runQuickInspection();
+    }
+  };
+
+  // Final Submission
+  const handleSubmit = async () => {
+    if (!selectedFile) {
+      setError('Please attach an image of the road damage.');
+      setCurrentStep(1);
+      return;
+    }
+    if (!title.trim()) {
+      setError('Please provide a report title.');
+      setCurrentStep(2);
       return;
     }
 
@@ -101,17 +231,34 @@ export const NewReportPage: React.FC = () => {
       const formData = new FormData();
       formData.append('title', title.trim());
       formData.append('description', description.trim());
+      formData.append('landmark', landmark.trim() || addressText);
+      formData.append('area_locality', areaLocality);
+      formData.append('city', city);
       formData.append('latitude', String(latitude));
       formData.append('longitude', String(longitude));
       formData.append('address_text', addressText.trim());
       formData.append('road_classification', roadClass);
-      formData.append('auto_analyze', String(autoAnalyze));
+      formData.append('reporter_name', reporterName.trim() || 'Anonymous Nagpur Citizen');
+      formData.append('reporter_contact', reporterContact.trim());
+      formData.append('incident_date', incidentDate);
+      formData.append('auto_analyze', 'true');
       formData.append('image', selectedFile);
 
       const created = await api.createReport(formData);
+      setCreatedReport(created);
 
-      // Redirect to AI Analysis results page
-      navigate(`/analysis/${created.id}`);
+      // Save reference to recent complaints in localStorage
+      try {
+        const stored = localStorage.getItem('civiclens_recent_complaints');
+        const list = stored ? JSON.parse(stored) : [];
+        const ref = created.reference_number || String(created.id);
+        const updated = [ref, ...list.filter((x: string) => x !== ref)].slice(0, 5);
+        localStorage.setItem('civiclens_recent_complaints', JSON.stringify(updated));
+      } catch {
+        // ignore
+      }
+
+      setCurrentStep(5); // Go to Confirmation
     } catch (err: any) {
       setError(err.message || 'Failed to submit report. Please try again.');
     } finally {
@@ -119,22 +266,82 @@ export const NewReportPage: React.FC = () => {
     }
   };
 
+  const handleCopyReference = (ref: string) => {
+    navigator.clipboard.writeText(ref);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleResetForm = () => {
+    setSelectedFile(null);
+    setPreviewUrl(null);
+    setTitle('');
+    setDescription('');
+    setLandmark('');
+    setReporterName('');
+    setReporterContact('');
+    setAiInspectResult(null);
+    setCreatedReport(null);
+    setCurrentStep(1);
+  };
+
   return (
     <div className="flex-1 bg-slate-50 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto space-y-6">
-        
-        {/* Header */}
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="w-2 h-2 rounded-full bg-teal-500"></span>
-            <span className="text-xs font-bold uppercase tracking-wider text-teal-700">Citizen Submission</span>
+
+        {/* Wizard Header & Progress Bar */}
+        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-slate-100">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="w-2 h-2 rounded-full bg-teal-500 animate-pulse"></span>
+                <span className="text-xs font-bold uppercase tracking-wider text-teal-700">
+                  Citizen Reporting Wizard • Nagpur Municipal Corporation
+                </span>
+              </div>
+              <h1 className="text-2xl font-black text-navy-900 tracking-tight">
+                Report Road Defect
+              </h1>
+            </div>
+
+            {/* Step Counter Indicator */}
+            <div className="flex items-center gap-1.5 text-xs font-mono font-bold text-teal-800 bg-teal-50 px-3 py-1.5 rounded-xl border border-teal-200">
+              <span>Step {currentStep} of 5</span>
+              <span className="text-slate-400">•</span>
+              <span>
+                {currentStep === 1 && 'Upload Photo'}
+                {currentStep === 2 && 'Incident Details'}
+                {currentStep === 3 && 'AI Analysis'}
+                {currentStep === 4 && 'Review & Submit'}
+                {currentStep === 5 && 'Confirmation'}
+              </span>
+            </div>
           </div>
-          <h1 className="text-2xl font-extrabold text-navy-900 tracking-tight">Report Road Damage</h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Capture or upload roadway photo. AI engine will estimate distress category and compute an explainable severity index.
-          </p>
+
+          {/* Stepper Dots / Bars */}
+          <div className="grid grid-cols-5 gap-2 mt-4">
+            {[1, 2, 3, 4, 5].map((stepNum) => (
+              <div key={stepNum} className="flex flex-col gap-1">
+                <div 
+                  className={`h-1.5 rounded-full transition-all ${
+                    currentStep >= stepNum ? 'bg-teal-600' : 'bg-slate-200'
+                  }`}
+                />
+                <span className={`text-[10px] font-semibold text-center hidden sm:block ${
+                  currentStep === stepNum ? 'text-teal-900 font-bold' : 'text-slate-400'
+                }`}>
+                  {stepNum === 1 && '1. Photo'}
+                  {stepNum === 2 && '2. Details'}
+                  {stepNum === 3 && '3. AI Scan'}
+                  {stepNum === 4 && '4. Review'}
+                  {stepNum === 5 && '5. Success'}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
 
+        {/* Global Error Banner */}
         {error && (
           <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0" />
@@ -142,22 +349,34 @@ export const NewReportPage: React.FC = () => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          
-          {/* Section 1: Image Upload */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-            <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <Camera className="w-4 h-4 text-teal-600" />
-              1. Photographic Evidence
-            </h2>
+        {/* ========================================================= */}
+        {/* STEP 1: PHOTO UPLOAD */}
+        {/* ========================================================= */}
+        {currentStep === 1 && (
+          <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-xs space-y-6">
+            <div className="space-y-1">
+              <h2 className="text-lg font-bold text-navy-900 flex items-center gap-2">
+                <Camera className="w-5 h-5 text-teal-600" />
+                Step 1: Upload Road Defect Photograph
+              </h2>
+              <p className="text-xs text-slate-500">
+                Provide a clear photograph of the pavement defect (pothole, crack, surface failure). Our AI models analyze edge density, contrast, and depth.
+              </p>
+            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Upload Box */}
-              <div className="border-2 border-dashed border-slate-300 rounded-xl p-6 flex flex-col items-center justify-center text-center hover:border-teal-500 transition-colors bg-slate-50/50">
-                <Upload className="w-8 h-8 text-slate-400 mb-2" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Drag/Browse Area */}
+              <div className="border-2 border-dashed border-slate-300 rounded-2xl p-8 flex flex-col items-center justify-center text-center hover:border-teal-500 transition-colors bg-slate-50/60">
+                <div className="w-14 h-14 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center mb-3">
+                  <Upload className="w-7 h-7" />
+                </div>
+                <h3 className="text-sm font-bold text-slate-800">Upload Pavement Image</h3>
+                <p className="text-xs text-slate-500 mt-1 mb-4">
+                  Drag and drop image here or click browse below.
+                </p>
                 <label className="cursor-pointer">
-                  <span className="text-xs font-bold text-teal-700 hover:text-teal-800 bg-teal-50 px-3 py-1.5 rounded-lg border border-teal-200">
-                    Browse Image File
+                  <span className="text-xs font-bold text-white bg-teal-600 hover:bg-teal-700 px-4 py-2.5 rounded-xl shadow-xs transition-colors">
+                    {selectedFile ? 'Change Selected File' : 'Browse Files'}
                   </span>
                   <input
                     type="file"
@@ -166,168 +385,605 @@ export const NewReportPage: React.FC = () => {
                     className="hidden"
                   />
                 </label>
-                <p className="text-[11px] text-slate-400 mt-2">JPEG, PNG, WebP up to 10MB</p>
+                <span className="text-[11px] text-slate-400 mt-3 font-mono">
+                  Supported: JPG, PNG, WebP (Max 10MB)
+                </span>
               </div>
 
-              {/* Preview */}
-              <div className="border border-slate-200 rounded-xl overflow-hidden bg-slate-100 flex items-center justify-center min-h-[160px]">
+              {/* Preview Window */}
+              <div className="border border-slate-200 rounded-2xl overflow-hidden bg-slate-100 flex flex-col items-center justify-center min-h-[220px] relative">
                 {previewUrl ? (
-                  <img
-                    src={previewUrl}
-                    alt="Upload Preview"
-                    className="w-full h-48 object-cover"
-                  />
+                  <>
+                    <img
+                      src={previewUrl}
+                      alt="Field Preview"
+                      className="w-full h-64 object-cover object-center"
+                    />
+                    <div className="absolute top-3 left-3 bg-black/70 backdrop-blur-xs text-white text-[10px] font-mono px-2 py-1 rounded">
+                      Selected: {selectedFile?.name} ({(selectedFile!.size / (1024 * 1024)).toFixed(2)} MB)
+                    </div>
+                  </>
                 ) : (
-                  <div className="text-center p-4">
-                    <p className="text-xs text-slate-400 font-medium">No image selected</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">Upload a photo showing clear pavement damage</p>
+                  <div className="text-center p-6 space-y-2">
+                    <Camera className="w-10 h-10 text-slate-300 mx-auto" />
+                    <p className="text-xs font-semibold text-slate-500">No Image Uploaded Yet</p>
+                    <p className="text-[11px] text-slate-400 max-w-xs mx-auto">
+                      Photographing the pothole from a 45° angle with part of the surrounding road lane produces the highest AI accuracy.
+                    </p>
                   </div>
                 )}
               </div>
             </div>
-          </div>
 
-          {/* Section 2: Defect Details */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-            <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <FileText className="w-4 h-4 text-teal-600" />
-              2. Defect Description
-            </h2>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Report Title <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. Deep Pothole outside Sitabuldi Metro Station"
-                className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Detailed Observations (Optional)</label>
-              <textarea
-                rows={3}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Describe traffic risk, depth, lane obstruction, or water accumulation..."
-                className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Roadway Classification</label>
-                <select
-                  value={roadClass}
-                  onChange={(e) => setRoadClass(e.target.value)}
-                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
-                >
-                  <option value="LOCAL">Local / Residential Street (Low Speed)</option>
-                  <option value="COLLECTOR">Collector Road (Connecting Neighborhoods)</option>
-                  <option value="ARTERIAL">Arterial Road (Major Commercial Corridor)</option>
-                  <option value="HIGHWAY">Expressway / Highway (High Speed Multi-Lane)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Street Address or Landmark</label>
-                <input
-                  type="text"
-                  value={addressText}
-                  onChange={(e) => setAddressText(e.target.value)}
-                  placeholder="Street name or nearby landmark..."
-                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Section 3: Geospatial Coordinates & Map Picker */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-teal-600" />
-                3. Precise Geolocation (Click on Map)
-              </h2>
-              <span className="font-mono text-xs text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
-                {latitude.toFixed(4)}°N, {longitude.toFixed(4)}°E
+            {/* Step 1 Actions */}
+            <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
+              <span className="text-xs text-slate-400">
+                {selectedFile ? '✓ Image attached ready for details' : 'Attach photo to proceed'}
               </span>
+              <button
+                type="button"
+                disabled={!selectedFile}
+                onClick={() => setCurrentStep(2)}
+                className="px-6 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-md shadow-teal-600/20 transition-all disabled:opacity-50 flex items-center gap-2"
+              >
+                <span>Next: Incident Details</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================= */}
+        {/* STEP 2: INCIDENT & LOCATION DETAILS */}
+        {/* ========================================================= */}
+        {currentStep === 2 && (
+          <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-xs space-y-6">
+            <div className="space-y-1">
+              <h2 className="text-lg font-bold text-navy-900 flex items-center gap-2">
+                <FileText className="w-5 h-5 text-teal-600" />
+                Step 2: Incident & Locality Details
+              </h2>
+              <p className="text-xs text-slate-500">
+                Pinpoint the defect within Nagpur municipal jurisdiction. Select a locality or click on the map to pin precise coordinates.
+              </p>
             </div>
 
-            {/* Quick Nagpur Landmark Presets for Evaluator */}
-            <div>
-              <p className="text-[11px] font-semibold text-slate-500 mb-2">Evaluator Quick Presets (Nagpur Landmarks):</p>
-              <div className="flex flex-wrap gap-1.5">
+            {/* Quick Evaluator Nagpur Presets */}
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+              <span className="text-xs font-bold text-navy-900 block">
+                Quick Nagpur Landmark Presets (for College Evaluator Demo):
+              </span>
+              <div className="flex flex-wrap gap-2">
                 {NAGPUR_PRESETS.map((p) => (
                   <button
                     key={p.name}
                     type="button"
                     onClick={() => applyPreset(p)}
-                    className="px-2.5 py-1 text-[11px] font-medium rounded-lg border border-slate-200 bg-slate-50 hover:bg-teal-50 hover:border-teal-300 text-slate-700 hover:text-teal-800 transition-colors"
+                    className="px-2.5 py-1 text-[11px] font-semibold rounded-lg border border-slate-200 bg-white hover:bg-teal-50 hover:border-teal-300 text-slate-700 hover:text-teal-800 transition-colors"
                   >
-                    {p.name}
+                    📍 {p.name}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Interactive Leaflet Map for coordinate selection */}
-            <div className="h-[280px]">
-              <MapView
-                center={[latitude, longitude]}
-                zoom={14}
-                height="100%"
-                selectedLocation={{ lat: latitude, lng: longitude }}
-                onLocationSelect={handleMapLocationSelect}
-              />
+            {/* Form Fields */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Report Title <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="e.g. Deep Pothole Cluster near Sitabuldi Metro Station"
+                  className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Locality / Ward Zone <span className="text-rose-500">*</span>
+                  </label>
+                  <select
+                    value={areaLocality}
+                    onChange={(e) => setAreaLocality(e.target.value)}
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white font-medium"
+                  >
+                    {NAGPUR_LOCALITIES.map((loc) => (
+                      <option key={loc} value={loc}>{loc}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    City Jurisdiction
+                  </label>
+                  <input
+                    type="text"
+                    disabled
+                    value="Nagpur, Maharashtra (NMC)"
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-100 text-slate-500 font-bold"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Prominent Landmark or Cross-Street
+                  </label>
+                  <input
+                    type="text"
+                    value={landmark}
+                    onChange={(e) => setLandmark(e.target.value)}
+                    placeholder="e.g. Opposite NMC Zonal Office / Pillar 42"
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Road Classification
+                  </label>
+                  <select
+                    value={roadClass}
+                    onChange={(e) => setRoadClass(e.target.value)}
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
+                  >
+                    <option value="LOCAL">Local / Residential Street (Low Speed)</option>
+                    <option value="COLLECTOR">Collector Road (Connecting Neighborhoods)</option>
+                    <option value="ARTERIAL">Arterial Road (Major Commercial Corridor)</option>
+                    <option value="HIGHWAY">Expressway / Highway (High Speed Multi-Lane)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Detailed Description (Optional)</label>
+                <textarea
+                  rows={2}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Describe depth, water accumulation, traffic slowdown, or hazardous edges..."
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+              </div>
+
+              {/* Citizen Information & Privacy Notice */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 rounded-xl bg-slate-50 border border-slate-200">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Reporter Name (Optional)</label>
+                  <input
+                    type="text"
+                    value={reporterName}
+                    onChange={(e) => setReporterName(e.target.value)}
+                    placeholder="Citizen Name"
+                    className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Contact Phone (Optional)</label>
+                  <input
+                    type="text"
+                    value={reporterContact}
+                    onChange={(e) => setReporterContact(e.target.value)}
+                    placeholder="+91 98XXXXXXXX"
+                    className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1">Incident Date</label>
+                  <input
+                    type="date"
+                    value={incidentDate}
+                    onChange={(e) => setIncidentDate(e.target.value)}
+                    className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 focus:outline-none bg-white"
+                  />
+                </div>
+                <div className="col-span-full text-[10px] text-slate-400 italic">
+                  Note: Reporter identity is stored securely for municipal verification and is withheld from public tracking pages.
+                </div>
+              </div>
+
+              {/* Interactive Map Picker */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-slate-700">
+                    Geospatial Pin (Click Map to Adjust Coordinates):
+                  </label>
+                  <span className="font-mono text-xs text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                    {latitude.toFixed(4)}°N, {longitude.toFixed(4)}°E
+                  </span>
+                </div>
+                <div className="h-60 rounded-xl overflow-hidden border border-slate-200">
+                  <MapView
+                    center={[latitude, longitude]}
+                    zoom={14}
+                    height="100%"
+                    selectedLocation={{ lat: latitude, lng: longitude }}
+                    onLocationSelect={handleMapLocationSelect}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Step 2 Actions */}
+            <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => setCurrentStep(1)}
+                className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50 font-bold text-xs flex items-center gap-1.5"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Back to Photo</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleGoToStep3}
+                className="px-6 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-md shadow-teal-600/20 transition-all flex items-center gap-2"
+              >
+                <span>Next: AI Road Analysis</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
             </div>
           </div>
+        )}
 
-          {/* Section 4: AI Execution Toggle & Submit */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={autoAnalyze}
-                onChange={(e) => setAutoAnalyze(e.target.checked)}
-                className="w-4 h-4 text-teal-600 rounded border-slate-300 focus:ring-teal-500"
-              />
-              <div>
-                <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-teal-600" />
-                  Auto-Execute AI Analysis Pipeline
-                </span>
-                <p className="text-[11px] text-slate-500">
-                  Runs edge feature detection, computes severity score, and checks for duplicate reports immediately.
+        {/* ========================================================= */}
+        {/* STEP 3: INSTANT AI ROAD-DEFECT ANALYSIS */}
+        {/* ========================================================= */}
+        {currentStep === 3 && (
+          <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-xs space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="space-y-1">
+                <h2 className="text-lg font-bold text-navy-900 flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-teal-600" />
+                  Step 3: Instant AI Computer Vision Inspection
+                </h2>
+                <p className="text-xs text-slate-500">
+                  Evaluated via the ONNX Runtime YOLOv8-RDD2022 inference pipeline before committing to the municipal database.
                 </p>
               </div>
-            </label>
 
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full sm:w-auto px-6 py-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-sm shadow-md shadow-teal-600/20 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              {submitting ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  <span>Analyzing & Submitting...</span>
-                </>
-              ) : (
-                <>
-                  <span>Submit Damage Report</span>
-                  <CheckCircle2 className="w-4 h-4" />
-                </>
-              )}
-            </button>
+              <button
+                type="button"
+                disabled={inspecting}
+                onClick={runQuickInspection}
+                className="px-3 py-1.5 rounded-lg border border-teal-200 bg-teal-50 hover:bg-teal-100 text-teal-800 text-xs font-bold flex items-center gap-1.5 self-start sm:self-auto transition-colors"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${inspecting ? 'animate-spin' : ''}`} />
+                <span>Re-run AI Analysis</span>
+              </button>
+            </div>
+
+            {/* Inspection State */}
+            {inspecting ? (
+              <div className="p-12 text-center rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
+                <div className="w-12 h-12 border-3 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">Running Computer Vision Model...</h3>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Tensor normalization, bounding box extraction, and 6-factor severity indexing.
+                  </p>
+                </div>
+              </div>
+            ) : aiInspectResult ? (
+              <div className="space-y-6">
+                
+                {/* Visual Box + Telemetry */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  
+                  {/* Left: Annotated preview */}
+                  <div className="border border-slate-200 rounded-2xl overflow-hidden bg-slate-900 relative">
+                    <img
+                      src={getImageUrl(aiInspectResult.annotated_image_path || previewUrl)}
+                      alt="Annotated Defect"
+                      className="w-full h-64 object-cover object-center"
+                    />
+                    <div className="absolute top-3 left-3 bg-teal-600/90 text-white text-[10px] font-mono font-bold px-2.5 py-1 rounded-md">
+                      YOLOv8 Detection Overlay
+                    </div>
+                    <div className="absolute bottom-3 right-3 bg-black/80 text-white text-[10px] font-mono px-2 py-0.5 rounded">
+                      Inference: {aiInspectResult.inference_duration_ms.toFixed(1)} ms
+                    </div>
+                  </div>
+
+                  {/* Right: Telemetry metrics */}
+                  <div className="space-y-3">
+                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                      <span className="text-[10px] font-bold uppercase text-slate-400 block">Identified Distress Class</span>
+                      <span className="text-lg font-black text-navy-900 mt-1 block">
+                        {aiInspectResult.predicted_damage_category}
+                      </span>
+                      <span className="text-xs text-teal-700 font-mono">
+                        Confidence: {(aiInspectResult.prediction_confidence * 100).toFixed(1)}%
+                      </span>
+                    </div>
+
+                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+                      <span className="text-[10px] font-bold uppercase text-slate-400 block">Physical Severity Score</span>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-xl font-black text-rose-600 font-mono">
+                          {aiInspectResult.severity_score.toFixed(1)} / 100
+                        </span>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${
+                          aiInspectResult.severity_level === 'CRITICAL' ? 'bg-rose-100 text-rose-800' :
+                          aiInspectResult.severity_level === 'HIGH' ? 'bg-orange-100 text-orange-800' :
+                          aiInspectResult.severity_level === 'MEDIUM' ? 'bg-amber-100 text-amber-800' :
+                          'bg-emerald-100 text-emerald-800'
+                        }`}>
+                          {aiInspectResult.severity_level}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+                      <div>
+                        <span className="text-[10px] font-bold uppercase text-slate-400 block">Model Engine</span>
+                        <span className="text-xs font-bold text-slate-800 mt-0.5 block font-mono">
+                          {aiInspectResult.model_identifier}
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-mono px-2 py-0.5 bg-teal-50 text-teal-800 border border-teal-200 rounded font-bold">
+                        {aiInspectResult.inference_mode}
+                      </span>
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* Honest Evaluator Disclaimer */}
+                <div className="p-3.5 rounded-xl bg-teal-50/70 border border-teal-200 text-xs text-teal-900 leading-relaxed">
+                  <strong>Academic Model Assessment:</strong> {aiInspectResult.disclaimer}
+                </div>
+
+              </div>
+            ) : (
+              <div className="p-6 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-800 space-y-2">
+                <div className="font-bold">Instant preview bypassed or awaiting response.</div>
+                <p>
+                  Full AI feature extraction and severity scoring will automatically execute when your report is submitted.
+                </p>
+                {inspectError && <p className="font-mono text-[11px] text-rose-600">{inspectError}</p>}
+              </div>
+            )}
+
+            {/* Step 3 Actions */}
+            <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => setCurrentStep(2)}
+                className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50 font-bold text-xs flex items-center gap-1.5"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Back to Details</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setCurrentStep(4)}
+                className="px-6 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-md shadow-teal-600/20 transition-all flex items-center gap-2"
+              >
+                <span>Next: Review & Submit</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
           </div>
+        )}
 
-        </form>
+        {/* ========================================================= */}
+        {/* STEP 4: REVIEW AND SUBMIT */}
+        {/* ========================================================= */}
+        {currentStep === 4 && (
+          <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-xs space-y-6">
+            <div className="space-y-1">
+              <h2 className="text-lg font-bold text-navy-900 flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5 text-teal-600" />
+                Step 4: Final Verification & Municipal Dispatch
+              </h2>
+              <p className="text-xs text-slate-500">
+                Confirm all incident details before committing the complaint to the municipal triage queue.
+              </p>
+            </div>
+
+            {/* Honest NMC Demonstration Environment Banner */}
+            <div className="bg-gradient-to-r from-teal-900 to-navy-900 text-white rounded-2xl p-5 shadow-xs border border-teal-700/50 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+              <div className="w-10 h-10 rounded-xl bg-teal-500/20 text-teal-300 border border-teal-400/30 flex items-center justify-center shrink-0">
+                <Building2 className="w-5 h-5" />
+              </div>
+              <div className="flex-1 space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-teal-300 bg-teal-500/20 px-2 py-0.5 rounded">
+                    Demonstration Scope Notice
+                  </span>
+                  <span className="text-xs font-bold text-slate-200">Nagpur Municipal Corporation</span>
+                </div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Demonstration environment: This report is recorded in CivicLens AI for review within this application. Official submission to Nagpur Municipal Corporation is not enabled or confirmed.
+                </p>
+              </div>
+            </div>
+
+            {/* Summary Review Card */}
+            <div className="border border-slate-200 rounded-2xl overflow-hidden divide-y divide-slate-100 text-xs">
+              
+              {/* Row 1: Photo & Title */}
+              <div className="p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4 bg-slate-50/50">
+                <div className="w-20 h-20 rounded-xl overflow-hidden border border-slate-200 shrink-0 bg-slate-900">
+                  <img
+                    src={previewUrl || ''}
+                    alt="Summary thumbnail"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="flex-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-teal-700">Complaint Title</span>
+                  <h3 className="text-base font-extrabold text-navy-900 mt-0.5">{title}</h3>
+                  {description && <p className="text-slate-600 text-xs mt-1">{description}</p>}
+                </div>
+              </div>
+
+              {/* Row 2: Location details */}
+              <div className="p-4 sm:p-5 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <span className="text-[10px] font-bold uppercase text-slate-400 block">Locality</span>
+                  <span className="font-bold text-slate-800 text-xs">{areaLocality}, Nagpur</span>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold uppercase text-slate-400 block">Landmark</span>
+                  <span className="font-bold text-slate-800 text-xs truncate block">{landmark || addressText}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold uppercase text-slate-400 block">GPS Coordinates</span>
+                  <span className="font-mono text-slate-700 text-xs">{latitude.toFixed(4)}°N, {longitude.toFixed(4)}°E</span>
+                </div>
+              </div>
+
+              {/* Row 3: AI Diagnosis & Road Type */}
+              <div className="p-4 sm:p-5 grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-50/30">
+                <div>
+                  <span className="text-[10px] font-bold uppercase text-slate-400 block">AI Distress Class</span>
+                  <span className="font-bold text-teal-800 text-xs">
+                    {aiInspectResult?.predicted_damage_category || 'Automatic YOLOv8 Scan'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold uppercase text-slate-400 block">Estimated Severity</span>
+                  <span className="font-bold text-rose-600 text-xs font-mono">
+                    {aiInspectResult ? `${aiInspectResult.severity_score.toFixed(1)} / 100 (${aiInspectResult.severity_level})` : 'Calculated on Submit'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold uppercase text-slate-400 block">Road Classification</span>
+                  <span className="font-bold text-slate-800 text-xs">{roadClass}</span>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Step 4 Actions */}
+            <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => setCurrentStep(3)}
+                className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50 font-bold text-xs flex items-center gap-1.5"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>Back to AI Scan</span>
+              </button>
+
+              <button
+                type="button"
+                disabled={submitting}
+                onClick={handleSubmit}
+                className="px-8 py-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-extrabold text-sm shadow-md shadow-teal-600/20 transition-all disabled:opacity-50 flex items-center gap-2"
+              >
+                {submitting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Recording & Dispatching...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Submit Road Defect Report</span>
+                    <CheckCircle2 className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================= */}
+        {/* STEP 5: CONFIRMATION & REFERENCE NUMBER */}
+        {/* ========================================================= */}
+        {currentStep === 5 && createdReport && (
+          <div className="bg-white p-6 sm:p-10 rounded-2xl border border-slate-200 shadow-xs text-center space-y-6">
+            
+            {/* Green Check Circle */}
+            <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center mx-auto shadow-xs">
+              <CheckCircle2 className="w-9 h-9" />
+            </div>
+
+            <div className="space-y-2 max-w-lg mx-auto">
+              <span className="text-xs font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+                Complaint Registered Successfully
+              </span>
+              <h2 className="text-2xl sm:text-3xl font-black text-navy-900 tracking-tight">
+                Report Logged in Triage Queue
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-600">
+                Your report has been analyzed by the computer vision pipeline and entered into the municipal review workflow.
+              </p>
+            </div>
+
+            {/* Reference ID Banner */}
+            <div className="max-w-md mx-auto p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                Your Unique Tracking Reference Number
+              </span>
+              <div className="flex items-center justify-center gap-3">
+                <span className="font-mono text-xl sm:text-2xl font-black text-navy-900 tracking-wide">
+                  {createdReport.reference_number || `CVL-${createdReport.id}`}
+                </span>
+                <button
+                  onClick={() => handleCopyReference(createdReport.reference_number || `CVL-${createdReport.id}`)}
+                  className="px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                >
+                  {copied ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      <span className="text-emerald-700">Copied!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>Copy</span>
+                    </>
+                  )}
+                </button>
+              </div>
+              <div className="inline-flex items-center gap-1.5 text-xs text-slate-500 pt-1">
+                <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                <span>Initial Status: <strong>Submitted (Pending Review)</strong></span>
+              </div>
+            </div>
+
+            {/* Demonstration notice reminder */}
+            <div className="max-w-xl mx-auto p-3.5 rounded-xl bg-teal-50/70 border border-teal-200 text-xs text-teal-900 text-left flex items-start gap-3">
+              <Building2 className="w-5 h-5 text-teal-700 shrink-0 mt-0.5" />
+              <p className="text-[11px] leading-relaxed">
+                <strong>Municipal Demonstration Notice:</strong> This report is recorded in CivicLens AI for review within this application. Official submission to Nagpur Municipal Corporation is not enabled or confirmed.
+              </p>
+            </div>
+
+            {/* CTAs */}
+            <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
+              <Link
+                to={`/track/${encodeURIComponent(createdReport.reference_number || createdReport.id)}`}
+                className="w-full sm:w-auto px-6 py-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-md shadow-teal-600/20 transition-all flex items-center justify-center gap-2"
+              >
+                <Search className="w-4 h-4" />
+                <span>Track This Complaint Now</span>
+              </Link>
+
+              <button
+                type="button"
+                onClick={handleResetForm}
+                className="w-full sm:w-auto px-6 py-3 rounded-xl border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs transition-colors"
+              >
+                Submit Another Report
+              </button>
+            </div>
+
+          </div>
+        )}
 
       </div>
     </div>
