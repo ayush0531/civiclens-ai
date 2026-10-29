@@ -19,36 +19,36 @@ interface Props {
   fitBoundsOnData?: boolean;
 }
 
-// Multi-tier resilient tile providers
+// Multi-tier resilient tile providers (Public & Authorized Academic Providers — No Watermarks, No API Key Required)
 interface TileProvider {
   name: string;
   url: string;
-  subdomains: string;
+  subdomains?: string;
   maxZoom: number;
   attribution: string;
 }
 
 const TILE_PROVIDERS: TileProvider[] = [
   {
-    name: 'CARTO Voyager (CDN)',
-    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-    subdomains: 'abcd',
-    maxZoom: 20,
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-  },
-  {
     name: 'OpenStreetMap Standard',
     url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
     subdomains: 'abc',
     maxZoom: 19,
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors',
   },
   {
-    name: 'CARTO Positron Light',
-    url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-    subdomains: 'abcd',
-    maxZoom: 20,
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    name: 'Esri World Street Map',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+    subdomains: '',
+    maxZoom: 19,
+    attribution: 'Tiles &copy; <a href="https://www.esri.com/" target="_blank" rel="noopener noreferrer">Esri</a> &mdash; Source: Esri, DeLorme, NAVTEQ, USGS, Intermap, iPC, NRCAN, METI, TomTom',
+  },
+  {
+    name: 'Esri Light Gray Canvas',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+    subdomains: '',
+    maxZoom: 16,
+    attribution: 'Tiles &copy; <a href="https://www.esri.com/" target="_blank" rel="noopener noreferrer">Esri</a> &mdash; Esri, DeLorme, NAVTEQ',
   },
 ];
 
@@ -101,7 +101,7 @@ export const MapView: React.FC<Props> = ({
     tileErrorCounterRef.current = 0;
 
     const layer = L.tileLayer(provider.url, {
-      subdomains: provider.subdomains,
+      subdomains: provider.subdomains || 'abc',
       maxZoom: provider.maxZoom,
       attribution: provider.attribution,
     });
