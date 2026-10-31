@@ -50,3 +50,6 @@ frontend/dist/
 # Scratch directory
 scratch/
 
+# Thesis deliverables (external to application repository)
+thesis_submission/
+
