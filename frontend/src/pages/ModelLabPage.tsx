@@ -74,7 +74,7 @@ export const ModelLabPage: React.FC = () => {
         <div className="text-center space-y-3">
           <div className="w-10 h-10 border-3 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-sm font-semibold text-slate-700">Loading AI Model Evaluation Laboratory...</p>
-          <p className="text-xs text-slate-400">Fetching empirical benchmark matrices and ONNX runtime telemetry</p>
+          <p className="text-xs text-slate-400">Fetching model configuration and research reference data</p>
         </div>
       </div>
     );
@@ -180,6 +180,18 @@ export const ModelLabPage: React.FC = () => {
         </div>
       </div>
 
+      <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 sm:p-5">
+        <div className="flex items-start gap-3">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
+          <div>
+            <h2 className="text-sm font-extrabold text-amber-950">Research references — not validated benchmark results</h2>
+            <p className="mt-1 text-xs leading-6 text-amber-900">
+              {data.evaluation_notice || 'The displayed metric values are illustrative references. This deployment does not include a reproducible held-out evaluation report or ground-truth test manifest. Do not cite these values as measured model accuracy or latency.'}
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Headline Benchmark KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
         <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-2xs">
@@ -188,7 +200,7 @@ export const ModelLabPage: React.FC = () => {
             {(overall_metrics.map_50 * 100).toFixed(1)}%
           </div>
           <div className="text-[10px] text-emerald-600 font-semibold mt-1 flex items-center gap-0.5">
-            <TrendingUp className="w-3 h-3" /> Standard CV threshold
+            <TrendingUp className="w-3 h-3" /> Reference value · unvalidated
           </div>
         </div>
 
@@ -198,7 +210,7 @@ export const ModelLabPage: React.FC = () => {
             {(overall_metrics.map_50_95 * 100).toFixed(1)}%
           </div>
           <div className="text-[10px] text-slate-500 font-medium mt-1">
-            COCO-standard metric
+            Reference value · unvalidated
           </div>
         </div>
 
@@ -208,7 +220,7 @@ export const ModelLabPage: React.FC = () => {
             {(overall_metrics.precision * 100).toFixed(1)}%
           </div>
           <div className="text-[10px] text-slate-500 font-medium mt-1">
-            Low false-alarm rate
+            Not independently measured
           </div>
         </div>
 
@@ -218,7 +230,7 @@ export const ModelLabPage: React.FC = () => {
             {(overall_metrics.recall * 100).toFixed(1)}%
           </div>
           <div className="text-[10px] text-slate-500 font-medium mt-1">
-            High defect coverage
+            Not independently measured
           </div>
         </div>
 
@@ -228,7 +240,7 @@ export const ModelLabPage: React.FC = () => {
             {(overall_metrics.f1_score * 100).toFixed(1)}%
           </div>
           <div className="text-[10px] text-slate-500 font-medium mt-1">
-            Balanced precision & recall
+            Reference value · unvalidated
           </div>
         </div>
 
@@ -238,7 +250,7 @@ export const ModelLabPage: React.FC = () => {
             {overall_metrics.mean_latency_ms.toFixed(1)} ms
           </div>
           <div className="text-[10px] text-slate-500 font-medium mt-1">
-            ~{overall_metrics.fps_cpu.toFixed(0)} FPS throughput
+            Reference throughput · unvalidated
           </div>
         </div>
       </div>
@@ -299,8 +311,8 @@ export const ModelLabPage: React.FC = () => {
         <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
           <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h3 className="font-extrabold text-navy-900 text-sm">Pavement Distress Category Benchmarks</h3>
-              <p className="text-xs text-slate-500">Evaluated on {model_metadata.validation_size_images.toLocaleString()} test images across standardized pavement defect taxonomies</p>
+              <h3 className="font-extrabold text-navy-900 text-sm">Pavement Distress Research References</h3>
+              <p className="text-xs text-slate-500">Illustrative reference values · not a verified held-out test result</p>
             </div>
             <span className="text-[11px] font-mono font-semibold px-2.5 py-1 bg-slate-100 text-slate-700 rounded-md shrink-0">
               IoU Threshold: 0.50 | NMS: 0.45
