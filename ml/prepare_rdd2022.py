@@ -1,54 +1,45 @@
 #!/usr/bin/env python3
-"""Convert the annotated RDD2022 India Pascal-VOC subset to YOLO format.
-
-Expected input: extracted RDD2022 India training directory containing JPEG/JPG
-images and matching Pascal VOC XML files (commonly an Annotations/ folder).
-The official unlabelled challenge test images are intentionally NOT used for
-metric reporting. A deterministic 80/10/10 split is made from labelled images.
-"""
+"""Convert labelled RDD2022 India Pascal-VOC annotations to YOLO format."""
 from __future__ import annotations
 import argparse, random, shutil, xml.etree.ElementTree as ET
 from collections import Counter
 from pathlib import Path
 
-# RDD2022 labels; class order is part of the exported model contract.
 CLASSES = ["D00", "D10", "D20", "D40"]
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png"}
 
 def find_pairs(root: Path):
-    xmls = list(root.rglob("*.xml"))
-    pairs = []
-    for xml_path in xmls:
+    # Index images by basename because the archive stores images and XML in
+    # separate sibling folders (e.g. JPEGImages/ and Annotations/).
+    image_index = {}
+    for p in root.rglob("*"):
+        if p.is_file() and p.suffix.lower() in IMAGE_SUFFIXES:
+            image_index.setdefault(p.stem.lower(), []).append(p)
+    pairs, seen = [], set()
+    for xml_path in root.rglob("*.xml"):
         try:
             tree = ET.parse(xml_path)
-            filename = tree.findtext("filename")
-            candidates = ([root / filename] if filename else []) + [
-                xml_path.with_suffix(ext) for ext in IMAGE_SUFFIXES
-            ]
-            image_path = next((p for p in candidates if p and p.exists()), None)
-            if image_path:
-                pairs.append((image_path, xml_path))
+            filename = Path(tree.findtext("filename") or "").name
+            candidates = ([root / filename] if filename else []) + image_index.get(xml_path.stem.lower(), [])
+            if filename:
+                candidates += image_index.get(Path(filename).stem.lower(), [])
+            image_path = next((p for p in candidates if p and p.is_file()), None)
+            if image_path and str(image_path.resolve()) not in seen:
+                pairs.append((image_path, xml_path)); seen.add(str(image_path.resolve()))
         except (ET.ParseError, OSError):
             continue
-    # A stable unique image list prevents duplicate XML entries.
-    unique = {}
-    for image, xml in pairs:
-        unique[str(image.resolve())] = (image, xml)
-    return list(unique.values())
+    return pairs
 
-def convert_annotation(xml_path: Path, image_path: Path):
+def convert_annotation(xml_path: Path):
     root = ET.parse(xml_path).getroot()
     size = root.find("size")
-    if size is None:
-        raise ValueError(f"Missing image size in {xml_path}")
+    if size is None: raise ValueError(f"Missing image size in {xml_path}")
     width, height = int(size.findtext("width", "0")), int(size.findtext("height", "0"))
-    if width <= 0 or height <= 0:
-        raise ValueError(f"Invalid dimensions in {xml_path}")
+    if width <= 0 or height <= 0: raise ValueError(f"Invalid dimensions in {xml_path}")
     labels, counts = [], Counter()
     for obj in root.findall("object"):
         name = (obj.findtext("name") or "").strip().upper()
-        if name not in CLASSES:
-            continue
+        if name not in CLASSES: continue
         box = obj.find("bndbox")
         if box is None: continue
         xmin, ymin = float(box.findtext("xmin", "0")), float(box.findtext("ymin", "0"))
@@ -64,14 +55,14 @@ def convert_annotation(xml_path: Path, image_path: Path):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--source", required=True, type=Path, help="Extracted RDD2022 India directory")
+    ap.add_argument("--source", required=True, type=Path)
     ap.add_argument("--output", default=Path("datasets/rdd2022-india"), type=Path)
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--force", action="store_true")
     args = ap.parse_args()
     if not args.source.is_dir(): raise SystemExit(f"Source directory not found: {args.source}")
     pairs = find_pairs(args.source)
-    if len(pairs) < 100: raise SystemExit(f"Only {len(pairs)} labelled image/XML pairs found; check --source.")
+    if len(pairs) < 100: raise SystemExit(f"Only {len(pairs)} labelled image/XML pairs found; check --source and archive layout.")
     if args.output.exists():
         if not args.force: raise SystemExit(f"{args.output} exists. Pass --force to replace it.")
         shutil.rmtree(args.output)
@@ -83,18 +74,22 @@ def main():
         img_dir, label_dir = args.output / "images" / split, args.output / "labels" / split
         img_dir.mkdir(parents=True, exist_ok=True); label_dir.mkdir(parents=True, exist_ok=True)
         for image, xml in items:
-            labels, counts = convert_annotation(xml, image)
-            # Retain negative images: they are important for false-positive measurement.
-            target_name = image.stem + ".jpg"
-            shutil.copy2(image, img_dir / target_name)
+            labels, counts = convert_annotation(xml)
+            # JPEG encoding gives consistent extension/content for Ultralytics.
+            try:
+                from PIL import Image
+                with Image.open(image) as im: im.convert("RGB").save(img_dir / (image.stem + ".jpg"), quality=95)
+            except Exception as exc:
+                raise RuntimeError(f"Could not convert image {image}: {exc}") from exc
             (label_dir / (image.stem + ".txt")).write_text("\n".join(labels) + ("\n" if labels else ""), encoding="utf-8")
             total_counts.update(counts)
         print(f"{split}: {len(items)} images")
+    args.output.mkdir(parents=True, exist_ok=True)
     yaml = "path: " + str(args.output.resolve()) + "\ntrain: images/train\nval: images/val\ntest: images/test\nnames:\n"
     yaml += "".join(f"  {i}: {name}\n" for i, name in enumerate(CLASSES))
     (args.output / "data.yaml").write_text(yaml, encoding="utf-8")
     print("Class instances:", dict(total_counts))
     print("Dataset config:", args.output / "data.yaml")
-    print("NOTE: test split is a held-out subset of labelled training data; it is not the official unlabelled RDD2022 challenge test set.")
+    print("NOTE: held-out split is sampled from labelled training images; official challenge test labels are unavailable.")
 
 if __name__ == "__main__": main()
