@@ -207,9 +207,9 @@ export const NewReportPage: React.FC = () => {
     }
     setError(null);
     setCurrentStep(3);
-    if (!aiInspectResult && !inspecting) {
-      runQuickInspection();
-    }
+    // Run the expensive model only once, during final report creation.
+    // The previous flow ran quickInspect here and repeated the same inference
+    // again in create_report, doubling the wait for citizens.
   };
 
   // Final Submission
@@ -645,10 +645,10 @@ export const NewReportPage: React.FC = () => {
               <div className="space-y-1">
                 <h2 className="text-lg font-bold text-navy-900 flex items-center gap-2">
                   <Sparkles className="w-5 h-5 text-teal-600" />
-                  Step 3: Instant AI Computer Vision Inspection
+                  Step 3: Evidence & Location Pre-check
                 </h2>
                 <p className="text-xs text-slate-500">
-                  Evaluated via the ONNX Runtime YOLOv8-RDD2022 inference pipeline before committing to the municipal database.
+                  Review the uploaded evidence and location. The server runs the AI analysis once when you submit the report.
                 </p>
               </div>
 
@@ -663,98 +663,36 @@ export const NewReportPage: React.FC = () => {
               </button>
             </div>
 
-            {/* Inspection State */}
-            {inspecting ? (
-              <div className="p-12 text-center rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
-                <div className="w-12 h-12 border-3 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900">Running Computer Vision Model...</h3>
-                  <p className="text-xs text-slate-500 mt-1">
-                    Tensor normalization, bounding box extraction, and 6-factor severity indexing.
-                  </p>
+            {/* Fast pre-flight checks — model inference runs once on final submission. */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div className="flex items-center gap-2 text-sm font-bold text-slate-900">
+                  <CheckCircle2 className="w-4 h-4 text-teal-600" />
+                  Evidence attached
                 </div>
-              </div>
-            ) : aiInspectResult ? (
-              <div className="space-y-6">
-                
-                {/* Visual Box + Telemetry */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  
-                  {/* Left: Annotated preview */}
-                  <div className="border border-slate-200 rounded-2xl overflow-hidden bg-slate-900 relative">
-                    <img
-                      src={getImageUrl(aiInspectResult.annotated_image_path || previewUrl)}
-                      alt="Annotated Defect"
-                      className="w-full h-64 object-cover object-center"
-                    />
-                    <div className="absolute top-3 left-3 bg-teal-600/90 text-white text-[10px] font-mono font-bold px-2.5 py-1 rounded-md">
-                      YOLOv8 Detection Overlay
-                    </div>
-                    <div className="absolute bottom-3 right-3 bg-black/80 text-white text-[10px] font-mono px-2 py-0.5 rounded">
-                      Inference: {aiInspectResult.inference_duration_ms.toFixed(1)} ms
-                    </div>
-                  </div>
-
-                  {/* Right: Telemetry metrics */}
-                  <div className="space-y-3">
-                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-                      <span className="text-[10px] font-bold uppercase text-slate-400 block">Identified Distress Class</span>
-                      <span className="text-lg font-black text-navy-900 mt-1 block">
-                        {aiInspectResult.predicted_damage_category}
-                      </span>
-                      <span className="text-xs text-teal-700 font-mono">
-                        Confidence: {(aiInspectResult.prediction_confidence * 100).toFixed(1)}%
-                      </span>
-                    </div>
-
-                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
-                      <span className="text-[10px] font-bold uppercase text-slate-400 block">Physical Severity Score</span>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xl font-black text-rose-600 font-mono">
-                          {aiInspectResult.severity_score.toFixed(1)} / 100
-                        </span>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${
-                          aiInspectResult.severity_level === 'CRITICAL' ? 'bg-rose-100 text-rose-800' :
-                          aiInspectResult.severity_level === 'HIGH' ? 'bg-orange-100 text-orange-800' :
-                          aiInspectResult.severity_level === 'MEDIUM' ? 'bg-amber-100 text-amber-800' :
-                          'bg-emerald-100 text-emerald-800'
-                        }`}>
-                          {aiInspectResult.severity_level}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
-                      <div>
-                        <span className="text-[10px] font-bold uppercase text-slate-400 block">Model Engine</span>
-                        <span className="text-xs font-bold text-slate-800 mt-0.5 block font-mono">
-                          {aiInspectResult.model_identifier}
-                        </span>
-                      </div>
-                      <span className="text-[10px] font-mono px-2 py-0.5 bg-teal-50 text-teal-800 border border-teal-200 rounded font-bold">
-                        {aiInspectResult.inference_mode}
-                      </span>
-                    </div>
-                  </div>
-
-                </div>
-
-                {/* Honest Evaluator Disclaimer */}
-                <div className="p-3.5 rounded-xl bg-teal-50/70 border border-teal-200 text-xs text-teal-900 leading-relaxed">
-                  <strong>Academic Model Assessment:</strong> {aiInspectResult.disclaimer}
-                </div>
-
-              </div>
-            ) : (
-              <div className="p-6 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-800 space-y-2">
-                <div className="font-bold">Instant preview bypassed or awaiting response.</div>
-                <p>
-                  Full AI feature extraction and severity scoring will automatically execute when your report is submitted.
+                {previewUrl && (
+                  <img src={previewUrl} alt="Uploaded road evidence preview" className="mt-3 h-40 w-full rounded-lg object-cover" />
+                )}
+                <p className="mt-2 text-xs text-slate-600">
+                  {selectedFile ? selectedFile.name : 'No image selected'}
                 </p>
-                {inspectError && <p className="font-mono text-[11px] text-rose-600">{inspectError}</p>}
+                <p className="text-[11px] text-slate-500">
+                  {selectedFile ? `${(selectedFile.size / (1024 * 1024)).toFixed(2)} MB · ${selectedFile.type}` : 'Attach a JPEG, PNG or WebP image.'}
+                </p>
               </div>
-            )}
-
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                <div className="flex items-center gap-2 text-sm font-bold text-slate-900">
+                  <MapPin className="w-4 h-4 text-teal-600" />
+                  Location captured
+                </div>
+                <p className="text-sm font-semibold text-slate-800">{addressText || 'Address not provided'}</p>
+                <p className="font-mono text-xs text-slate-500">{latitude.toFixed(6)}, {longitude.toFixed(6)}</p>
+                <p className="text-xs text-slate-600">{areaLocality} · {roadClass}</p>
+                <div className="rounded-lg border border-teal-200 bg-teal-50 p-3 text-xs leading-relaxed text-teal-900">
+                  <strong>Next:</strong> On final submission, CivicLens runs image inference, severity estimation, duplicate screening and maintenance-priority calculation once, then saves the report.
+                </div>
+              </div>
+            </div>
             {/* Step 3 Actions */}
             <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
               <button
@@ -786,10 +724,10 @@ export const NewReportPage: React.FC = () => {
             <div className="space-y-1">
               <h2 className="text-lg font-bold text-navy-900 flex items-center gap-2">
                 <CheckCircle2 className="w-5 h-5 text-teal-600" />
-                Step 4: Final Verification & Municipal Dispatch
+                Step 4: Review & Submit to CivicLens
               </h2>
               <p className="text-xs text-slate-500">
-                Confirm all incident details before committing the complaint to the municipal triage queue.
+                Confirm the evidence and incident details before CivicLens performs its final server-side analysis and saves the report.
               </p>
             </div>
 
@@ -888,11 +826,11 @@ export const NewReportPage: React.FC = () => {
                 {submitting ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>Recording & Dispatching...</span>
+                    <span>Analyzing once & saving report...</span>
                   </>
                 ) : (
                   <>
-                    <span>Submit Road Defect Report</span>
+                    <span>Submit CivicLens Report</span>
                     <CheckCircle2 className="w-4 h-4" />
                   </>
                 )}
