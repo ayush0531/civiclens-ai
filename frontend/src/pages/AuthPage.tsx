@@ -12,8 +12,6 @@ export const AuthPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [role, setRole] = useState<UserRole>('citizen');
-  const [department, setDepartment] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -26,13 +24,13 @@ export const AuthPage: React.FC = () => {
       if (isLoginTab) {
         await login(email, password);
       } else {
-        await register({ name, email, password, role, department });
+        await register({ name, email, password });
       }
 
       // Route according to role
-      if (role === 'admin' || email.includes('admin')) {
+      if (email.includes('admin')) {
         navigate('/admin');
-      } else if (role === 'authority' || email.includes('authority')) {
+      } else if (email.includes('authority')) {
         navigate('/authority');
       } else {
         navigate('/citizen');
@@ -184,35 +182,7 @@ export const AuthPage: React.FC = () => {
               />
             </div>
 
-            {!isLoginTab && (
-              <>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Select Role</label>
-                  <select
-                    value={role}
-                    onChange={(e) => setRole(e.target.value as UserRole)}
-                    className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
-                  >
-                    <option value="citizen">Citizen (Report and Track Issues)</option>
-                    <option value="authority">Municipal Authority (Triage and Assign)</option>
-                    <option value="admin">Administrator (System and Role Management)</option>
-                  </select>
-                </div>
 
-                {role === 'authority' && (
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">Department / Organization</label>
-                    <input
-                      type="text"
-                      value={department}
-                      onChange={(e) => setDepartment(e.target.value)}
-                      placeholder="e.g. Nagpur Municipal Corporation PWD"
-                      className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-                    />
-                  </div>
-                )}
-              </>
-            )}
 
             <button
               type="submit"
