@@ -58,6 +58,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('civiclens_token', res.access_token);
       setToken(res.access_token);
       setUser(res.user);
+      return res.user;
     } finally {
       setIsLoading(false);
     }
