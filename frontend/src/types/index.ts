@@ -331,6 +331,8 @@ export interface PerClassMetric {
 }
 
 export interface ModelEvaluationData {
+  evaluation_status?: string;
+  evaluation_notice?: string;
   model_metadata: {
     architecture: string;
     framework: string;
