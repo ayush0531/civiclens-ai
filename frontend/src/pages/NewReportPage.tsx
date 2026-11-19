@@ -785,9 +785,9 @@ export const NewReportPage: React.FC = () => {
               {/* Row 3: AI Diagnosis & Road Type */}
               <div className="p-4 sm:p-5 grid grid-cols-1 sm:grid-cols-3 gap-4 bg-slate-50/30">
                 <div>
-                  <span className="text-[10px] font-bold uppercase text-slate-400 block">AI Distress Class</span>
+                  <span className="text-[10px] font-bold uppercase text-slate-400 block">Analysis Classification</span>
                   <span className="font-bold text-teal-800 text-xs">
-                    {aiInspectResult?.predicted_damage_category || 'Automatic YOLOv8 Scan'}
+                    {aiInspectResult?.predicted_damage_category || 'Calculated during final analysis'}
                   </span>
                 </div>
                 <div>
@@ -812,7 +812,7 @@ export const NewReportPage: React.FC = () => {
                 className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50 font-bold text-xs flex items-center gap-1.5"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Back to AI Scan</span>
+                <span>Back to Evidence Check</span>
               </button>
 
               <button
@@ -847,7 +847,7 @@ export const NewReportPage: React.FC = () => {
                 ✓ Report Successfully Saved in CivicLens.AI
               </span>
               <h2 className="text-xl sm:text-2xl font-black text-navy-900">
-CivicLens Report Created • Official NMC Registration Pending
+CivicLens Report Created • NMC Registration Not Yet Confirmed
               </h2>
               <p className="text-xs sm:text-sm text-slate-600 max-w-xl mx-auto leading-relaxed">
                 Your CivicLens report has been processed and saved. The analysis engine and its operating mode are shown below. NMC registration is a separate, citizen-assisted step until an authorized government integration is available.
