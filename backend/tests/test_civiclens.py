@@ -12,6 +12,7 @@ from backend.app.models.models import User, RoadDamageReport
 from backend.app.services.ai_service import ai_service
 from backend.app.services.duplicate_service import haversine_distance, duplicate_service
 from backend.app.services.priority_service import priority_engine
+from backend.app.utils.seed_data import seed_database
 
 client = TestClient(app)
 
@@ -19,6 +20,12 @@ client = TestClient(app)
 def setup_db():
     Base.metadata.create_all(bind=engine)
     check_and_apply_migrations(engine)
+    db = SessionLocal()
+    try:
+        if db.query(User).count() == 0:
+            seed_database(db=db, force=False)
+    finally:
+        db.close()
     yield
 
 def test_health_endpoint():
@@ -36,7 +43,7 @@ def test_user_registration_and_login():
     reg_payload = {
         "name": "Test Citizen",
         "email": test_email,
-        "password": "Password123!",
+        "password": "Password123!Secure",
         "role": "citizen"
     }
     reg_res = client.post("/api/v1/auth/register", json=reg_payload)
@@ -46,7 +53,7 @@ def test_user_registration_and_login():
     assert reg_data["user"]["email"] == test_email
 
     # Successful login
-    login_res = client.post("/api/v1/auth/login", json={"email": test_email, "password": "Password123!"})
+    login_res = client.post("/api/v1/auth/login", json={"email": test_email, "password": "Password123!Secure"})
     assert login_res.status_code == 200
     assert "access_token" in login_res.json()
 

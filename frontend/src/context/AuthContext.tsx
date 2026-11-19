@@ -1,14 +1,13 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, UserRole } from '../types';
+import { User } from '../types';
 import { api } from '../services/api';
 
 interface AuthContextType {
   user: User | null;
   token: string | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (data: { name: string; email: string; password: string; role?: string; department?: string }) => Promise<void>;
-  quickDemoLogin: (role: UserRole) => Promise<void>;
+  login: (email: string, password: string) => Promise<User>;
+  register: (data: { name: string; email: string; password: string; department?: string }) => Promise<User>;
   logout: () => void;
 }
 
@@ -46,6 +45,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('civiclens_token', res.access_token);
       setToken(res.access_token);
       setUser(res.user);
+      return res.user;
     } finally {
       setIsLoading(false);
     }
@@ -58,21 +58,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('civiclens_token', res.access_token);
       setToken(res.access_token);
       setUser(res.user);
+      return res.user;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const quickDemoLogin = async (role: UserRole) => {
-    const demoAccounts: Record<UserRole, { email: string; pass: string }> = {
-      citizen: { email: 'citizen@civiclens.ai', pass: 'DemoPass123!' },
-      authority: { email: 'authority@civiclens.ai', pass: 'DemoPass123!' },
-      admin: { email: 'admin@civiclens.ai', pass: 'DemoPass123!' },
-    };
 
-    const target = demoAccounts[role];
-    await login(target.email, target.pass);
-  };
 
   const logout = () => {
     localStorage.removeItem('civiclens_token');
@@ -81,7 +73,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, register, quickDemoLogin, logout }}>
+    <AuthContext.Provider value={{ user, token, isLoading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

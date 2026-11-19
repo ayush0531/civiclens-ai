@@ -15,8 +15,11 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = f"sqlite:///{PROJECT_ROOT}/civiclens.db"
     
+    # Demo fixtures are opt-in; never seed shared demo credentials by default.
+    SEED_DEMO_DATA: bool = False
+
     # Security
-    JWT_SECRET: str = os.getenv("JWT_SECRET") or os.getenv("SECRET_KEY") or "civiclens_btech_capstone_secure_jwt_secret_key_2025"
+    JWT_SECRET: str = os.getenv("JWT_SECRET") or os.getenv("SECRET_KEY") or "development-only-change-me-before-deploy"
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
     
@@ -51,6 +54,10 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 settings = Settings()
+
+# Never allow the known development fallback to sign production access tokens.
+if os.getenv("ENVIRONMENT", "development").lower() == "production" and settings.JWT_SECRET == "development-only-change-me-before-deploy":
+    raise RuntimeError("Production requires JWT_SECRET or SECRET_KEY to be configured.")
 
 # Ensure directories exist
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True)

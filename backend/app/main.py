@@ -26,10 +26,12 @@ async def lifespan(app: FastAPI):
     db = SessionLocal()
     try:
         from backend.app.models.models import User
-        if db.query(User).count() == 0:
-            print("[CivicLens AI] Database is empty. Seeding synthetic Nagpur demo data...")
+        if db.query(User).count() == 0 and settings.SEED_DEMO_DATA:
+            print("[CivicLens AI] Demo seeding is enabled. Loading synthetic Nagpur demonstration data...")
             stats = seed_database(db=db, force=False)
-            print(f"[CivicLens AI] Seeding complete: {stats}")
+            print(f"[CivicLens AI] Demo seeding complete: {stats}")
+        elif db.query(User).count() == 0:
+            print("[CivicLens AI] Database is empty. Demo seeding is disabled; create the first administrator through the approved provisioning process.")
         else:
             print("[CivicLens AI] Database already contains records. Ready.")
     except Exception as e:

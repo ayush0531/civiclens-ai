@@ -13,25 +13,22 @@ import {
   ChevronDown, 
   Menu, 
   X,
-  Sparkles,
   Search,
   Cpu,
   FlaskConical,
   Activity
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { UserRole } from '../types';
 import { api } from '../services/api';
 import { GlobalSearchModal } from './GlobalSearchModal';
 import { AIEngineModal } from './AIEngineModal';
 
 export const Navbar: React.FC = () => {
-  const { user, logout, quickDemoLogin } = useAuth();
+  const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [demoMenuOpen, setDemoMenuOpen] = useState(false);
   const [searchModalOpen, setSearchModalOpen] = useState(false);
   const [aiModalOpen, setAiModalOpen] = useState(false);
   const [aiStatus, setAiStatus] = useState<{ mode: string; is_demo_mode: boolean } | null>(null);
@@ -64,13 +61,7 @@ export const Navbar: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const handleRoleSwitch = async (role: UserRole) => {
-    setDemoMenuOpen(false);
-    await quickDemoLogin(role);
-    if (role === 'citizen') navigate('/citizen');
-    else if (role === 'authority') navigate('/authority');
-    else if (role === 'admin') navigate('/admin');
-  };
+
 
   const isRealAI = aiStatus?.mode === 'REAL';
 
@@ -192,132 +183,7 @@ export const Navbar: React.FC = () => {
                 <Cpu className="w-3 h-3 text-slate-500" />
               </button>
 
-              {/* Evaluator Quick Role Switcher */}
-              <div className="relative">
-                <button
-                  onClick={() => setDemoMenuOpen(!demoMenuOpen)}
-                  className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-lg border border-teal-200 bg-teal-50 text-teal-800 hover:bg-teal-100 transition-colors shadow-2xs"
-                  title="Quick evaluator role switcher for college defense"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-teal-600" />
-                  <span className="hidden xl:inline">Evaluator</span>
-                  <span>Roles</span>
-                  <ChevronDown className="w-3 h-3 text-teal-600" />
-                </button>
 
-                {demoMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-60 bg-white rounded-xl shadow-xl border border-slate-200 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-                    <div className="px-3 py-1.5 border-b border-slate-100">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">1-Click Evaluator Switcher</p>
-                    </div>
-                    <button
-                      onClick={() => handleRoleSwitch('citizen')}
-                      className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-50 flex items-center justify-between ${
-                        user?.role === 'citizen' ? 'bg-teal-50/50 text-teal-900 font-semibold' : 'text-slate-700'
-                      }`}
-                    >
-                      <div>
-                        <span className="font-bold block">Citizen Reporter</span>
-                        <span className="text-[10px] text-slate-500">Submit reports & view case timeline</span>
-                      </div>
-                      {user?.role === 'citizen' && <span className="w-2 h-2 rounded-full bg-teal-500"></span>}
-                    </button>
-                    <button
-                      onClick={() => handleRoleSwitch('authority')}
-                      className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-50 flex items-center justify-between ${
-                        user?.role === 'authority' ? 'bg-teal-50/50 text-teal-900 font-semibold' : 'text-slate-700'
-                      }`}
-                    >
-                      <div>
-                        <span className="font-bold block">Municipal Authority</span>
-                        <span className="text-[10px] text-slate-500">Triage queue, assign crews, resolve</span>
-                      </div>
-                      {user?.role === 'authority' && <span className="w-2 h-2 rounded-full bg-teal-500"></span>}
-                    </button>
-                    <button
-                      onClick={() => handleRoleSwitch('admin')}
-                      className={`w-full text-left px-3 py-2 text-xs hover:bg-slate-50 flex items-center justify-between ${
-                        user?.role === 'admin' ? 'bg-teal-50/50 text-teal-900 font-semibold' : 'text-slate-700'
-                      }`}
-                    >
-                      <div>
-                        <span className="font-bold block">System Administrator</span>
-                        <span className="text-[10px] text-slate-500">Tune priority policy weights & users</span>
-                      </div>
-                      {user?.role === 'admin' && <span className="w-2 h-2 rounded-full bg-teal-500"></span>}
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Report Damage CTA */}
-              <Link
-                to="/report-new"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-teal-600 text-white hover:bg-teal-700 shadow-2xs transition-colors shrink-0"
-              >
-                <PlusCircle className="w-3.5 h-3.5" />
-                <span>Report Defect</span>
-              </Link>
-
-              {/* User Dashboard / Auth State */}
-              {user ? (
-                <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200">
-                  {user.role === 'citizen' && (
-                    <Link
-                      to="/citizen"
-                      className={`px-2.5 py-1 text-xs font-semibold rounded-lg border transition-colors ${
-                        isActive('/citizen') ? 'bg-navy-900 text-white border-navy-900' : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
-                      }`}
-                    >
-                      My Reports
-                    </Link>
-                  )}
-                  {user.role === 'authority' && (
-                    <Link
-                      to="/authority"
-                      className={`px-2.5 py-1 text-xs font-semibold rounded-lg border transition-colors flex items-center gap-1.5 ${
-                        isActive('/authority') ? 'bg-navy-900 text-white border-navy-900' : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
-                      }`}
-                    >
-                      <Layers className="w-3 h-3 text-teal-400" />
-                      Operations
-                    </Link>
-                  )}
-                  {user.role === 'admin' && (
-                    <Link
-                      to="/admin"
-                      className={`px-2.5 py-1 text-xs font-semibold rounded-lg border transition-colors flex items-center gap-1.5 ${
-                        isActive('/admin') ? 'bg-navy-900 text-white border-navy-900' : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
-                      }`}
-                    >
-                      <Settings className="w-3 h-3 text-teal-400" />
-                      Admin
-                    </Link>
-                  )}
-
-                  <div className="flex items-center gap-1.5 pl-1.5">
-                    <div className="text-right hidden xl:block">
-                      <span className="text-xs font-bold text-slate-900 block leading-tight">{user.name.split(' ')[0]}</span>
-                      <span className="text-[10px] text-teal-700 uppercase font-mono font-bold">{user.role}</span>
-                    </div>
-                    <button
-                      onClick={logout}
-                      className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                      title="Sign Out"
-                    >
-                      <LogOut className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <Link
-                  to="/auth"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 transition-colors"
-                >
-                  <UserIcon className="w-3.5 h-3.5" />
-                  <span>Sign In</span>
-                </Link>
-              )}
             </div>
 
             {/* Mobile Header Controls */}
@@ -403,29 +269,7 @@ export const Navbar: React.FC = () => {
                 </button>
               </div>
 
-              <div className="pt-2 border-t border-slate-200">
-                <span className="text-[11px] font-bold text-slate-500 uppercase block mb-1">Evaluator 1-Click Role</span>
-                <div className="grid grid-cols-3 gap-1.5">
-                  <button
-                    onClick={() => { setMobileMenuOpen(false); handleRoleSwitch('citizen'); }}
-                    className="py-1 text-center text-[11px] font-medium bg-white border border-slate-200 rounded hover:bg-teal-50"
-                  >
-                    Citizen
-                  </button>
-                  <button
-                    onClick={() => { setMobileMenuOpen(false); handleRoleSwitch('authority'); }}
-                    className="py-1 text-center text-[11px] font-medium bg-white border border-slate-200 rounded hover:bg-teal-50"
-                  >
-                    Authority
-                  </button>
-                  <button
-                    onClick={() => { setMobileMenuOpen(false); handleRoleSwitch('admin'); }}
-                    className="py-1 text-center text-[11px] font-medium bg-white border border-slate-200 rounded hover:bg-teal-50"
-                  >
-                    Admin
-                  </button>
-                </div>
-              </div>
+
             </div>
 
             {/* CTA Buttons */}

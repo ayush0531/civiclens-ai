@@ -9,8 +9,7 @@ class UserBase(BaseModel):
     department: Optional[str] = None
 
 class UserCreate(UserBase):
-    password: str = Field(..., min_length=6, max_length=100)
-    role: Optional[str] = "citizen"  # "citizen", "authority", "admin"
+    password: str = Field(..., min_length=12, max_length=100)
 
 class UserLogin(BaseModel):
     email: EmailStr

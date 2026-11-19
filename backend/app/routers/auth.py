@@ -21,14 +21,12 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)):
             detail="A user with this email address already exists."
         )
 
-    # Sanitize role (default citizen, allowed values: citizen, authority, admin)
-    role = user_in.role if user_in.role in ["citizen", "authority", "admin"] else "citizen"
-
     user = User(
         name=user_in.name.strip(),
         email=user_in.email.lower().strip(),
         password_hash=hash_password(user_in.password),
-        role=role,
+        # Public self-registration must never grant privileged roles.
+        role="citizen",
         department=user_in.department,
         is_active=True
     )
