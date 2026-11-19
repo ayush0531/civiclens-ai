@@ -273,6 +273,9 @@ export const NewReportPage: React.FC = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const primaryAnalysis = createdReport?.analyses?.[0];
+  const analysisIsDemo = primaryAnalysis?.is_demo_result ?? primaryAnalysis?.inference_mode !== 'REAL';
+
   const handleResetForm = () => {
     setSelectedFile(null);
     setPreviewUrl(null);
@@ -312,7 +315,7 @@ export const NewReportPage: React.FC = () => {
               <span>
                 {currentStep === 1 && 'Upload Photo'}
                 {currentStep === 2 && 'Incident Details'}
-                {currentStep === 3 && 'AI Analysis'}
+                {currentStep === 3 && 'Evidence Check'}
                 {currentStep === 4 && 'Review & Submit'}
                 {currentStep === 5 && 'Confirmation'}
               </span>
@@ -333,7 +336,7 @@ export const NewReportPage: React.FC = () => {
                 }`}>
                   {stepNum === 1 && '1. Photo'}
                   {stepNum === 2 && '2. Details'}
-                  {stepNum === 3 && '3. AI Scan'}
+                  {stepNum === 3 && '3. Evidence'}
                   {stepNum === 4 && '4. Review'}
                   {stepNum === 5 && '5. Success'}
                 </span>
@@ -645,22 +648,17 @@ export const NewReportPage: React.FC = () => {
               <div className="space-y-1">
                 <h2 className="text-lg font-bold text-navy-900 flex items-center gap-2">
                   <Sparkles className="w-5 h-5 text-teal-600" />
-                  Step 3: Evidence & Location Pre-check
+                  Step 3: Evidence & Location Validation
                 </h2>
                 <p className="text-xs text-slate-500">
-                  Review the uploaded evidence and location. The server runs the AI analysis once when you submit the report.
+                  Confirm that the photograph and coordinates are correct. The final submission runs the server-side analysis once and stores the results with your report.
                 </p>
               </div>
 
-              <button
-                type="button"
-                disabled={inspecting}
-                onClick={runQuickInspection}
-                className="px-3 py-1.5 rounded-lg border border-teal-200 bg-teal-50 hover:bg-teal-100 text-teal-800 text-xs font-bold flex items-center gap-1.5 self-start sm:self-auto transition-colors"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${inspecting ? 'animate-spin' : ''}`} />
-                <span>Re-run AI Analysis</span>
-              </button>
+              <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-600 text-xs font-semibold self-start sm:self-auto">
+                <ShieldCheck className="w-3.5 h-3.5 text-teal-600" />
+                <span>Pre-check complete · Analysis runs once on submit</span>
+              </span>
             </div>
 
             {/* Fast pre-flight checks — model inference runs once on final submission. */}
@@ -849,12 +847,37 @@ export const NewReportPage: React.FC = () => {
                 ✓ Report Successfully Saved in CivicLens.AI
               </span>
               <h2 className="text-xl sm:text-2xl font-black text-navy-900">
-                CivicLens Reference Generated • Ready for Official NMC Handoff
+CivicLens Report Created • Official NMC Registration Pending
               </h2>
               <p className="text-xs sm:text-sm text-slate-600 max-w-xl mx-auto leading-relaxed">
-                Your photograph has been analyzed by the ONNX computer vision engine. Review your report in Section A below, then continue to Nagpur Municipal Corporation's official portal in Section B to register your grievance.
+                Your CivicLens report has been processed and saved. The analysis engine and its operating mode are shown below. NMC registration is a separate, citizen-assisted step until an authorized government integration is available.
               </p>
             </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="bg-white border border-slate-200 rounded-xl p-4">
+                <span className="text-[10px] uppercase tracking-wider font-bold text-slate-500">Analysis engine</span>
+                <p className="mt-1 text-sm font-bold text-slate-900">{primaryAnalysis?.model_identifier || 'Analysis unavailable'}</p>
+                <span className={`mt-2 inline-flex rounded-full px-2 py-1 text-[10px] font-bold ${analysisIsDemo ? 'bg-amber-50 text-amber-800' : 'bg-emerald-50 text-emerald-800'}`}>
+                  {analysisIsDemo ? 'Research / heuristic mode' : 'ONNX model mode'}
+                </span>
+              </div>
+              <div className="bg-white border border-slate-200 rounded-xl p-4">
+                <span className="text-[10px] uppercase tracking-wider font-bold text-slate-500">Detected category</span>
+                <p className="mt-1 text-sm font-bold text-slate-900">{createdReport.predicted_damage_category || 'Pending'}</p>
+                <span className="text-xs text-slate-500">Confidence: {((createdReport.prediction_confidence || 0) * 100).toFixed(1)}%</span>
+              </div>
+              <div className="bg-white border border-slate-200 rounded-xl p-4">
+                <span className="text-[10px] uppercase tracking-wider font-bold text-slate-500">Severity / priority</span>
+                <p className="mt-1 text-sm font-bold text-slate-900">{Number(createdReport.severity_score || 0).toFixed(1)} / 100 · {createdReport.severity_level || 'Pending'}</p>
+                <span className="text-xs text-slate-500">Priority score: {Number(createdReport.priority_score || 0).toFixed(1)} / 100</span>
+              </div>
+            </div>
+            {analysisIsDemo && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs leading-relaxed text-amber-900">
+                <strong>Research-mode disclosure:</strong> This deployment is using the deterministic image-feature heuristic because trained ONNX weights are not loaded. Its category and confidence are experimental and must not be represented as validated deep-learning predictions.
+              </div>
+            )}
 
             <NMCHandoffCard
               report={createdReport}
