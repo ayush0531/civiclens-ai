@@ -6,7 +6,7 @@
 [![React](https://img.shields.io/badge/Frontend-React%2018%20%2B%20TypeScript-61DAFB.svg?logo=react)](https://react.dev)
 [![ONNX Runtime](https://img.shields.io/badge/Inference-ONNX%20Runtime%201.31.0-blue.svg)](https://onnxruntime.ai)
 [![YOLOv8](https://img.shields.io/badge/Model-YOLOv8--RDD2022-brightgreen.svg)](#deep-learning-architecture)
-[![Tests](https://img.shields.io/badge/Tests-16%20Passed%20(100%25)-emerald.svg)](backend/tests)
+[![Test Suite](https://img.shields.io/badge/Test%20Suite-In%20Repository-blue.svg)](backend/tests)
 [![Evaluation Pilot](https://img.shields.io/badge/Demonstration%20Target-Nagpur%20Municipal%20Corporation%20(NMC)-amber.svg)](#nagpur-demonstration-dataset)
 
 > **Demonstration Environment Notice:**  
@@ -106,7 +106,7 @@ final year project/
 │   │   │   ├── LandingPage.tsx       # Smart-city municipal overview, road-safety alert, dual CTAs
 │   │   │   ├── TrackComplaintPage.tsx# Dedicated 6-stage complaint tracking portal & audit log
 │   │   │   ├── NewReportPage.tsx     # 5-step citizen reporting wizard with instant AI scan
-│   │   │   ├── AuthPage.tsx          # JWT authentication with 1-click evaluator login
+│   │   │   ├── AuthPage.tsx          # JWT authentication and role-aware routing
 │   │   │   ├── CitizenDashboard.tsx  # Citizen report filing & tracking portal
 │   │   │   ├── AnalysisResultsPage.tsx # Bounding box list, latency telemetry, priority breakdown
 │   │   │   ├── InteractiveMapPage.tsx# Full-screen Leaflet map with DBSCAN cluster rings
@@ -116,7 +116,7 @@ final year project/
 │   │   │   ├── AnalyticsPage.tsx     # Recharts frequency distributions & temporal trends
 │   │   │   ├── AdminPage.tsx         # Configurable Priority Policy Weights Editor & User Roles
 │   │   │   └── AboutPage.tsx         # Capstone methodology, IRC standards, and Viva defense script
-│   │   ├── context/                  # AuthContext with 1-click evaluator role switcher
+│   │   ├── context/                  # AuthContext with token persistence and user session
 │   │   ├── services/api.ts           # Typed API client with complete backend endpoints
 │   │   └── types/index.ts            # Comprehensive TypeScript interfaces
 │   ├── package.json                  # NPM dependencies
@@ -226,15 +226,13 @@ Visit `http://localhost:8000` to interact with the fully assembled system.
 
 ---
 
-## 5. Evaluator Credentials for Live College Defense
+## 5. Demo Data, Accounts & Access Control
 
-The application includes an **Evaluator 1-Click Role Switcher** in the top navigation bar. Alternatively, log in using:
+Public self-registration creates **citizen** accounts only. Privileged municipal-authority and administrator roles must be provisioned through a controlled administrative process; they cannot be selected during public signup.
 
-| Role | Email | Password | Primary Capabilities |
-| :--- | :--- | :--- | :--- |
-| **Citizen** | `citizen@civiclens.ai` | `DemoPass123!` | Report road damage, view AI analysis overlays, track case status |
-| **Municipal Authority** | `authority@civiclens.ai` | `DemoPass123!` | Triage queue, filter DBSCAN hotspots, dispatch crews, verify repairs |
-| **System Administrator** | `admin@civiclens.ai` | `DemoPass123!` | Live Priority Policy Weights Editor, user management, reseed database |
+Synthetic Nagpur demonstration fixtures are disabled by default. To load synthetic fixtures in an isolated academic demo environment, explicitly set `SEED_DEMO_DATA=true` before starting with an empty database. Do not expose shared demo credentials on a public deployment. If an earlier deployment already contains seeded demo accounts, rotate or disable those accounts before public use; changing the seed flag does not remove existing database records.
+
+For a live evaluation, provision named evaluator accounts with unique passwords and share them privately with the panel. Do not use shared credentials from source code or documentation.
 
 ---
 
