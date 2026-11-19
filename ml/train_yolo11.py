@@ -9,13 +9,8 @@ from pathlib import Path
 os.environ["WANDB_MODE"] = "disabled"
 os.environ["WANDB_SILENT"] = "true"
 
-from ultralytics import YOLO, settings
+from ultralytics import YOLO
 
-try:
-    settings.update({"wandb": False})
-except Exception:
-    # The environment flag above remains the safe fallback across versions.
-    pass
 
 def main():
     ap = argparse.ArgumentParser()
@@ -30,8 +25,7 @@ def main():
     ap.add_argument("--weights", default="yolo11n.pt", help="Official Ultralytics pretrained initialization")
     args = ap.parse_args()
     if not args.data.is_file(): raise SystemExit(f"Dataset YAML missing: {args.data}. Run prepare_rdd2022.py first.")
-    # W&B is not required for reproducible local/Colab training.
-    settings.update({"wandb": False})
+    # W&B is disabled via WANDB_MODE before importing Ultralytics.
     model = YOLO(args.weights)
     train_args = dict(data=str(args.data), epochs=args.epochs, imgsz=args.imgsz,
         batch=args.batch, workers=args.workers, project=args.project, name=args.name,
