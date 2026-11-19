@@ -1,9 +1,16 @@
 #!/usr/bin/env python3
 """Train, evaluate, and export CivicLens YOLO11n on prepared RDD2022 India data."""
 from __future__ import annotations
-import argparse, json, shutil
+import argparse, json, os
 from pathlib import Path
+
+# Keep Ultralytics' optional W&B callback from treating the filesystem output
+# directory as a W&B project name (absolute paths contain forbidden slashes).
+os.environ["WANDB_MODE"] = "disabled"
+os.environ["WANDB_SILENT"] = "true"
+
 from ultralytics import YOLO
+
 
 def main():
     ap = argparse.ArgumentParser()
@@ -13,11 +20,12 @@ def main():
     ap.add_argument("--batch", type=int, default=16)
     ap.add_argument("--device", default="", help="0 for CUDA GPU, mps for Apple Silicon, cpu for CPU")
     ap.add_argument("--workers", type=int, default=8)
-    ap.add_argument("--project", default="ml/runs")
+    ap.add_argument("--project", default="runs")
     ap.add_argument("--name", default="civiclens-yolo11n-rdd2022-india")
     ap.add_argument("--weights", default="yolo11n.pt", help="Official Ultralytics pretrained initialization")
     args = ap.parse_args()
     if not args.data.is_file(): raise SystemExit(f"Dataset YAML missing: {args.data}. Run prepare_rdd2022.py first.")
+    # W&B is disabled via WANDB_MODE before importing Ultralytics.
     model = YOLO(args.weights)
     train_args = dict(data=str(args.data), epochs=args.epochs, imgsz=args.imgsz,
         batch=args.batch, workers=args.workers, project=args.project, name=args.name,
