@@ -25,6 +25,7 @@ jobs:
         env:
           ENVIRONMENT: test
           SEED_DEMO_DATA: "true"
+          DATABASE_URL: "sqlite:////tmp/civiclens-ci.db"
         run: python -m pytest backend/tests -q
 
   frontend-build:
