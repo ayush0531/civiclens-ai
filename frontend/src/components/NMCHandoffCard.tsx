@@ -47,6 +47,9 @@ export const NMCHandoffCard: React.FC<Props> = ({
   const pwdTollFree = "1800 233 0080";
   const pwdOfficialUrl = "https://pwd.maharashtra.gov.in/en/toll-free-numbers-for-registering-pothole-complaints-on-pwd-roads/";
 
+  const latestAnalysis = report.analyses?.length ? report.analyses[report.analyses.length - 1] : null;
+  const preflightOnly = !latestAnalysis || latestAnalysis.is_demo_result || latestAnalysis.analysis_metadata?.analysis_method === 'IMAGE_QUALITY_PREFLIGHT_ONLY';
+
   // Generate plain-text complaint summary
   const generateSummaryText = () => {
     const createdStr = new Date(report.created_at).toLocaleString('en-IN');
@@ -76,10 +79,10 @@ ${report.description || report.title || 'Road defect requiring maintenance.'}
 
 3. AI COMPUTER VISION TELEMETRY
 ------------------------------------------------------------
-Distress Category   : ${report.predicted_damage_category || 'Unanalyzed'}
-Model Softmax Conf  : ${(Number(report.prediction_confidence || 0) * 100).toFixed(1)}%
-Physical Severity   : ${Number(report.severity_score || 0).toFixed(1)}/100 (${report.severity_level || 'PENDING'})
-Maintenance Priority: ${Number(report.priority_score || 0).toFixed(1)}/100
+Distress Category   : ${preflightOnly ? 'NOT ASSESSED — validated detector unavailable' : (report.predicted_damage_category || 'Unanalyzed')}
+Model Confidence    : ${preflightOnly ? 'NOT AVAILABLE' : (Number(report.prediction_confidence || 0) * 100).toFixed(1) + '% (uncalibrated)'}
+Physical Severity   : ${preflightOnly ? 'NOT ASSESSED' : Number(report.severity_score || 0).toFixed(1) + '/100 (' + (report.severity_level || 'PENDING') + ')'}
+Maintenance Priority: ${preflightOnly ? 'NOT ASSIGNED' : Number(report.priority_score || 0).toFixed(1) + '/100'}
 
 4. OFFICIAL SUBMISSION INSTRUCTIONS
 ------------------------------------------------------------
@@ -190,7 +193,7 @@ State PWD Nagpur Regional Helpline: ${pwdTollFree}
 
           <div className="flex flex-col md:items-end gap-1.5 text-xs">
             <div className="flex items-center gap-2">
-              <span className="text-slate-400 text-[11px]">Internal Status:</span>
+              <span className="text-slate-400 text-[11px]">CivicLens Workflow:</span>
               <StatusBadge status={report.workflow_status || 'SAVED'} size="sm" />
             </div>
             <span className="text-[11px] text-slate-400 flex items-center gap-1 font-mono">
@@ -254,16 +257,22 @@ State PWD Nagpur Regional Helpline: ${pwdTollFree}
 
               {/* AI Telemetry Chips */}
               <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-teal-50 text-teal-800 border border-teal-200 font-semibold text-[11px]">
-                  <Sparkles className="w-3 h-3 text-teal-600" />
-                  <span>AI: {report.predicted_damage_category}</span>
-                  <span className="font-mono font-bold">({(Number(report.prediction_confidence || 0) * 100).toFixed(0)}%)</span>
+                {preflightOnly ? (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 text-amber-900 border border-amber-200 font-semibold text-[11px]">
+                    <Info className="w-3 h-3" />
+                    <span>AI detector: not available · image preflight only</span>
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-teal-50 text-teal-800 border border-teal-200 font-semibold text-[11px]">
+                    <Sparkles className="w-3 h-3 text-teal-600" />
+                    <span>Raw model score: {(Number(report.prediction_confidence || 0) * 100).toFixed(0)}% · uncalibrated</span>
+                  </span>
+                )}
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 border border-slate-200 text-[11px]">
+                  <span>Severity: {preflightOnly ? 'Not assessed' : Number(report.severity_score || 0).toFixed(0) + '/100'}</span>
                 </span>
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-50 text-rose-800 border border-rose-200 font-semibold text-[11px]">
-                  <span>Severity: {Number(report.severity_score || 0).toFixed(0)}/100</span>
-                </span>
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-800 border border-indigo-200 font-semibold text-[11px]">
-                  <span>Priority: {Number(report.priority_score || 0).toFixed(0)}/100</span>
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 border border-slate-200 text-[11px]">
+                  <span>Priority: {preflightOnly ? 'Not assigned' : Number(report.priority_score || 0).toFixed(0) + '/100'}</span>
                 </span>
                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 border border-slate-200 text-[11px]">
                   <span>Road: {report.road_classification || 'LOCAL'}</span>
