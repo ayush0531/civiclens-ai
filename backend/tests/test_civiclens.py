@@ -338,3 +338,64 @@ def test_record_external_reference_and_dual_status():
     assert "1800 233 0080" in text_content
 
 
+
+
+def test_anonymous_report_submission_does_not_require_fake_user():
+    """Anonymous reports must not create status rows with a made-up user ID."""
+    img = Image.new("RGB", (320, 240), color=(90, 90, 90))
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG")
+    buf.seek(0)
+
+    response = client.post(
+        "/api/v1/reports",
+        data={
+            "title": "Anonymous report foreign key regression",
+            "latitude": 21.1458,
+            "longitude": 79.0882,
+            "address_text": "Sitabuldi, Nagpur",
+            "auto_analyze": "false",
+        },
+        files={"image": ("anonymous-road.jpg", buf, "image/jpeg")},
+    )
+    assert response.status_code == 201, response.text
+    report = response.json()
+    assert report["reporter_id"] is None
+    assert report["workflow_status"] == "SUBMITTED"
+
+    # The report remains trackable even though no user account is attached.
+    tracked = client.get(f"/api/v1/reports/track/{report['reference_number']}")
+    assert tracked.status_code == 200, tracked.text
+    assert tracked.json()["reference_number"] == report["reference_number"]
+
+
+def test_anonymous_report_can_record_external_reference_without_fake_user():
+    """Recording a citizen-provided NMC reference must not invent changed_by_id."""
+    img = Image.new("RGB", (320, 240), color=(110, 110, 110))
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG")
+    buf.seek(0)
+
+    created = client.post(
+        "/api/v1/reports",
+        data={
+            "title": "Anonymous external reference regression",
+            "latitude": 21.1460,
+            "longitude": 79.0884,
+            "auto_analyze": "false",
+        },
+        files={"image": ("anonymous-reference.jpg", buf, "image/jpeg")},
+    )
+    assert created.status_code == 201, created.text
+    report_id = created.json()["id"]
+
+    updated = client.post(
+        f"/api/v1/reports/{report_id}/external-reference",
+        json={
+            "external_reference_id": f"NMC-TEST-{os.urandom(3).hex().upper()}",
+            "notes": "Citizen-provided reference; not independently verified.",
+            "road_jurisdiction": "NMC",
+        },
+    )
+    assert updated.status_code == 200, updated.text
+    assert updated.json()["external_submission_status"] == "CITIZEN_REPORTED_UNVERIFIED"
