@@ -49,7 +49,7 @@ python ml/train_yolo11.py --device 0 --epochs 100 --batch 16
 
 For Apple Silicon use `--device mps`; for CPU use `--device cpu --batch 4`.
 
-5. Inspect the generated confusion matrix, PR curve, per-class AP, validation plots, `evaluation_summary.json`, `best.pt`, and exported ONNX file under `ml/runs/civiclens-yolo11n-rdd2022-india/`.
+5. Inspect the generated confusion matrix, PR curve, per-class AP, validation plots, `evaluation_summary.json`, `best.pt`, and exported ONNX file under `runs/civiclens-yolo11n-rdd2022-india/`.
 
 ## Reproducibility and honest reporting
 
