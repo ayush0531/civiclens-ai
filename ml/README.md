@@ -75,3 +75,14 @@ Do not set `AI_MODEL_VALIDATED=true` or replace the production ONNX model until:
 4. per-class metrics and failure examples are recorded;
 5. an independent Nagpur field set is evaluated;
 6. the trained weights' provenance and licence are documented.
+
+
+## One-click Google Colab workflow
+
+Open the notebook in this repository:
+
+[`CivicLens_RDD2022_YOLO11_Training.ipynb`](CivicLens_RDD2022_YOLO11_Training.ipynb)
+
+In Colab, select **Runtime → Change runtime type → GPU**, then run the cells from top to bottom. It downloads the published RDD2022 archive, extracts the India-labelled subset, converts annotations, trains YOLO11n, evaluates a held-out split, and exports ONNX and PyTorch weights. The archive is large and the session needs sufficient disk space.
+
+The notebook is a reproducible execution environment, not proof that training has already run. Keep the downloaded dataset and trained weights out of Git unless you have checked the dataset redistribution terms and repository storage limits.
