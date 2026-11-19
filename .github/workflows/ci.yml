@@ -24,7 +24,7 @@ jobs:
       - name: Run backend tests
         env:
           ENVIRONMENT: test
-          SEED_DEMO_DATA: "false"
+          SEED_DEMO_DATA: "true"
         run: python -m pytest backend/tests -q
 
   frontend-build:
