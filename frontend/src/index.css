@@ -39,3 +39,58 @@
 .custom-marker-icon:hover {
   transform: scale(1.15);
 }
+
+
+/* CivicLens presentation polish: accessible, consistent application-wide defaults. */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    text-size-adjust: 100%;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    min-width: 320px;
+    min-height: 100vh;
+    font-feature-settings: "cv11", "ss01";
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    color: #134e4a;
+    background: rgba(45, 212, 191, 0.22);
+  }
+
+  :focus-visible {
+    outline: 3px solid rgba(13, 148, 136, 0.55);
+    outline-offset: 2px;
+  }
+
+  button, a, input, select, textarea {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  input, select, textarea {
+    max-width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* A quiet scrollbar keeps dense operational dashboards visually tidy. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}

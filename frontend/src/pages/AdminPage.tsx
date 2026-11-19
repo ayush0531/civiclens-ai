@@ -139,11 +139,9 @@ export const AdminPage: React.FC = () => {
           <p className="text-xs text-slate-500">
             You must be logged in with the <strong>admin</strong> role to inspect system settings and manage accounts.
           </p>
-          <div className="pt-2">
-            <span className="text-xs text-slate-400 block mb-2">Switch via Navbar Demo Switcher:</span>
-            <span className="font-mono text-xs font-bold text-teal-700 bg-teal-50 px-3 py-1 rounded border border-teal-200">
-              admin@civiclens.ai / DemoPass123!
-            </span>
+          <div className="pt-2 rounded-xl bg-slate-50 border border-slate-200 p-4 text-left">
+            <p className="text-xs font-semibold text-slate-700">Administrator accounts are provisioned privately.</p>
+            <p className="text-xs text-slate-500 mt-1">Public registration is limited to citizen accounts. Contact the project administrator to request authorized access.</p>
           </div>
         </div>
       </div>
