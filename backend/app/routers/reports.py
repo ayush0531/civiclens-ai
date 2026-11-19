@@ -177,14 +177,16 @@ def create_report(
             report.duplicate_confidence = top_dup["match_score"]
 
     # Initial Status History
-    status_entry = StatusHistory(
-        report_id=report.id,
-        previous_status="NONE",
-        new_status="SUBMITTED",
-        changed_by_id=reporter_id or 1,
-        notes="Citizen submitted damage report."
-    )
-    db.add(status_entry)
+    # Anonymous reports have no user foreign key. Do not fabricate user ID 1.
+    if reporter_id is not None:
+        status_entry = StatusHistory(
+            report_id=report.id,
+            previous_status="NONE",
+            new_status="SUBMITTED",
+            changed_by_id=reporter_id,
+            notes="Citizen submitted damage report."
+        )
+        db.add(status_entry)
 
     # Optional Auto-Analysis
     if auto_analyze:
@@ -399,15 +401,16 @@ def record_external_reference(
     if report.workflow_status in ["SAVED", "SUBMITTED", "AWAITING_OFFICIAL_REGISTRATION"]:
         report.workflow_status = "OFFICIAL_REFERENCE_RECORDED"
 
-    # Status History entry
-    status_entry = StatusHistory(
-        report_id=report.id,
-        previous_status=prev_wf,
-        new_status=report.workflow_status,
-        changed_by_id=report.reporter_id or 1,
-        notes=f"Citizen recorded official complaint reference: {ref_clean} (Status: Registration reported by citizen — unverified)"
-    )
-    db.add(status_entry)
+    # Status History entry. Anonymous reports must not reference a fabricated user.
+    if report.reporter_id is not None:
+        status_entry = StatusHistory(
+            report_id=report.id,
+            previous_status=prev_wf,
+            new_status=report.workflow_status,
+            changed_by_id=report.reporter_id,
+            notes=f"Citizen recorded official complaint reference: {ref_clean} (Status: Registration reported by citizen — unverified)"
+        )
+        db.add(status_entry)
 
     # Audit Log
     audit = AuditLog(
