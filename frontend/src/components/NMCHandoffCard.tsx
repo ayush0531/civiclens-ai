@@ -303,93 +303,54 @@ State PWD Nagpur Regional Helpline: ${pwdTollFree}
       </div>
 
       {/* ========================================================= */}
-      {/* SECTION B: SUBMIT THROUGH OFFICIAL NMC CHANNELS */}
+      {/* SECTION B: AUTHORIZED GOVERNMENT INTEGRATION STATUS */}
       {/* ========================================================= */}
-      <div className="bg-white rounded-2xl border-2 border-teal-600 shadow-md p-6 sm:p-8 space-y-6">
-        
-        {/* Prominent Official Action Header */}
-        <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 pb-4 border-b border-slate-100">
+      <section className="rounded-2xl border border-amber-200 bg-white p-6 shadow-sm sm:p-8 space-y-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-2">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-100 text-teal-900 text-xs font-extrabold uppercase tracking-wider">
-              <Building2 className="w-3.5 h-3.5 text-teal-700" />
-              <span>Section B • Official Government Channel</span>
-            </div>
-            <h2 className="text-xl sm:text-2xl font-black text-navy-900 tracking-tight">
-              NEXT STEP: REGISTER YOUR COMPLAINT WITH NMC
+            <span className="inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-amber-800">
+              <ShieldAlert className="h-3.5 w-3.5" /> Government integration status
+            </span>
+            <h2 className="text-xl font-black tracking-tight text-slate-950 sm:text-2xl">
+              CivicLens report saved · NMC registration pending
             </h2>
-            <p className="text-xs sm:text-sm text-slate-600 max-w-2xl leading-relaxed">
-              Your report has been saved in CivicLens.AI. To register it with Nagpur Municipal Corporation, continue to the official complaint portal and complete its required verification and submission steps.
+            <p className="max-w-2xl text-sm leading-6 text-slate-600">
+              CivicLens has completed its own report workflow. This deployment does not have an authorized NMC API connection, so it cannot submit the grievance, complete OTP verification, or retrieve an official government acknowledgement on your behalf.
             </p>
           </div>
+          <span className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-900">
+            <span className="h-2 w-2 rounded-full bg-amber-500" /> Citizen action required
+          </span>
+        </div>
 
-          {/* Primary External Button */}
-          <div className="shrink-0 flex flex-col items-start md:items-end gap-1.5">
-            <a
-              href={officialPortalUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-6 py-3.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-extrabold text-sm shadow-md shadow-teal-600/25 flex items-center gap-2 transition-all hover:scale-[1.02] whitespace-nowrap"
-            >
-              <span>Continue to Official NMC Complaint Portal</span>
-              <ExternalLink className="w-4 h-4" />
-            </a>
-            <span className="text-[10px] text-slate-400 font-mono">
-              Opens: nmcnagpur.gov.in (External Government Portal)
-            </span>
+        <div className="grid gap-3 md:grid-cols-3">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">1 · CivicLens</span>
+            <p className="mt-1 text-sm font-bold text-slate-900">Analysis and case record</p>
+            <p className="mt-1 text-xs leading-5 text-slate-600">Image analysis, location, severity and internal reference are stored in this application.</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">2 · Official channel</span>
+            <p className="mt-1 text-sm font-bold text-slate-900">Citizen-assisted registration</p>
+            <p className="mt-1 text-xs leading-5 text-slate-600">Open NMC's portal separately and complete the verification and submission required by the authority.</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">3 · Link records</span>
+            <p className="mt-1 text-sm font-bold text-slate-900">Record the official reference</p>
+            <p className="mt-1 text-xs leading-5 text-slate-600">Enter the reference issued by NMC below. CivicLens labels citizen-entered references as unverified.</p>
           </div>
         </div>
 
-        {/* Step-by-Step Citizen Checklist */}
-        <div className="p-4 sm:p-5 rounded-2xl bg-teal-50/60 border border-teal-200/80 space-y-3">
-          <div className="flex items-center justify-between">
-            <h4 className="text-xs font-black uppercase tracking-wider text-teal-900 flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-teal-700" />
-              Official NMC Submission Checklist:
-            </h4>
-            <span className="text-[11px] text-teal-800 font-medium">Follow these steps on the NMC portal</span>
+        <div className="flex flex-col gap-3 rounded-xl border border-teal-200 bg-teal-50/60 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-bold text-teal-950">Ready to use the official NMC channel?</p>
+            <p className="mt-1 text-xs text-teal-900">Your CivicLens record remains available here. The link opens the government website in a separate tab.</p>
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 text-xs">
-            <div className="p-3 bg-white rounded-xl border border-teal-200 shadow-2xs space-y-1">
-              <span className="w-5 h-5 rounded-full bg-teal-600 text-white font-bold text-[10px] flex items-center justify-center">1</span>
-              <p className="font-bold text-slate-800">Keep Photo Ready</p>
-              <p className="text-[11px] text-slate-500 leading-snug">Have your road-defect photograph accessible on your device.</p>
-            </div>
-
-            <div className="p-3 bg-white rounded-xl border border-teal-200 shadow-2xs space-y-1">
-              <span className="w-5 h-5 rounded-full bg-teal-600 text-white font-bold text-[10px] flex items-center justify-center">2</span>
-              <p className="font-bold text-slate-800">Enter Location</p>
-              <p className="text-[11px] text-slate-500 leading-snug">Paste the road location & landmark copied from Section A above.</p>
-            </div>
-
-            <div className="p-3 bg-white rounded-xl border border-teal-200 shadow-2xs space-y-1">
-              <span className="w-5 h-5 rounded-full bg-teal-600 text-white font-bold text-[10px] flex items-center justify-center">3</span>
-              <p className="font-bold text-slate-800">Complete OTP</p>
-              <p className="text-[11px] text-slate-500 leading-snug">NMC verifies complaints via SMS OTP sent to your mobile phone.</p>
-            </div>
-
-            <div className="p-3 bg-white rounded-xl border border-teal-200 shadow-2xs space-y-1">
-              <span className="w-5 h-5 rounded-full bg-teal-600 text-white font-bold text-[10px] flex items-center justify-center">4</span>
-              <p className="font-bold text-slate-800">Submit on NMC</p>
-              <p className="text-[11px] text-slate-500 leading-snug">Click Submit on the official Nagpur Municipal Corporation website.</p>
-            </div>
-
-            <div className="p-3 bg-white rounded-xl border border-teal-200 shadow-2xs space-y-1">
-              <span className="w-5 h-5 rounded-full bg-teal-600 text-white font-bold text-[10px] flex items-center justify-center">5</span>
-              <p className="font-bold text-slate-800">Save Reference</p>
-              <p className="text-[11px] text-slate-500 leading-snug">Copy the official NMC number and record it in Section C below.</p>
-            </div>
-          </div>
-
-          <div className="pt-1 text-[11px] text-teal-900 bg-white/70 p-2.5 rounded-lg border border-teal-200 flex items-start gap-2">
-            <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
-            <span>
-              <strong>Crucial Transparency Rule:</strong> Saving a report in CivicLens.AI does <em>not</em> automatically register a complaint with NMC. You must complete the mobile verification on NMC's official portal.
-            </span>
-          </div>
+          <a href={officialPortalUrl} target="_blank" rel="noopener noreferrer" className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-teal-700 px-5 py-3 text-xs font-extrabold text-white transition hover:bg-teal-800">
+            Open NMC grievance portal <ExternalLink className="h-4 w-4" />
+          </a>
         </div>
-
-      </div>
+      </section>
 
       {/* ========================================================= */}
       {/* SECTION C: CITIZEN OFFICIAL REFERENCE RECORDING FORM */}
