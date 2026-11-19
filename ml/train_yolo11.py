@@ -30,7 +30,9 @@ def main():
     ap.add_argument("--weights", default="yolo11n.pt", help="Official Ultralytics pretrained initialization")
     args = ap.parse_args()
     if not args.data.is_file(): raise SystemExit(f"Dataset YAML missing: {args.data}. Run prepare_rdd2022.py first.")
-    # W&B is not required for reproducible local/Colab training.\n    settings.update({"wandb": False})\n    model = YOLO(args.weights)
+    # W&B is not required for reproducible local/Colab training.
+    settings.update({"wandb": False})
+    model = YOLO(args.weights)
     train_args = dict(data=str(args.data), epochs=args.epochs, imgsz=args.imgsz,
         batch=args.batch, workers=args.workers, project=args.project, name=args.name,
         pretrained=True, patience=20, seed=42, deterministic=True, plots=True,
