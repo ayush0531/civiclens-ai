@@ -95,11 +95,12 @@ class AIInferenceService:
             "input_resolution": [640, 640],
             "supported_classes": TAXONOMY_CLASSES,
             "disclaimer": (
-                "DEMO ANALYSIS — NOT A VALIDATED AI PREDICTION. "
-                "Feature metrics are preliminary heuristics designed for workflow evaluation."
+                "RESEARCH / HEURISTIC MODE — NOT A VALIDATED AI PREDICTION. "
+                "Image-feature rules are experimental and require evaluation on a held-out, labelled dataset."
                 if self.is_demo_mode()
-                else "Validated model inference based on trained road damage detector running via ONNX Runtime."
-            )
+                else "ONNX Runtime inference is configured. Model accuracy and real-world performance have not been independently validated by this deployment."
+            ),
+            "benchmark_notice": "The evaluation laboratory currently contains illustrative reference metrics, not verified measurements from a reproducible held-out test run."
         }
 
     def analyze_image(self, image_path: str, output_annotated_path: Optional[str] = None) -> Dict[str, Any]:
@@ -407,10 +408,12 @@ class AIInferenceService:
 
     def get_evaluation_laboratory_benchmarks(self) -> Dict[str, Any]:
         """
-        Returns structured empirical evaluation metrics for the Model Evaluation Laboratory.
-        Benchmarked on RDD2022 India validation subset (1,986 images).
+        Returns illustrative research-reference values for the Model Evaluation Laboratory.
+        These values are not a verified benchmark and must not be presented as measured model performance.
         """
         return {
+            "evaluation_status": "ILLUSTRATIVE_NOT_VALIDATED",
+            "evaluation_notice": "Values on this page are illustrative research references only. No reproducible held-out evaluation report or ground-truth test manifest is bundled with this deployment. Do not cite these values as measured model performance.",
             "model_metadata": {
                 "architecture": "YOLOv8-Nano (Anchor-Free Object Detection)",
                 "framework": "ONNX Runtime v1.31.0",
