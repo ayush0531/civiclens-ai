@@ -4,7 +4,7 @@ import { ShieldCheck, LogIn, UserPlus, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export const AuthPage: React.FC = () => {
-  const { login, register, user } = useAuth();
+  const { login, register } = useAuth();
   const navigate = useNavigate();
 
   const [isLoginTab, setIsLoginTab] = useState(true);
@@ -20,15 +20,13 @@ export const AuthPage: React.FC = () => {
     setSubmitting(true);
 
     try {
-      if (isLoginTab) {
-        await login(email, password);
-      } else {
-        await register({ name, email, password });
-      }
+      const authenticatedUser = isLoginTab
+        ? await login(email, password)
+        : await register({ name, email, password });
 
       // Route using the role returned by the authenticated API response.
-      if (user?.role === 'admin') navigate('/admin');
-      else if (user?.role === 'authority') navigate('/authority');
+      if (authenticatedUser.role === 'admin') navigate('/admin');
+      else if (authenticatedUser.role === 'authority') navigate('/authority');
       else navigate('/citizen');
     } catch (err: any) {
       setError(err.message || 'Authentication failed. Please verify credentials.');
