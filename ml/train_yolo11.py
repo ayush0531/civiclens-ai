@@ -25,7 +25,7 @@ def main():
     ap.add_argument("--batch", type=int, default=16)
     ap.add_argument("--device", default="", help="0 for CUDA GPU, mps for Apple Silicon, cpu for CPU")
     ap.add_argument("--workers", type=int, default=8)
-    ap.add_argument("--project", default="ml/runs")
+    ap.add_argument("--project", default="runs")
     ap.add_argument("--name", default="civiclens-yolo11n-rdd2022-india")
     ap.add_argument("--weights", default="yolo11n.pt", help="Official Ultralytics pretrained initialization")
     args = ap.parse_args()
