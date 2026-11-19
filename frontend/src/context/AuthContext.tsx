@@ -7,7 +7,7 @@ interface AuthContextType {
   token: string | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (data: { name: string; email: string; password: string; role?: string; department?: string }) => Promise<void>;
+  register: (data: { name: string; email: string; password: string; department?: string }) => Promise<void>;
   quickDemoLogin: (role: UserRole) => Promise<void>;
   logout: () => void;
 }
