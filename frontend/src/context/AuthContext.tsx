@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, UserRole } from '../types';
+import { User } from '../types';
 import { api } from '../services/api';
 
 interface AuthContextType {
@@ -8,7 +8,6 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (data: { name: string; email: string; password: string; department?: string }) => Promise<void>;
-  quickDemoLogin: (role: UserRole) => Promise<void>;
   logout: () => void;
 }
 
@@ -63,16 +62,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const quickDemoLogin = async (role: UserRole) => {
-    const demoAccounts: Record<UserRole, { email: string; pass: string }> = {
-      citizen: { email: 'citizen@civiclens.ai', pass: 'DemoPass123!' },
-      authority: { email: 'authority@civiclens.ai', pass: 'DemoPass123!' },
-      admin: { email: 'admin@civiclens.ai', pass: 'DemoPass123!' },
-    };
 
-    const target = demoAccounts[role];
-    await login(target.email, target.pass);
-  };
 
   const logout = () => {
     localStorage.removeItem('civiclens_token');
@@ -81,7 +71,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, register, quickDemoLogin, logout }}>
+    <AuthContext.Provider value={{ user, token, isLoading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );
