@@ -53,7 +53,7 @@ def test_user_registration_and_login():
     assert reg_data["user"]["email"] == test_email
 
     # Successful login
-    login_res = client.post("/api/v1/auth/login", json={"email": test_email, "password": "Password123!"})
+    login_res = client.post("/api/v1/auth/login", json={"email": test_email, "password": "Password123!Secure"})
     assert login_res.status_code == 200
     assert "access_token" in login_res.json()
 
