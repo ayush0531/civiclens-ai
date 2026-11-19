@@ -6,8 +6,8 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (data: { name: string; email: string; password: string; department?: string }) => Promise<void>;
+  login: (email: string, password: string) => Promise<User>;
+  register: (data: { name: string; email: string; password: string; department?: string }) => Promise<User>;
   logout: () => void;
 }
 
@@ -45,6 +45,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.setItem('civiclens_token', res.access_token);
       setToken(res.access_token);
       setUser(res.user);
+      return res.user;
     } finally {
       setIsLoading(false);
     }
