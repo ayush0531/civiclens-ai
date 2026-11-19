@@ -46,38 +46,56 @@ class AIInferenceService:
     """
 
     def __init__(self):
-        self.mode = settings.AI_INFERENCE_MODE.upper()
+        self.requested_mode = settings.AI_INFERENCE_MODE.upper()
+        self.mode = "DEMO"
         self.weights_path = settings.AI_ONNX_MODEL_PATH
-        self.has_onnx_weights = os.path.exists(self.weights_path)
+        self.model_artifact_bytes = os.path.getsize(self.weights_path) if os.path.isfile(self.weights_path) else 0
+        # The checked-in artifact is ~62 KB, far below the repository's claimed
+        # 4.8 MB trained model. Treat it as incomplete until replaced and verified.
+        self.artifact_looks_complete = self.model_artifact_bytes >= 1024 * 1024
+        self.model_validation_approved = os.getenv("AI_MODEL_VALIDATED", "false").lower() == "true"
+        self.has_onnx_weights = self.artifact_looks_complete and self.model_validation_approved
         self.onnx_session: Optional[ort.InferenceSession] = None
         self.providers: List[str] = []
+        self.model_validation_status = "NOT_VALIDATED"
+        self.model_validation_reason = "No reproducible held-out evaluation report and ground-truth manifest are bundled."
 
         if self.has_onnx_weights:
             try:
-                # Initialize ONNX Runtime session
                 opts = ort.SessionOptions()
                 opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
                 self.onnx_session = ort.InferenceSession(self.weights_path, sess_options=opts)
                 self.providers = self.onnx_session.get_providers()
-                self.model_name = "CivicLens-YOLOv8-RDD2022 (ONNX Deep Learning Engine)"
+                self.model_name = "CivicLens road-defect ONNX model (operator-approved)"
                 self.model_version = "2.0.0"
+                self.mode = "REAL"
+                self.model_validation_status = "OPERATOR_APPROVED_NOT_INDEPENDENTLY_VERIFIED"
+                self.model_validation_reason = "Operator approval is configured; independent benchmark verification is still required."
             except Exception as e:
-                print(f"[CivicLens AI 2.0] ONNX initialization notice: {e}")
+                print(f"[CivicLens AI] ONNX initialization failed: {e}")
                 self.has_onnx_weights = False
-                self.mode = "DEMO"
-                self.model_name = "CivicLens-EdgeCV-v2.0 (Deterministic Heuristic Engine)"
-                self.model_version = "2.0.0"
+                self.model_validation_status = "MODEL_LOAD_FAILED"
+                self.model_validation_reason = str(e)
         else:
             self.mode = "DEMO"
-            self.model_name = "CivicLens-EdgeCV-v2.0 (Deterministic Heuristic Engine)"
+            self.model_name = "CivicLens image quality screening (research mode)"
             self.model_version = "2.0.0"
+            if not self.model_artifact_bytes:
+                self.model_validation_status = "MODEL_ARTIFACT_MISSING"
+                self.model_validation_reason = "No ONNX model artifact was found in the configured path."
+            elif not self.artifact_looks_complete:
+                self.model_validation_status = "MODEL_ARTIFACT_INCOMPLETE"
+                self.model_validation_reason = f"ONNX artifact is only {self.model_artifact_bytes} bytes; it is not accepted as the claimed trained detector."
+            elif not self.model_validation_approved:
+                self.model_validation_status = "MODEL_NOT_APPROVED"
+                self.model_validation_reason = "Set AI_MODEL_VALIDATED=true only after reviewing model provenance and a reproducible evaluation report."
 
     def is_demo_mode(self) -> bool:
         return self.mode != "REAL" or self.onnx_session is None
 
     def set_mode(self, mode: str):
         mode_upper = mode.upper()
-        if mode_upper == "REAL" and self.onnx_session is not None:
+        if mode_upper == "REAL" and self.onnx_session is not None and self.model_validation_approved:
             self.mode = "REAL"
             self.model_name = "CivicLens-YOLOv8-RDD2022 (ONNX Deep Learning Engine)"
         else:
@@ -90,7 +108,11 @@ class AIInferenceService:
             "is_demo_mode": self.is_demo_mode(),
             "model_name": self.model_name,
             "model_version": self.model_version,
-            "weights_present": self.has_onnx_weights,
+            "weights_present": self.model_artifact_bytes > 0,
+            "model_artifact_size_bytes": self.model_artifact_bytes,
+            "model_validation_status": self.model_validation_status,
+            "model_validation_reason": self.model_validation_reason,
+            "model_validation_approved": self.model_validation_approved,
             "execution_providers": self.providers if self.providers else ["CPUExecutionProvider"],
             "input_resolution": [640, 640],
             "supported_classes": TAXONOMY_CLASSES,
@@ -100,7 +122,7 @@ class AIInferenceService:
                 if self.is_demo_mode()
                 else "ONNX Runtime inference is configured. Model accuracy and real-world performance have not been independently validated by this deployment."
             ),
-            "benchmark_notice": "The evaluation laboratory currently contains illustrative reference metrics, not verified measurements from a reproducible held-out test run."
+            "benchmark_notice": "No verified benchmark is available. Accuracy, precision, recall, mAP and latency must not be represented as validated results."
         }
 
     def analyze_image(self, image_path: str, output_annotated_path: Optional[str] = None) -> Dict[str, Any]:
@@ -142,8 +164,8 @@ class AIInferenceService:
             predicted_category = primary_detection["label"]
             prediction_confidence = primary_detection["confidence"]
         else:
-            predicted_category = "Surface deterioration"
-            prediction_confidence = 0.50
+            predicted_category = "Other / uncertain"
+            prediction_confidence = 0.0
 
         engine_info = self.get_engine_info()
 
@@ -226,7 +248,7 @@ class AIInferenceService:
             w = max(45.0, min(float(orig_w) * 0.50, bw))
             h = max(35.0, min(float(orig_h) * 0.45, bh))
 
-            conf = round(float(np.clip(max_class_scores[idx], 0.70, 0.96)), 2)
+            conf = round(float(max_class_scores[idx]), 4)
 
             detections.append({
                 "x": round(x, 1),
@@ -251,68 +273,31 @@ class AIInferenceService:
 
     def _run_feature_based_demo_analysis(self, img: Image.Image, image_path: str) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
         """
-        Deterministic image morphology fallback for demonstration mode.
+        Non-diagnostic image preflight only. It deliberately does not invent
+        defect classes, bounding boxes, or confidence values.
         """
-        width, height = img.size
         gray = img.convert("L")
-        
         edges = gray.filter(ImageFilter.FIND_EDGES)
-        edge_stat = ImageStat.Stat(edges)
-        edge_mean = edge_stat.mean[0]
-        
-        stat = ImageStat.Stat(gray)
-        luminance_mean = stat.mean[0]
-        luminance_stddev = stat.stddev[0]
-        
-        file_hash = hashlib.md5(img.tobytes()[:2048]).hexdigest()
-        hash_val = int(file_hash[:8], 16)
-
-        if edge_mean > 28.0 and luminance_stddev > 45.0:
-            primary_label = "Pothole"
-            secondary_label = "Alligator cracking"
-        elif edge_mean > 20.0:
-            primary_label = "Alligator cracking"
-            secondary_label = "Transverse crack"
-        elif edge_mean > 12.0:
-            primary_label = "Longitudinal crack"
-            secondary_label = "Transverse crack"
-        elif luminance_stddev > 30.0:
-            primary_label = "Surface deterioration"
-            secondary_label = "Other / uncertain"
-        else:
-            categories_fallback = ["Pothole", "Longitudinal crack", "Transverse crack", "Surface deterioration"]
-            primary_label = categories_fallback[hash_val % len(categories_fallback)]
-            secondary_label = "Surface deterioration"
-
-        num_boxes = 1 + (hash_val % 3)
-        detections = []
-        
-        for i in range(num_boxes):
-            label = primary_label if i == 0 else secondary_label
-            box_w = max(40.0, min(float(width) * 0.45, float(width) * 0.25))
-            box_h = max(30.0, min(float(height) * 0.40, float(height) * 0.20))
-            
-            box_x = float(width) * 0.25 + (i * 40.0)
-            box_y = float(height) * 0.40 + (i * 30.0)
-            conf = round(0.75 + (i * 0.08), 2)
-            
-            detections.append({
-                "x": round(box_x, 1),
-                "y": round(box_y, 1),
-                "width": round(box_w, 1),
-                "height": round(box_h, 1),
-                "label": label,
-                "confidence": conf
-            })
-
+        edge_mean = ImageStat.Stat(edges).mean[0]
+        luminance = ImageStat.Stat(gray)
+        width, height = img.size
+        edge_variance = float(np.var(np.asarray(edges, dtype=np.float32)))
+        file_bytes = os.path.getsize(image_path) if os.path.isfile(image_path) else 0
+        quality_status = "PASS" if min(width, height) >= 160 and file_bytes <= settings.MAX_UPLOAD_SIZE_BYTES else "REVIEW"
         metadata = {
+            "analysis_method": "IMAGE_QUALITY_PREFLIGHT_ONLY",
+            "quality_status": quality_status,
+            "image_width": width,
+            "image_height": height,
+            "file_size_bytes": file_bytes,
             "edge_gradient_mean": round(edge_mean, 2),
-            "luminance_mean": round(luminance_mean, 2),
-            "luminance_stddev": round(luminance_stddev, 2),
-            "evaluation_notice": "Features computed via PIL image morphology. Not trained deep learning weights."
+            "edge_variance": round(edge_variance, 2),
+            "luminance_mean": round(luminance.mean[0], 2),
+            "luminance_stddev": round(luminance.stddev[0], 2),
+            "detector_available": False,
+            "evaluation_notice": "No validated trained detector is active. This preflight does not identify potholes, draw detections, or estimate calibrated confidence."
         }
-        
-        return detections, metadata
+        return [], metadata
 
     def calculate_severity(self, detections: List[Dict[str, Any]], img_width: int, img_height: int) -> Dict[str, Any]:
         """
@@ -321,14 +306,14 @@ class AIInferenceService:
         """
         if not detections:
             return {
-                "score": 15.0,
-                "level": "LOW",
+                "score": 0.0,
+                "level": "PENDING",
                 "breakdown": {
                     "area_ratio_score": 0.0,
                     "count_score": 0.0,
-                    "class_factor_score": 30.0,
+                    "class_factor_score": 0.0,
                     "occupied_area_pct": 0.0,
-                    "method": "Baseline heuristic floor"
+                    "method": "Not calculated: no validated defect detections are available"
                 }
             }
 
@@ -407,112 +392,37 @@ class AIInferenceService:
         annotated.save(output_path, quality=94)
 
     def get_evaluation_laboratory_benchmarks(self) -> Dict[str, Any]:
-        """
-        Returns illustrative research-reference values for the Model Evaluation Laboratory.
-        These values are not a verified benchmark and must not be presented as measured model performance.
-        """
+        """Return validation state; never invent benchmark scores."""
         return {
-            "evaluation_status": "ILLUSTRATIVE_NOT_VALIDATED",
-            "evaluation_notice": "Values on this page are illustrative research references only. No reproducible held-out evaluation report or ground-truth test manifest is bundled with this deployment. Do not cite these values as measured model performance.",
+            "evaluation_status": "NOT_VALIDATED",
+            "evaluation_notice": (
+                "No reproducible held-out evaluation run, labelled ground-truth manifest, "
+                "or verified model provenance is bundled with this deployment. Benchmark "
+                "metrics are therefore unavailable and are intentionally not displayed."
+            ),
             "model_metadata": {
-                "architecture": "YOLOv8-Nano (Anchor-Free Object Detection)",
-                "framework": "ONNX Runtime v1.31.0",
-                "weights_file": "road_damage_yolo.onnx",
-                "dataset_name": "RDD2022 (Crowd-sourced Road Damage Dataset - India Subset)",
-                "dataset_size_images": 13240,
-                "validation_size_images": 1986,
-                "input_resolution": "640x640",
-                "quantization": "FP32",
-                "training_epochs": 50,
-                "batch_size": 16,
-                "evaluation_date": "2025-Q1"
+                "architecture": "Not verified",
+                "framework": "ONNX Runtime",
+                "weights_file": os.path.basename(self.weights_path),
+                "model_artifact_size_bytes": self.model_artifact_bytes,
+                "dataset_name": "Not supplied",
+                "dataset_size_images": None,
+                "validation_size_images": None,
+                "input_resolution": "640x640 (configured pipeline; model contract not validated)",
+                "quantization": "Unknown",
+                "training_epochs": None,
+                "batch_size": None,
+                "evaluation_date": None
             },
             "overall_metrics": {
-                "map_50": 0.742,
-                "map_50_95": 0.518,
-                "precision": 0.784,
-                "recall": 0.712,
-                "f1_score": 0.746,
-                "mean_latency_ms": 14.8,
-                "p90_latency_ms": 18.2,
-                "p99_latency_ms": 24.5,
-                "fps_cpu": 67.5,
-                "model_size_mb": 4.8
+                "map_50": None, "map_50_95": None, "precision": None,
+                "recall": None, "f1_score": None, "mean_latency_ms": None,
+                "p90_latency_ms": None, "p99_latency_ms": None,
+                "fps_cpu": None, "model_size_mb": None
             },
-            "per_class_metrics": [
-                {
-                    "class_name": "Pothole",
-                    "code": "D40",
-                    "samples": 3412,
-                    "precision": 0.832,
-                    "recall": 0.791,
-                    "f1_score": 0.811,
-                    "map_50": 0.824
-                },
-                {
-                    "class_name": "Alligator cracking",
-                    "code": "D20",
-                    "samples": 2840,
-                    "precision": 0.765,
-                    "recall": 0.710,
-                    "f1_score": 0.736,
-                    "map_50": 0.751
-                },
-                {
-                    "class_name": "Transverse crack",
-                    "code": "D10",
-                    "samples": 2190,
-                    "precision": 0.748,
-                    "recall": 0.684,
-                    "f1_score": 0.714,
-                    "map_50": 0.719
-                },
-                {
-                    "class_name": "Longitudinal crack",
-                    "code": "D00",
-                    "samples": 2680,
-                    "precision": 0.758,
-                    "recall": 0.695,
-                    "f1_score": 0.725,
-                    "map_50": 0.732
-                },
-                {
-                    "class_name": "Surface deterioration",
-                    "code": "D30",
-                    "samples": 1420,
-                    "precision": 0.712,
-                    "recall": 0.640,
-                    "f1_score": 0.674,
-                    "map_50": 0.685
-                },
-                {
-                    "class_name": "Other / uncertain",
-                    "code": "D99",
-                    "samples": 698,
-                    "precision": 0.689,
-                    "recall": 0.590,
-                    "f1_score": 0.635,
-                    "map_50": 0.641
-                }
-            ],
-            "confusion_matrix": {
-                "classes": ["Pothole", "Alligator", "Transverse", "Longitudinal", "Surface", "Background"],
-                "matrix": [
-                    [0.82, 0.05, 0.02, 0.02, 0.04, 0.05],
-                    [0.06, 0.76, 0.05, 0.04, 0.05, 0.04],
-                    [0.02, 0.04, 0.74, 0.09, 0.04, 0.07],
-                    [0.03, 0.05, 0.08, 0.75, 0.03, 0.06],
-                    [0.05, 0.07, 0.03, 0.04, 0.71, 0.10],
-                    [0.08, 0.06, 0.05, 0.07, 0.09, 0.65]
-                ]
-            },
-            "training_history": [
-                {"epoch": 10, "box_loss": 0.068, "cls_loss": 0.082, "map_50": 0.485},
-                {"epoch": 20, "box_loss": 0.051, "cls_loss": 0.058, "map_50": 0.612},
-                {"epoch": 30, "box_loss": 0.042, "cls_loss": 0.044, "map_50": 0.689},
-                {"epoch": 40, "box_loss": 0.036, "cls_loss": 0.035, "map_50": 0.725},
-                {"epoch": 50, "box_loss": 0.031, "cls_loss": 0.029, "map_50": 0.742}
-            ]
+            "per_class_metrics": [],
+            "confusion_matrix": {"classes": [], "matrix": []},
+            "training_history": []
         }
 
 ai_service = AIInferenceService()

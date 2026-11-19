@@ -86,8 +86,8 @@ export const AnalysisResultsPage: React.FC = () => {
       <div className="flex-1 flex items-center justify-center p-12 bg-slate-50">
         <div className="text-center space-y-3">
           <div className="w-10 h-10 border-3 border-teal-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="text-sm font-semibold text-slate-700">Executing Deep Learning Defect Analysis...</p>
-          <p className="text-xs text-slate-400">Evaluating ONNX tensor graph, decoding anchors, and computing priority factors</p>
+          <p className="text-sm font-semibold text-slate-700">Loading report and stored analysis diagnostics...</p>
+          <p className="text-xs text-slate-400">Retrieving recorded inference mode, image evidence and priority breakdown</p>
         </div>
       </div>
     );
@@ -190,15 +190,14 @@ export const AnalysisResultsPage: React.FC = () => {
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <h4 className="text-xs font-bold text-emerald-950 uppercase tracking-wide">
-                  Validated Deep Learning Inference (ONNX Runtime)
+                  ONNX runtime configured · validation pending
                 </h4>
                 <span className="text-[10px] font-mono font-bold bg-emerald-200 text-emerald-900 px-1.5 py-0.2 rounded">
                   {latestAnalysis?.model_identifier}
                 </span>
               </div>
               <p className="text-xs text-emerald-900 leading-relaxed">
-                Evaluated through YOLOv8-RDD2022 graph on CPUExecutionProvider in <strong>{latestAnalysis?.inference_duration_ms} ms</strong>.
-                Non-maximum suppression applied with IoU threshold 0.45.
+                The ONNX artifact and inference pipeline have not passed reproducible model validation. Runtime configuration is not proof of detection accuracy.
               </p>
             </div>
           </div>
@@ -322,13 +321,13 @@ export const AnalysisResultsPage: React.FC = () => {
             </div>
             <div className="pt-2 border-t border-slate-100 space-y-1">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-500">Detection Confidence</span>
-                <span className="font-mono font-bold text-slate-900">{(report.prediction_confidence * 100).toFixed(0)}%</span>
+                <span className="text-slate-500">{isRealModel ? "Raw model score (uncalibrated)" : "Detection confidence"}</span>
+                <span className="font-mono font-bold text-slate-900">{isRealModel ? `${(report.prediction_confidence * 100).toFixed(0)}% · uncalibrated` : "Not available"}</span>
               </div>
               <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
                 <div
                   className="bg-teal-600 h-full rounded-full transition-all"
-                  style={{ width: `${Math.min(100, report.prediction_confidence * 100)}%` }}
+                  style={{ width: isRealModel ? `${Math.min(100, report.prediction_confidence * 100)}%` : "0%" }}
                 />
               </div>
             </div>

@@ -259,3 +259,10 @@ CivicLens AI strictly adheres to engineering honesty:
 ---
 
 *CivicLens AI 2.0 — Final-Year B.Tech Artificial Intelligence Capstone Project.*
+
+
+## Deployment validation and government integration boundary
+
+The checked-in ONNX artifact must not be treated as a validated road-defect detector solely because ONNX Runtime can load it. CivicLens reports model artifact size, validation state and runtime mode separately. Until a verified trained model, export contract and reproducible held-out evaluation are supplied, the application runs image-quality preflight only: it does not invent defect classes, bounding boxes or calibrated confidence scores. Model Lab displays benchmark values as unavailable rather than fabricating mAP, precision, recall, confusion matrices or latency.
+
+CivicLens report creation is separate from official municipal registration. The NMC grievance portal currently asks citizens for a mobile number and OTP before registration. This repository contains no NMC-issued API contract, integration credentials or authorization to submit on a citizen's behalf. The application therefore prepares a complaint handoff and records an official reference only after the citizen obtains it from NMC. It must never claim that a CivicLens reference is an NMC acknowledgement.

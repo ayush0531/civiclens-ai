@@ -216,10 +216,10 @@ def test_model_evaluation_laboratory_endpoint():
     res = client.get("/api/v1/ai/evaluation")
     assert res.status_code == 200
     lab = res.json()
-    assert "overall_metrics" in lab
-    assert "per_class_metrics" in lab
-    assert lab["overall_metrics"]["map_50"] > 0.70
-    assert len(lab["per_class_metrics"]) == 6
+    assert lab["evaluation_status"] == "NOT_VALIDATED"
+    assert lab["overall_metrics"]["map_50"] is None
+    assert lab["per_class_metrics"] == []
+    assert lab["confusion_matrix"]["matrix"] == []
 
 def test_priority_policy_get_and_update():
     login_res = client.post("/api/v1/auth/login", json={"email": "admin@civiclens.ai", "password": "DemoPass123!"})
@@ -289,6 +289,9 @@ def test_ai_quick_inspect_endpoint():
     assert "severity_level" in data
     assert "bounding_boxes" in data
     assert isinstance(data["bounding_boxes"], list)
+    assert data["is_demo_result"] is True
+    assert data["prediction_confidence"] == 0.0
+    assert data["bounding_boxes"] == []
 
 
 def test_nmc_integration_spec_endpoint():

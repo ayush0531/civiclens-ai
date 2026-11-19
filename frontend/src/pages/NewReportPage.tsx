@@ -865,7 +865,7 @@ CivicLens Report Created • NMC Registration Not Yet Confirmed
               <div className="bg-white border border-slate-200 rounded-xl p-4">
                 <span className="text-[10px] uppercase tracking-wider font-bold text-slate-500">Detected category</span>
                 <p className="mt-1 text-sm font-bold text-slate-900">{createdReport.predicted_damage_category || 'Pending'}</p>
-                <span className="text-xs text-slate-500">Confidence: {((createdReport.prediction_confidence || 0) * 100).toFixed(1)}%</span>
+                <span className="text-xs text-slate-500">{analysisIsDemo ? 'Detection confidence: not available (no validated detector)' : `Raw model score: ${((createdReport.prediction_confidence || 0) * 100).toFixed(1)}% · uncalibrated`}</span>
               </div>
               <div className="bg-white border border-slate-200 rounded-xl p-4">
                 <span className="text-[10px] uppercase tracking-wider font-bold text-slate-500">Severity / priority</span>
