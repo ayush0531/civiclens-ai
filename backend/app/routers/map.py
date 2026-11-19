@@ -2,8 +2,8 @@ from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from backend.app.database import get_db
-from backend.app.models.models import RoadDamageReport
-from backend.app.schemas.schemas import MapReportMarker
+from backend.app.models.models import RoadDamageReport, NagpurWard
+from backend.app.schemas.schemas import MapReportMarker, NagpurWardResponse
 from backend.app.services.cluster_service import cluster_service
 
 router = APIRouter(prefix="/map", tags=["Geospatial Map & Hotspots"])
@@ -58,3 +58,26 @@ def get_spatial_clusters(
     Returns spatial clusters computed via Haversine DBSCAN on defect coordinates.
     """
     return cluster_service.find_clusters(db=db, eps_meters=radius_meters, min_samples=min_points)
+
+
+@router.get("/wards", response_model=List[NagpurWardResponse])
+def get_nagpur_wards(db: Session = Depends(get_db)):
+    """
+    Returns the 10 administrative zones/wards of Nagpur Municipal Corporation (NMC)
+    with GeoJSON polygon boundary rings and supervising zonal officers.
+    """
+    wards = db.query(NagpurWard).order_by(NagpurWard.zone_number.asc()).all()
+    
+    # Calculate live defect counts for each ward
+    results = []
+    for w in wards:
+        count = db.query(RoadDamageReport).filter(
+            RoadDamageReport.ward_name == w.ward_name,
+            RoadDamageReport.workflow_status.notin_(["RESOLVED", "REJECTED"])
+        ).count()
+        w_dict = NagpurWardResponse.model_validate(w)
+        w_dict.active_defects_count = count
+        results.append(w_dict)
+
+    return results
+

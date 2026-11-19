@@ -1,12 +1,14 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { AlertTriangle, RefreshCw, WifiOff, MapPin } from 'lucide-react';
-import { MapMarkerItem, SpatialCluster } from '../types';
+import { AlertTriangle, RefreshCw, WifiOff, MapPin, Navigation } from 'lucide-react';
+import { MapMarkerItem, SpatialCluster, NagpurWard } from '../types';
 
 interface Props {
   markers?: MapMarkerItem[];
   clusters?: SpatialCluster[];
+  wards?: NagpurWard[];
+  showWards?: boolean;
   center?: [number, number];
   zoom?: number;
   height?: string;
@@ -55,6 +57,8 @@ const TILE_PROVIDERS: TileProvider[] = [
 export const MapView: React.FC<Props> = ({
   markers = [],
   clusters = [],
+  wards = [],
+  showWards = false,
   center = [21.1458, 79.0882],
   zoom = 13,
   height = '500px',
@@ -71,6 +75,7 @@ export const MapView: React.FC<Props> = ({
   const currentTileLayerRef = useRef<L.TileLayer | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
   const clustersLayerRef = useRef<L.LayerGroup | null>(null);
+  const wardsLayerRef = useRef<L.LayerGroup | null>(null);
   const selectionMarkerRef = useRef<L.Marker | null>(null);
 
   const [activeProviderIndex, setActiveProviderIndex] = useState(0);
@@ -147,7 +152,8 @@ export const MapView: React.FC<Props> = ({
       L.control.zoom({ position: 'topright' }).addTo(map);
       L.control.scale({ position: 'bottomleft', imperial: false, metric: true }).addTo(map);
 
-      // Layer groups for markers & clusters
+      // Layer groups for markers, clusters & wards
+      wardsLayerRef.current = L.layerGroup().addTo(map);
       clustersLayerRef.current = L.layerGroup().addTo(map);
       markersLayerRef.current = L.layerGroup().addTo(map);
 
@@ -184,6 +190,7 @@ export const MapView: React.FC<Props> = ({
         mapInstanceRef.current = null;
         markersLayerRef.current = null;
         clustersLayerRef.current = null;
+        wardsLayerRef.current = null;
         currentTileLayerRef.current = null;
       }
     };
@@ -202,6 +209,47 @@ export const MapView: React.FC<Props> = ({
       mapInstanceRef.current.setView(center, zoom);
     }
   }, [center[0], center[1], zoom, hasFitInitialBounds]);
+
+  // Update Ward Boundaries Layer
+  useEffect(() => {
+    if (!mapInstanceRef.current || !wardsLayerRef.current) return;
+    wardsLayerRef.current.clearLayers();
+
+    if (!showWards || !wards || wards.length === 0) return;
+
+    wards.forEach((w) => {
+      if (!w.boundary_coordinates_json) return;
+      try {
+        const geojson = JSON.parse(w.boundary_coordinates_json);
+        const geoLayer = L.geoJSON(geojson, {
+          style: {
+            color: '#0D9488',
+            weight: 2,
+            dashArray: '4, 4',
+            fillColor: '#14B8A6',
+            fillOpacity: 0.12,
+          },
+          onEachFeature: (_, layer) => {
+            const wardPopup = `
+              <div style="font-family: inherit; font-size: 12px; padding: 2px;">
+                <div style="font-weight: 800; color: #0F172A; font-size: 13px;">Zone ${w.zone_number}: ${w.ward_name}</div>
+                <div style="font-size: 11px; color: #0D9488; font-weight: 700; margin-top: 2px;">Active Defects: ${w.active_defects_count}</div>
+                <div style="font-size: 10px; color: #64748B; margin-top: 2px;">Zonal Officer: ${w.zonal_officer_name || 'NMC Zonal Office'}</div>
+                <div style="font-size: 10px; color: #64748B;">Contact: ${w.contact_phone || '0712-2567000'}</div>
+              </div>
+            `;
+            layer.bindPopup(wardPopup);
+            layer.bindTooltip(`<strong>${w.ward_name} (Zone ${w.zone_number})</strong>`, {
+              sticky: true,
+            });
+          },
+        });
+        wardsLayerRef.current?.addLayer(geoLayer);
+      } catch (e) {
+        // ignore polygon parse error
+      }
+    });
+  }, [wards, showWards]);
 
   // Update Cluster Circles (Hotspot Density Zones)
   useEffect(() => {
@@ -309,7 +357,12 @@ export const MapView: React.FC<Props> = ({
             <span style="background: ${colorHex}22; color: ${colorHex}; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 800;">Sev: ${m.severity_score.toFixed(0)}</span>
           </div>
           <div style="font-size: 11px; color: #475569; margin-bottom: 8px;">${m.address_text || 'Nagpur Corridor'}</div>
-          ${onMarkerClick ? `<button id="btn-inspect-${m.id}" style="width: 100%; background: #0D9488; color: white; border: none; padding: 6px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; transition: background 0.15s;">Inspect Defect Case &rarr;</button>` : ''}
+          ${onMarkerClick ? `<button id="btn-inspect-${m.id}" style="width: 100%; background: #0D9488; color: white; border: none; padding: 6px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; transition: background 0.15s; margin-bottom: 4px;">Inspect Defect Case &rarr;</button>` : ''}
+          <div style="text-align: center; margin-top: 4px;">
+            <a href="https://www.google.com/maps/dir/?api=1&destination=${m.latitude},${m.longitude}" target="_blank" rel="noopener noreferrer" style="color: #0F766E; font-size: 11px; font-weight: 700; text-decoration: underline;">
+              Get Directions via Google Maps &nearr;
+            </a>
+          </div>
         </div>
       `;
 

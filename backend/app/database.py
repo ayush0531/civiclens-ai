@@ -64,6 +64,11 @@ def check_and_apply_migrations(eng: Engine):
                 ("external_reference_notes", "TEXT"),
                 ("external_reference_recorded_at", "DATETIME"),
                 ("road_jurisdiction", "VARCHAR(60) DEFAULT 'NMC'"),
+                ("ward_name", "VARCHAR(100) DEFAULT 'Dharampeth'"),
+                ("sla_deadline_at", "DATETIME"),
+                ("is_sla_breached", "BOOLEAN DEFAULT 0"),
+                ("reopened_count", "INTEGER DEFAULT 0"),
+                ("estimated_surface_area_sqm", "FLOAT DEFAULT 0.0"),
             ]
             with eng.connect() as conn:
                 for col_name, col_type in cols_to_add:

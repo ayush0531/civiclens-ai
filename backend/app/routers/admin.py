@@ -5,11 +5,18 @@ from sqlalchemy.orm import Session
 
 from backend.app.config import settings
 from backend.app.database import get_db
-from backend.app.models.models import User, RoadDamageReport, AIAnalysis, MaintenanceAssignment, AuditLog
-from backend.app.schemas.schemas import UserResponse, UserUpdateRole
+from backend.app.models.models import (
+    User, RoadDamageReport, AIAnalysis, MaintenanceAssignment, AuditLog,
+    NMCIntegrationConfig, NMCTransactionAudit
+)
+from backend.app.schemas.schemas import (
+    UserResponse, UserUpdateRole, NMCIntegrationConfigResponse,
+    NMCIntegrationConfigUpdate, NMCTransactionAuditResponse
+)
 from backend.app.services.auth_service import require_roles
 from backend.app.services.ai_service import ai_service
 from backend.app.services.priority_service import priority_engine
+from backend.app.services.nmc_adapter import nmc_manager
 from backend.app.utils.seed_data import seed_database
 
 router = APIRouter(prefix="/admin", tags=["Admin & System Management"])
@@ -175,3 +182,70 @@ def get_system_status(
         },
         "ai_engine": engine_info
     }
+
+
+@router.get("/nmc/config", response_model=NMCIntegrationConfigResponse)
+def get_nmc_config(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin", "authority"]))
+):
+    cfg = db.query(NMCIntegrationConfig).first()
+    if not cfg:
+        cfg = NMCIntegrationConfig(adapter_mode="SIMULATED")
+        db.add(cfg)
+        db.commit()
+        db.refresh(cfg)
+    return NMCIntegrationConfigResponse.model_validate(cfg)
+
+
+@router.put("/nmc/config", response_model=NMCIntegrationConfigResponse)
+def update_nmc_config(
+    update_in: NMCIntegrationConfigUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin"]))
+):
+    cfg = db.query(NMCIntegrationConfig).first()
+    if not cfg:
+        cfg = NMCIntegrationConfig()
+        db.add(cfg)
+
+    if update_in.adapter_mode:
+        cfg.adapter_mode = update_in.adapter_mode.upper()
+    if update_in.endpoint_url:
+        cfg.endpoint_url = update_in.endpoint_url.strip()
+    if update_in.api_key:
+        masked = update_in.api_key[:6] + "****" + update_in.api_key[-4:] if len(update_in.api_key) > 10 else "****"
+        cfg.api_key_masked = masked
+    if update_in.timeout_seconds:
+        cfg.timeout_seconds = update_in.timeout_seconds
+    if update_in.retry_limit:
+        cfg.retry_limit = update_in.retry_limit
+
+    db.commit()
+    db.refresh(cfg)
+    return NMCIntegrationConfigResponse.model_validate(cfg)
+
+
+@router.get("/nmc/health")
+def get_nmc_health(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin", "authority"]))
+):
+    """
+    Executes live health check on the active NMC integration adapter.
+    """
+    return nmc_manager.check_health(db)
+
+
+@router.get("/nmc/transactions", response_model=List[NMCTransactionAuditResponse])
+def get_nmc_transactions(
+    limit: int = 50,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles(["admin", "authority"]))
+):
+    """
+    Retrieves chronological transaction audit logs for NMC gateway calls.
+    """
+    txs = db.query(NMCTransactionAudit).order_by(NMCTransactionAudit.timestamp.desc()).limit(limit).all()
+    return [NMCTransactionAuditResponse.model_validate(t) for t in txs]
+

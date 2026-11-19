@@ -1,216 +1,149 @@
-# CivicLens AI: System Architecture & Technical Design
+# CivicLens AI — System Architecture & Engineering Specification
+
+## 1. Executive Summary & Architectural Overview
+
+**CivicLens AI** is an enterprise-grade civic infrastructure intelligence and municipal grievance orchestration platform engineered specifically for the metropolitan urban jurisdiction of **Nagpur Municipal Corporation (NMC)**, Maharashtra, India. 
+
+The system transitions municipal road maintenance from passive, unverified citizen complaints to an **automated, evidence-verified, priority-ranked infrastructure management lifecycle**. By pairing lightweight edge-capable computer vision models (ONNX Runtime YOLOv8) with an Explainable Multi-Criteria Priority Engine and a robust Municipal Integration Gateway, CivicLens AI bridges the technological divide between citizens and urban local bodies.
 
 ---
 
-## 1. High-Level Component Architecture
+## 2. High-Level Architectural Models (C4 Model)
 
-CivicLens AI follows a modular, decoupled client-server architecture ensuring high maintainability, stateless API scalability, and clean separation of concerns.
+### Level 1: System Context Diagram
 
 ```mermaid
 flowchart TD
-    subgraph ClientLayer["Frontend Presentation Layer (React + TypeScript + Vite)"]
-        UI["Tailwind Enterprise UI"]
-        AuthUI["Role-Based Navigation & Auth Context"]
-        MapView["Leaflet Geospatial Map (OSM Tiles)"]
-        ChartsView["Recharts Analytics Dashboard"]
-        Inspector["AI Detection Overlay & Case Inspector"]
+    Citizen["Nagpur Citizen<br/>(Mobile / Desktop Browser)"]
+    Officer["NMC Zonal Officer / Engineer<br/>(Municipal Dashboard)"]
+    Admin["System Administrator<br/>(Governance & Policies)"]
+    
+    subgraph CivicLensBoundary ["CivicLens AI Platform Boundary"]
+        CivicLens["CivicLens AI System<br/>(FastAPI Core + Vite React)"]
     end
-
-    subgraph APILayer["Backend Application Layer (FastAPI REST Services)"]
-        Gateway["FastAPI Gateway / CORS / Lifespan Engine"]
-        AuthRouter["Auth & RBAC (Argon2 / JWT)"]
-        ReportRouter["Report CRUD & Validation"]
-        InferenceRouter["AI Road Damage Service (EdgeCV / YOLO)"]
-        DuplicateRouter["Haversine & dHash Duplicate Engine"]
-        PriorityRouter["Multi-Criteria Priority Ranking Engine"]
-        WorkflowRouter["Status Transitions & Maintenance Assignments"]
-        AnalyticsRouter["Dynamic KPI & Hotspot Aggregator"]
-    end
-
-    subgraph DataLayer["Persistence & Storage Layer"]
-        DB[("SQLite Relational DB (WAL Mode)")]
-        MediaStorage["Secure Media File Storage (/uploads)"]
-        AuditTrail[("Cryptographic Audit Log")]
-    end
-
-    ClientLayer <-->|JSON REST API & Multipart Form Data| APILayer
-    APILayer <-->|SQLAlchemy ORM| DB
-    APILayer <-->|Safe File I/O| MediaStorage
-    APILayer -->|Append-Only| AuditTrail
+    
+    NMCExternal["Nagpur Municipal Corporation (NMC)<br/>Official Grievance Portal & Gateway"]
+    OSMTiles["Public Tile Infrastructure<br/>(OpenStreetMap / Esri ArcGIS)"]
+    
+    Citizen -->|"1. Submits geotagged photo<br/>2. Tracks complaint status"| CivicLens
+    Officer -->|"Triage, inspects AI evidence,<br/>verifies repair resolution"| CivicLens
+    Admin -->|"Tunes 6-factor policy weights,<br/>monitors audit logs & gateway"| CivicLens
+    CivicLens -->|"Dispatches verified complaints via<br/>Simulated / Authorized Adapter"| NMCExternal
+    CivicLens -->|"Renders geospatial base maps"| OSMTiles
 ```
 
 ---
 
-## 2. End-to-End Defect Triage Data Flow
+### Level 2: Container Architecture
+
+The system is decomposed into four primary decoupled containers:
+
+```mermaid
+flowchart LR
+    subgraph ClientTier ["Frontend Presentation Container"]
+        SPA["React 18 Single Page Application<br/>(TypeScript, TailwindCSS, Vite)"]
+        State["Zustand / Context State<br/>(Auth, Telemetry, Cache)"]
+        SPA --- State
+    end
+
+    subgraph APITier ["Backend API & Services Container"]
+        FastAPI["FastAPI 0.100+ Application<br/>(Uvicorn ASGI Worker)"]
+        VerifyEngine["5-Stage Verification Engine"]
+        AIEngine["ONNX Runtime Inference Engine<br/>(YOLOv8-RDD2022)"]
+        PriorityEngine["Explainable 6-Factor Priority Ranker"]
+        NMCGateway["NMC Adapter & Gateway<br/>(Idempotency & Auditing)"]
+        RepairEngine["Before/After Repair Inspector"]
+        NLParser["NLP Grievance Parser"]
+        
+        FastAPI --> VerifyEngine
+        FastAPI --> PriorityEngine
+        FastAPI --> NMCGateway
+        FastAPI --> RepairEngine
+        FastAPI --> NLParser
+        VerifyEngine --> AIEngine
+        RepairEngine --> AIEngine
+    end
+
+    subgraph DataTier ["Persistence & Storage Container"]
+        RDBMS[("Relational Database<br/>SQLite WAL / PostgreSQL 15")]
+        Uploads[("Secure Media Storage<br/>Raw & Annotated JPEGs")]
+    end
+
+    SPA -->|"RESTful JSON APIs over TLS"| FastAPI
+    FastAPI -->|"SQLAlchemy 2.0 ORM"| RDBMS
+    FastAPI -->|"Local / Object Storage"| Uploads
+```
+
+---
+
+### Level 3: Component Interactions & Verification Flow
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Citizen as Citizen Reporter
-    participant FE as React Client
-    participant API as FastAPI Backend
-    participant AI as AI Inference Engine
-    participant Dup as Duplicate Detection
-    participant Prio as Priority Engine
-    participant DB as SQLite Storage
-    actor Authority as Municipal Authority
+    actor Citizen as Citizen User
+    participant Frontend as Vite React SPA
+    participant API as FastAPI Router
+    participant Verifier as 5-Stage Verification Engine
+    participant ONNX as YOLOv8 ONNX Runtime
+    participant Priority as Multi-Criteria Engine
+    participant Adapter as NMC Gateway Adapter
+    participant DB as Relational Database
 
-    Citizen->>FE: Capture Photo & Pin Location on Map
-    FE->>API: POST /api/v1/reports (Multipart Form)
-    API->>DB: Persist Initial Report (Status: SUBMITTED)
-    API->>Dup: Check nearby reports (< 120m, dHash match)
-    Dup-->>API: Duplicate Candidates & Distance
-    API->>AI: analyze_image(image_path)
-    AI-->>API: Predicted Class, Bounding Boxes, Severity Score
-    API->>Prio: calculate_priority(Severity, Conf, Dups, Aging, RoadTier)
-    Prio-->>API: Final Priority Score & Factor Breakdown
-    API->>DB: Store AIAnalysis, Update Report Priority & Status History
-    API-->>FE: Return ReportDetail with Bounding Overlays
+    Citizen->>Frontend: Capture & Upload Damage Image + GPS
+    Frontend->>API: POST /api/reports (Multipart Form)
+    API->>DB: Store Raw Report (Workflow: SUBMITTED, Ext: NOT_REGISTERED)
     
-    Authority->>FE: Inspect Prioritized Triage Queue
-    FE->>API: GET /api/v1/reports?sort_by=priority_score
-    API-->>FE: Ranked Work Orders
-    Authority->>FE: Assign Maintenance Crew
-    FE->>API: POST /api/v1/reports/{id}/assign
-    API->>DB: Update Status to ASSIGNED, Record AuditLog
-    API-->>FE: Updated Case Confirmation
+    critical 5-Stage Verification Execution
+        API->>Verifier: run_full_pipeline(report, image)
+        Verifier->>Verifier: Stage 1: Laplacian Variance Blur Rejection (σ² ≥ 85.0)
+        Verifier->>ONNX: Stage 2: Tensor Inference (640x640 Input, NMS IoU=0.45)
+        ONNX-->>Verifier: Bounding Boxes, Class Label, Softmax Confidence
+        Verifier->>Verifier: Stage 3: Optical Surface Area Estimation & SLA Deadlines
+        Verifier->>Verifier: Stage 4: Nagpur Municipal Bounding Check & Zone Allocation
+        Verifier->>DB: Stage 5: Haversine Spatial (120m) & dHash Visual Screening
+        Verifier->>DB: Persist 5 ReportVerificationStage Audit Rows
+    end
+
+    API->>Priority: calculate_priority_score(report)
+    Priority-->>API: 6-Factor Composite Priority Score (0 - 100)
+    API->>DB: Update Report Telemetry & Audit Logs
+    API-->>Frontend: 201 Created (Hydrated ReportDetailResponse)
+
+    opt Citizen / Officer Initiates NMC Dispatch
+        Frontend->>API: POST /api/reports/{id}/submit-nmc
+        API->>Adapter: dispatch_complaint(report, idempotency_key)
+        Adapter->>DB: Check Idempotency Key in NMCTransactionAudit
+        Adapter->>Adapter: Route via SimulatedNMCAdapter or AuthorizedNMCAdapter
+        Adapter->>DB: Commit NMCTransactionAudit (HTTP 200, Official Ref ID)
+        API-->>Frontend: Updated Dual Status (Official Ref: NMC-SIM-2026-XXXX)
+    end
 ```
 
 ---
 
-## 3. Database Entity-Relationship Model
+## 3. Dual-Status Lifecycle Synchronization Model
 
-```mermaid
-erDiagram
-    User ||--o{ RoadDamageReport : "submits"
-    User ||--o{ MaintenanceAssignment : "assigned_by"
-    User ||--o{ MaintenanceAssignment : "assigned_to"
-    User ||--o{ StatusHistory : "transitions"
-    User ||--o{ AuditLog : "triggers"
-    User ||--o{ Feedback : "provides"
+To prevent false claims of government submission while providing a complete civic operations simulation, CivicLens maintains **two orthogonal status fields** on every incident record:
 
-    RoadDamageReport ||--o{ AIAnalysis : "analyzed_by"
-    RoadDamageReport ||--o{ MaintenanceAssignment : "generates"
-    RoadDamageReport ||--o{ StatusHistory : "records"
-    RoadDamageReport ||--o{ Feedback : "receives"
-    RoadDamageReport ||--o| RoadDamageReport : "duplicate_of"
-
-    User {
-        int id PK
-        string name
-        string email UK
-        string password_hash
-        string role "citizen | authority | admin"
-        string department
-        boolean is_active
-        datetime created_at
-    }
-
-    RoadDamageReport {
-        int id PK
-        string reference_number UK
-        int reporter_id FK
-        string title
-        text description
-        string image_path
-        string annotated_image_path
-        float latitude
-        float longitude
-        string address_text
-        string road_classification
-        string predicted_damage_category
-        float prediction_confidence
-        float severity_score
-        string severity_level
-        float priority_score
-        string workflow_status
-        int assigned_authority_id FK
-        int duplicate_reference_id FK
-        boolean is_duplicate
-        float duplicate_confidence
-        string resolution_notes
-        string resolution_image_path
-        boolean is_demo_data
-        datetime created_at
-    }
-
-    AIAnalysis {
-        int id PK
-        int report_id FK
-        string model_identifier
-        string model_version
-        string inference_mode
-        text predicted_classes
-        text confidence_scores
-        text bounding_boxes
-        text severity_breakdown
-        float inference_duration_ms
-        boolean is_demo_result
-        string disclaimer
-        datetime created_at
-    }
-
-    MaintenanceAssignment {
-        int id PK
-        int report_id FK
-        int assigned_by_id FK
-        int assigned_to_id FK
-        text notes
-        string priority_level
-        string assignment_status
-        datetime target_completion_date
-        datetime assigned_at
-        datetime completed_at
-    }
-
-    StatusHistory {
-        int id PK
-        int report_id FK
-        string previous_status
-        string new_status
-        int changed_by_id FK
-        text notes
-        datetime timestamp
-    }
-
-    AuditLog {
-        int id PK
-        int actor_id FK
-        string action
-        string target_type
-        string target_id
-        text metadata_json
-        string ip_address
-        datetime timestamp
-    }
-```
+| Aspect | Internal Workflow Status (`workflow_status`) | External Municipal Submission Status (`external_submission_status`) |
+| :--- | :--- | :--- |
+| **Authority** | Controlled by CivicLens AI and municipal triage officers. | Controlled exclusively by the NMC Municipal Gateway Adapter. |
+| **Allowed Values** | `SUBMITTED`<br/>`UNDER_REVIEW`<br/>`ACTION_PLANNED`<br/>`IN_PROGRESS`<br/>`RESOLVED`<br/>`REJECTED` | `NOT_REGISTERED`<br/>`PENDING_VERIFICATION`<br/>`OFFICIALLY_REGISTERED`<br/>`RESOLVED_ON_PORTAL`<br/>`PORTAL_REJECTED` |
+| **Purpose** | Drives operational repair workflow, SLA countdowns, priority queuing, and field assignments. | Reflects non-repudiable state in the municipal gateway with external reference numbers. |
+| **Demo Rule** | Fully operational in demo and production environments. | Dispatches simulated responses (`[SIMULATED DEMONSTRATION MODE]`) unless an authorized endpoint is authenticated. |
 
 ---
 
-## 4. REST API Endpoint Specifications
+## 4. Security Perimeter & Governance Safeguards
 
-All REST endpoints are versioned under `/api/v1` and documented in Swagger UI at `/docs`.
-
-| Method | Endpoint | Description | Role Authorization |
-| :--- | :--- | :--- | :--- |
-| `GET` | `/api/v1/health` | Service health, DB connection, AI engine mode | Public |
-| `POST` | `/api/v1/auth/register` | User account registration | Public |
-| `POST` | `/api/v1/auth/login` | JWT authentication token issuance | Public |
-| `GET` | `/api/v1/auth/me` | Fetch active profile and permissions | Authenticated |
-| `GET` | `/api/v1/reports` | List reports with search, filters, pagination | Public / Auth |
-| `POST` | `/api/v1/reports` | Create report with photo upload & coordinates | Public / Citizen |
-| `GET` | `/api/v1/reports/{id}` | Full case details, analyses, history, duplicates | Public / Auth |
-| `PATCH` | `/api/v1/reports/{id}` | Edit report title or classification | Reporter / Authority |
-| `DELETE` | `/api/v1/reports/{id}` | Remove report record | Admin only |
-| `POST` | `/api/v1/reports/{id}/analyze` | Trigger manual computer vision re-inference | Authenticated |
-| `POST` | `/api/v1/reports/{id}/assign` | Assign maintenance crew to defect | Authority / Admin |
-| `POST` | `/api/v1/reports/{id}/status` | Transition legal lifecycle status | Authority / Admin |
-| `POST` | `/api/v1/reports/{id}/resolve` | Close case with maintenance evidence photo | Authority / Admin |
-| `GET` | `/api/v1/map/reports` | Optimized geo-points for Leaflet map markers | Public |
-| `GET` | `/api/v1/analytics/overview` | Dynamic municipal KPI counters | Public |
-| `GET` | `/api/v1/analytics/trends` | Category, severity, and hotspot aggregations | Public |
-| `GET` | `/api/v1/admin/users` | List all registered user accounts | Admin only |
-| `PATCH` | `/api/v1/admin/users/{id}/role` | Update user roles and access status | Admin only |
-| `POST` | `/api/v1/admin/reseed` | Restore synthetic Nagpur demo fixtures | Admin only |
-| `GET` | `/api/v1/admin/system-status` | DB entity counts, storage, AI engine stats | Authority / Admin |
-| `GET` | `/api/v1/audit-logs` | Cryptographic audit trail of system events | Authority / Admin |
+1. **Role-Based Access Control (RBAC):**
+   - **`citizen`**: Can submit reports, run client-side previews, track public complaints by reference, and dispute closed repairs.
+   - **`authority` (Municipal Officer):** Can triage incident queues, filter by administrative ward, update status, and perform AI-driven repair inspections.
+   - **`admin` (System Administrator):** Can tune 6-factor priority weights, manage user roles, configure the NMC Gateway adapter, and execute test database resets.
+2. **Idempotency Safeguards:**
+   - Every dispatch to the external municipal gateway requires a deterministic `idempotency_key` generated via `SHA-256(ref_number + lat + lon + timestamp_window)`. Duplicate transmissions return cached audit records without side effects.
+3. **Citizen Privacy Masking:**
+   - Public tracking endpoints (`GET /api/reports/track/{ref}`) mask phone numbers, citizen email addresses, and reporter identities to protect citizen confidentiality under public disclosure guidelines.
+4. **Non-Destructive Database Migrations:**
+   - Lightweight column inspection and SQLite PRAGMA table scans add missing schema columns and create tables on startup without data wipes or loss of historical records.

@@ -57,6 +57,13 @@ class RoadDamageReport(Base):
     reporter_contact = Column(String(100), nullable=True)
     incident_date = Column(DateTime, nullable=True)
 
+    # Ward & Administrative Jurisdiction
+    ward_name = Column(String(100), default="Dharampeth", nullable=True)
+    sla_deadline_at = Column(DateTime, nullable=True)
+    is_sla_breached = Column(Boolean, default=False, nullable=False)
+    reopened_count = Column(Integer, default=0, nullable=False)
+    estimated_surface_area_sqm = Column(Float, default=0.0, nullable=False)
+
     # Municipal Integration State (NMC Handoff & Grievance Records)
     external_submission_status = Column(String(60), default="NOT_REGISTERED", nullable=False)
     external_reference_id = Column(String(100), nullable=True, index=True)
@@ -105,6 +112,10 @@ class RoadDamageReport(Base):
     assignments = relationship("MaintenanceAssignment", back_populates="report", cascade="all, delete-orphan")
     status_history = relationship("StatusHistory", back_populates="report", cascade="all, delete-orphan", order_by="StatusHistory.timestamp.asc()")
     feedbacks = relationship("Feedback", back_populates="report", cascade="all, delete-orphan")
+    verification_stages = relationship("ReportVerificationStage", back_populates="report", cascade="all, delete-orphan", order_by="ReportVerificationStage.stage_number.asc()")
+    repair_evidences = relationship("RepairResolutionEvidence", back_populates="report", cascade="all, delete-orphan", order_by="RepairResolutionEvidence.created_at.desc()")
+    reopen_requests = relationship("ComplaintReopenRequest", back_populates="report", cascade="all, delete-orphan", order_by="ComplaintReopenRequest.created_at.desc()")
+    nmc_transactions = relationship("NMCTransactionAudit", back_populates="report", cascade="all, delete-orphan", order_by="NMCTransactionAudit.timestamp.desc()")
 
 
 class AIAnalysis(Base):
@@ -199,3 +210,112 @@ class Feedback(Base):
     # Relationships
     report = relationship("RoadDamageReport", back_populates="feedbacks")
     user = relationship("User", back_populates="feedbacks")
+
+
+class ReportVerificationStage(Base):
+    __tablename__ = "report_verification_stages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    report_id = Column(Integer, ForeignKey("road_damage_reports.id"), nullable=False, index=True)
+    stage_number = Column(Integer, nullable=False)  # 1 to 5
+    stage_key = Column(String(60), nullable=False)  # STAGE_1_IMAGE_AUTHENTICITY, etc.
+    stage_title = Column(String(120), nullable=False)
+    status = Column(String(30), default="PASSED", nullable=False)  # PASSED, FAILED, WARNING, IN_PROGRESS
+    confidence_score = Column(Float, default=1.0)
+    summary = Column(Text, nullable=False)
+    evidence_json = Column(Text, nullable=True)  # JSON dictionary of metrics
+    failure_reason = Column(Text, nullable=True)
+    executed_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+
+    report = relationship("RoadDamageReport", back_populates="verification_stages")
+
+
+class RepairResolutionEvidence(Base):
+    __tablename__ = "repair_resolution_evidences"
+
+    id = Column(Integer, primary_key=True, index=True)
+    report_id = Column(Integer, ForeignKey("road_damage_reports.id"), nullable=False, index=True)
+    assignment_id = Column(Integer, ForeignKey("maintenance_assignments.id"), nullable=True)
+    before_image_path = Column(String(500), nullable=False)
+    after_image_path = Column(String(500), nullable=False)
+    residual_damage_score = Column(Float, default=0.0)  # 0 to 100
+    resolution_status = Column(String(50), default="VERIFIED_REPAIRED")  # VERIFIED_REPAIRED, PARTIAL_REPAIR_DETECTED, DEFECT_REMAINS_ACTIVE
+    ai_confidence = Column(Float, default=0.90)
+    inspection_notes = Column(Text, nullable=True)
+    contractor_name = Column(String(120), nullable=True)
+    asphalt_mix_type = Column(String(80), nullable=True)
+    verified_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+
+    report = relationship("RoadDamageReport", back_populates="repair_evidences")
+    verified_by = relationship("User", foreign_keys=[verified_by_id])
+
+
+class NMCIntegrationConfig(Base):
+    __tablename__ = "nmc_integration_configs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    adapter_mode = Column(String(30), default="SIMULATED", nullable=False)  # SIMULATED, OFFICIAL_API
+    endpoint_url = Column(String(500), default="https://nmcnagpur.gov.in/grievance/complaint_form.php")
+    api_key_masked = Column(String(100), default="NMC-DEMO-****-9482")
+    mou_reference = Column(String(120), default="MOU-NMC-CIVICLENS-2026-ENG-42")
+    timeout_seconds = Column(Integer, default=15)
+    retry_limit = Column(Integer, default=3)
+    is_healthy = Column(Boolean, default=True)
+    last_ping_ms = Column(Float, default=24.5)
+    last_heartbeat_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+
+class NMCTransactionAudit(Base):
+    __tablename__ = "nmc_transaction_audits"
+
+    id = Column(Integer, primary_key=True, index=True)
+    report_id = Column(Integer, ForeignKey("road_damage_reports.id"), nullable=False, index=True)
+    idempotency_key = Column(String(80), unique=True, index=True, nullable=False)
+    transaction_type = Column(String(50), default="SUBMISSION", nullable=False)  # SUBMISSION, STATUS_SYNC, DISPATCH_ACK
+    external_status = Column(String(60), default="SUBMISSION_PENDING", nullable=False)
+    official_reference_id = Column(String(100), nullable=True)
+    request_payload_json = Column(Text, nullable=True)
+    response_payload_json = Column(Text, nullable=True)
+    http_status_code = Column(Integer, default=200)
+    retry_count = Column(Integer, default=0)
+    notes = Column(Text, nullable=True)
+    timestamp = Column(DateTime, default=datetime.datetime.utcnow, index=True, nullable=False)
+
+    report = relationship("RoadDamageReport", back_populates="nmc_transactions")
+
+
+class NagpurWard(Base):
+    __tablename__ = "nagpur_wards"
+
+    id = Column(Integer, primary_key=True, index=True)
+    zone_number = Column(Integer, unique=True, index=True, nullable=False)  # 1 to 10
+    ward_name = Column(String(100), unique=True, index=True, nullable=False)
+    marathi_name = Column(String(100), nullable=True)
+    office_address = Column(String(255), nullable=True)
+    zonal_officer_name = Column(String(120), nullable=True)
+    contact_phone = Column(String(50), nullable=True)
+    contact_email = Column(String(120), nullable=True)
+    latitude = Column(Float, nullable=False)
+    longitude = Column(Float, nullable=False)
+    boundary_coordinates_json = Column(Text, nullable=True)  # GeoJSON polygon ring coordinates
+    active_defects_count = Column(Integer, default=0)
+
+
+class ComplaintReopenRequest(Base):
+    __tablename__ = "complaint_reopen_requests"
+
+    id = Column(Integer, primary_key=True, index=True)
+    report_id = Column(Integer, ForeignKey("road_damage_reports.id"), nullable=False, index=True)
+    citizen_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    reopen_reason = Column(Text, nullable=False)
+    new_evidence_image_path = Column(String(500), nullable=True)
+    status = Column(String(30), default="PENDING_REVIEW")  # PENDING_REVIEW, APPROVED, DECLINED
+    officer_review_notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, nullable=False)
+    reviewed_at = Column(DateTime, nullable=True)
+
+    report = relationship("RoadDamageReport", back_populates="reopen_requests")
+    citizen = relationship("User", foreign_keys=[citizen_id])
+

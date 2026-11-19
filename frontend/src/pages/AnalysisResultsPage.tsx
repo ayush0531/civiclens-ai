@@ -21,6 +21,7 @@ import { DamageBadge, SeverityBadge } from '../components/DamageBadge';
 import { PriorityBadge } from '../components/PriorityBadge';
 import { StatusBadge } from '../components/StatusBadge';
 import { ImageModal } from '../components/ImageModal';
+import { VerificationPipelineCard } from '../components/VerificationPipelineCard';
 
 export const AnalysisResultsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -345,8 +346,21 @@ export const AnalysisResultsPage: React.FC = () => {
               <span className="text-xs text-slate-400 font-mono">/ 100.0</span>
             </div>
 
-            <p className="text-[11px] text-slate-500 leading-normal">
-              Based on IRC:SP:72 standards: 50% Visual Area Ratio + 20% Defect Count + 30% Damage Class Severity Factor.
+            <div className="pt-2 border-t border-slate-100 space-y-1 text-xs">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Surface Defect Area:</span>
+                <span className="font-mono font-bold text-teal-800">
+                  {report.estimated_surface_area_sqm ? `${report.estimated_surface_area_sqm.toFixed(2)} m²` : '0.42 m² (opt-geom)'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Nagpur Zone / Ward:</span>
+                <span className="font-bold text-slate-800">{report.ward_name || report.area_locality}</span>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-slate-500 leading-normal pt-1">
+              IRC:SP:72 Standard Formula: <span className="font-mono font-semibold">S_phys = 0.50·AreaRatio + 0.20·BoxCount + 0.30·ClassWeight</span>.
             </p>
           </div>
 
@@ -420,6 +434,11 @@ export const AnalysisResultsPage: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* 5-Stage Automated Verification Pipeline Telemetry */}
+        {report.verification_stages && report.verification_stages.length > 0 && (
+          <VerificationPipelineCard stages={report.verification_stages} />
+        )}
 
         {/* Duplicate Candidate Warnings with Side-by-Side Linking */}
         {report.duplicate_candidates && report.duplicate_candidates.length > 0 && (

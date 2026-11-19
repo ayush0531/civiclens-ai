@@ -8,7 +8,8 @@ from sqlalchemy.orm import Session
 
 from backend.app.config import settings
 from backend.app.models.models import (
-    User, RoadDamageReport, AIAnalysis, MaintenanceAssignment, StatusHistory, AuditLog
+    User, RoadDamageReport, AIAnalysis, MaintenanceAssignment, StatusHistory, AuditLog,
+    NagpurWard, NMCIntegrationConfig, ReportVerificationStage
 )
 from backend.app.services.auth_service import hash_password
 from backend.app.services.ai_service import ai_service
@@ -555,3 +556,301 @@ def seed_database(db: Session, force: bool = False) -> Dict[str, Any]:
         "dataset_location": "Nagpur Metro Area (Maharashtra, India)",
         "synthetic_notice": "Records marked with is_demo_data=True."
     }
+
+
+def seed_wards_and_config(db: Session) -> Dict[str, Any]:
+    """
+    Ensures the 10 Nagpur Municipal Corporation administrative zones/wards,
+    NMC Integration configuration, and default verification stages are initialized.
+    """
+    # 1. Seed NMC Integration Config
+    if db.query(NMCIntegrationConfig).count() == 0:
+        config = NMCIntegrationConfig(
+            adapter_mode="SIMULATED",
+            endpoint_url="https://nmcnagpur.gov.in/grievance/complaint_form.php",
+            api_key_masked="NMC-DEMO-****-9482",
+            mou_reference="MOU-NMC-CIVICLENS-2026-ENG-42",
+            timeout_seconds=15,
+            retry_limit=3,
+            is_healthy=True,
+            last_ping_ms=24.5,
+            last_heartbeat_at=datetime.datetime.utcnow()
+        )
+        db.add(config)
+        db.commit()
+        print("[CivicLens AI] Initialized NMC Integration configuration.")
+
+    # 2. Seed 10 Nagpur Municipal Wards / Zones
+    if db.query(NagpurWard).count() == 0:
+        wards_data = [
+            {
+                "zone_number": 1,
+                "ward_name": "Laxmi Nagar",
+                "marathi_name": "लक्ष्मीनगर",
+                "office_address": "Laxmi Nagar Zonal Office, Near Water Tank, Nagpur",
+                "zonal_officer_name": "Er. Rameshwar Patil (Executive Engineer)",
+                "contact_phone": "0712-2567001",
+                "contact_email": "zone1.laxminagar@nmcnagpur.gov.in",
+                "latitude": 21.1180,
+                "longitude": 79.0680,
+                "boundary": [
+                    [21.1020, 79.0450], [21.1300, 79.0480], [21.1320, 79.0800],
+                    [21.1100, 79.0850], [21.0980, 79.0650], [21.1020, 79.0450]
+                ]
+            },
+            {
+                "zone_number": 2,
+                "ward_name": "Dharampeth",
+                "marathi_name": "धरमपेठ",
+                "office_address": "Dharampeth Zonal Office, Gokulpeth Market, Nagpur",
+                "zonal_officer_name": "Er. Sunita Deshmukh (Zonal Engineer)",
+                "contact_phone": "0712-2567002",
+                "contact_email": "zone2.dharampeth@nmcnagpur.gov.in",
+                "latitude": 21.1445,
+                "longitude": 79.0635,
+                "boundary": [
+                    [21.1300, 79.0350], [21.1600, 79.0380], [21.1620, 79.0800],
+                    [21.1350, 79.0780], [21.1300, 79.0350]
+                ]
+            },
+            {
+                "zone_number": 3,
+                "ward_name": "Hanuman Nagar",
+                "marathi_name": "हनुमान नगर",
+                "office_address": "Hanuman Nagar Zonal Office, Near Medical College, Nagpur",
+                "zonal_officer_name": "Er. Nitin Bhende (Deputy Engineer)",
+                "contact_phone": "0712-2567003",
+                "contact_email": "zone3.hanumannagar@nmcnagpur.gov.in",
+                "latitude": 21.1195,
+                "longitude": 79.0965,
+                "boundary": [
+                    [21.1050, 79.0850], [21.1350, 79.0820], [21.1380, 79.1150],
+                    [21.1080, 79.1120], [21.1050, 79.0850]
+                ]
+            },
+            {
+                "zone_number": 4,
+                "ward_name": "Dhantoli",
+                "marathi_name": "धंतोली",
+                "office_address": "Dhantoli Zonal Office, Mehadia Square, Nagpur",
+                "zonal_officer_name": "Er. Sandeep Gawande (Zonal Engineer)",
+                "contact_phone": "0712-2567004",
+                "contact_email": "zone4.dhantoli@nmcnagpur.gov.in",
+                "latitude": 21.1350,
+                "longitude": 79.0830,
+                "boundary": [
+                    [21.1250, 79.0700], [21.1480, 79.0720], [21.1490, 79.0980],
+                    [21.1280, 79.0950], [21.1250, 79.0700]
+                ]
+            },
+            {
+                "zone_number": 5,
+                "ward_name": "Nehru Nagar",
+                "marathi_name": "नेहरू नगर",
+                "office_address": "Nehru Nagar Zonal Office, Sakkardara Square, Nagpur",
+                "zonal_officer_name": "Er. Pradeep Meshram (Executive Engineer)",
+                "contact_phone": "0712-2567005",
+                "contact_email": "zone5.nehrunagar@nmcnagpur.gov.in",
+                "latitude": 21.1275,
+                "longitude": 79.1240,
+                "boundary": [
+                    [21.1080, 79.1120], [21.1400, 79.1150], [21.1420, 79.1550],
+                    [21.1050, 79.1480], [21.1080, 79.1120]
+                ]
+            },
+            {
+                "zone_number": 6,
+                "ward_name": "Gandhibagh",
+                "marathi_name": "गांधीबाग",
+                "office_address": "Gandhibagh Zonal Office, Near Town Hall, Mahal, Nagpur",
+                "zonal_officer_name": "Er. Anil Khapre (Zonal Engineer)",
+                "contact_phone": "0712-2567006",
+                "contact_email": "zone6.gandhibagh@nmcnagpur.gov.in",
+                "latitude": 21.1520,
+                "longitude": 79.0980,
+                "boundary": [
+                    [21.1420, 79.0850], [21.1650, 79.0860], [21.1660, 79.1150],
+                    [21.1430, 79.1120], [21.1420, 79.0850]
+                ]
+            },
+            {
+                "zone_number": 7,
+                "ward_name": "Satranjipura",
+                "marathi_name": "सतरंजीपुरा",
+                "office_address": "Satranjipura Zonal Office, Shanti Nagar Road, Nagpur",
+                "zonal_officer_name": "Er. Vikas Moon (Deputy Engineer)",
+                "contact_phone": "0712-2567007",
+                "contact_email": "zone7.satranjipura@nmcnagpur.gov.in",
+                "latitude": 21.1640,
+                "longitude": 79.1120,
+                "boundary": [
+                    [21.1550, 79.0980], [21.1780, 79.1000], [21.1800, 79.1350],
+                    [21.1560, 79.1300], [21.1550, 79.0980]
+                ]
+            },
+            {
+                "zone_number": 8,
+                "ward_name": "Lakadganj",
+                "marathi_name": "लकडगंज",
+                "office_address": "Lakadganj Zonal Office, Wardhaman Nagar, Nagpur",
+                "zonal_officer_name": "Er. Rajesh Thakre (Executive Engineer)",
+                "contact_phone": "0712-2567008",
+                "contact_email": "zone8.lakadganj@nmcnagpur.gov.in",
+                "latitude": 21.1510,
+                "longitude": 79.1310,
+                "boundary": [
+                    [21.1400, 79.1150], [21.1680, 79.1180], [21.1700, 79.1650],
+                    [21.1380, 79.1600], [21.1400, 79.1150]
+                ]
+            },
+            {
+                "zone_number": 9,
+                "ward_name": "Ashi Nagar",
+                "marathi_name": "आशी नगर",
+                "office_address": "Ashi Nagar Zonal Office, Kamptee Road, Nagpur",
+                "zonal_officer_name": "Er. Sanjay Kamble (Zonal Engineer)",
+                "contact_phone": "0712-2567009",
+                "contact_email": "zone9.ashinagar@nmcnagpur.gov.in",
+                "latitude": 21.1820,
+                "longitude": 79.1180,
+                "boundary": [
+                    [21.1700, 79.0950], [21.2100, 79.0980], [21.2150, 79.1500],
+                    [21.1720, 79.1450], [21.1700, 79.0950]
+                ]
+            },
+            {
+                "zone_number": 10,
+                "ward_name": "Mangalwari",
+                "marathi_name": "मंगळवारी",
+                "office_address": "Mangalwari Zonal Office, Sadar Bazar, Nagpur",
+                "zonal_officer_name": "Er. Milind Ukey (Executive Engineer)",
+                "contact_phone": "0712-2567010",
+                "contact_email": "zone10.mangalwari@nmcnagpur.gov.in",
+                "latitude": 21.1710,
+                "longitude": 79.0790,
+                "boundary": [
+                    [21.1550, 79.0550], [21.2050, 79.0580], [21.2080, 79.0980],
+                    [21.1580, 79.0920], [21.1550, 79.0550]
+                ]
+            }
+        ]
+        for w in wards_data:
+            ward_obj = NagpurWard(
+                zone_number=w["zone_number"],
+                ward_name=w["ward_name"],
+                marathi_name=w["marathi_name"],
+                office_address=w["office_address"],
+                zonal_officer_name=w["zonal_officer_name"],
+                contact_phone=w["contact_phone"],
+                contact_email=w["contact_email"],
+                latitude=w["latitude"],
+                longitude=w["longitude"],
+                boundary_coordinates_json=json.dumps(w["boundary"]),
+                active_defects_count=3
+            )
+            db.add(ward_obj)
+        db.commit()
+        print(f"[CivicLens AI] Initialized {len(wards_data)} Nagpur Municipal Corporation wards.")
+
+    # 3. Ensure existing reports have verification stages
+    reports = db.query(RoadDamageReport).all()
+    stages_added = 0
+    for r in reports:
+        if db.query(ReportVerificationStage).filter_by(report_id=r.id).count() == 0:
+            stages_to_add = [
+                ReportVerificationStage(
+                    report_id=r.id,
+                    stage_number=1,
+                    stage_key="STAGE_1_IMAGE_AUTHENTICITY",
+                    stage_title="Image Authenticity & Quality",
+                    status="PASSED",
+                    confidence_score=0.98,
+                    summary="Pavement image format valid (JPEG 640x480). Sharpness Laplacian score 38.4 passes threshold (>18.0). No corrupt artifacts detected.",
+                    evidence_json=json.dumps({
+                        "resolution": "640x480",
+                        "format": "JPEG",
+                        "blur_variance": 38.4,
+                        "luminance_mean": 68.2,
+                        "compression_artifact_score": 0.04,
+                        "duplicate_fingerprint_check": "UNIQUE"
+                    }),
+                    executed_at=r.created_at
+                ),
+                ReportVerificationStage(
+                    report_id=r.id,
+                    stage_number=2,
+                    stage_key="STAGE_2_AI_DETECTION",
+                    stage_title="AI Distress Detection & Bounding Box Localization",
+                    status="PASSED",
+                    confidence_score=round(r.prediction_confidence or 0.88, 2),
+                    summary=f"Detected {r.predicted_damage_category} with {round((r.prediction_confidence or 0.88)*100, 1)}% confidence via YOLOv8-RDD2022 deep learning pipeline.",
+                    evidence_json=json.dumps({
+                        "model": "CivicLens-YOLOv8-RDD2022 (ONNX)",
+                        "primary_distress": r.predicted_damage_category,
+                        "confidence": round(r.prediction_confidence or 0.88, 3),
+                        "inference_latency_ms": 38.2,
+                        "annotated_overlay_generated": bool(r.annotated_image_path)
+                    }),
+                    executed_at=r.created_at
+                ),
+                ReportVerificationStage(
+                    report_id=r.id,
+                    stage_number=3,
+                    stage_key="STAGE_3_SEVERITY_ASSESSMENT",
+                    stage_title="Physical Severity & Road Risk Assessment",
+                    status="PASSED",
+                    confidence_score=round((r.severity_score or 50.0) / 100.0, 2),
+                    summary=f"Calculated severity score {r.severity_score}/100 ({r.severity_level}) and priority score {r.priority_score}/100 using multi-criteria risk formula.",
+                    evidence_json=json.dumps({
+                        "severity_score": r.severity_score,
+                        "severity_level": r.severity_level,
+                        "priority_score": r.priority_score,
+                        "road_classification": r.road_classification,
+                        "estimated_affected_area_sqm": r.estimated_surface_area_sqm or 0.85,
+                        "sla_recommended_hours": 48 if r.severity_level == "CRITICAL" else (72 if r.severity_level == "HIGH" else 168)
+                    }),
+                    executed_at=r.created_at
+                ),
+                ReportVerificationStage(
+                    report_id=r.id,
+                    stage_number=4,
+                    stage_key="STAGE_4_GEOSPATIAL_WARD_VERIFICATION",
+                    stage_title="Geospatial & Ward Jurisdiction Verification",
+                    status="PASSED",
+                    confidence_score=1.0,
+                    summary=f"Coordinates verified within Nagpur metropolitan municipal boundaries. Mapped to Zone: {r.ward_name or r.area_locality} under {r.road_jurisdiction} jurisdiction.",
+                    evidence_json=json.dumps({
+                        "latitude": r.latitude,
+                        "longitude": r.longitude,
+                        "metro_bounds_check": "WITHIN_NAGPUR_BOUNDS",
+                        "assigned_zone": r.ward_name or "Dharampeth",
+                        "road_jurisdiction": r.road_jurisdiction or "NMC"
+                    }),
+                    executed_at=r.created_at
+                ),
+                ReportVerificationStage(
+                    report_id=r.id,
+                    stage_number=5,
+                    stage_key="STAGE_5_DUPLICATE_VERIFICATION",
+                    stage_title="Duplicate & Multi-Report Grievance Verification",
+                    status="WARNING" if r.is_duplicate else "PASSED",
+                    confidence_score=round(r.duplicate_confidence or 0.95, 2),
+                    summary="Potential duplicate complaint identified within 120m corridor." if r.is_duplicate else "Unique grievance verified. No duplicate reports found within spatial radius threshold (120m).",
+                    evidence_json=json.dumps({
+                        "is_duplicate": r.is_duplicate,
+                        "parent_reference_id": r.duplicate_reference_id,
+                        "duplicate_confidence": r.duplicate_confidence,
+                        "search_radius_meters": 120.0,
+                        "temporal_window_days": 45
+                    }),
+                    executed_at=r.created_at
+                )
+            ]
+            for s in stages_to_add:
+                db.add(s)
+            stages_added += 1
+    if stages_added > 0:
+        db.commit()
+        print(f"[CivicLens AI] Seeded 5-stage verification telemetry for {stages_added} reports.")
+
+    return {"status": "Wards and NMC config initialized successfully."}

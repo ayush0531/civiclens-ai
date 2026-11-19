@@ -1,5 +1,6 @@
 import os
 import io
+import json
 import datetime
 import pytest
 from PIL import Image
@@ -12,7 +13,7 @@ from backend.app.models.models import User, RoadDamageReport
 from backend.app.services.ai_service import ai_service
 from backend.app.services.duplicate_service import haversine_distance, duplicate_service
 from backend.app.services.priority_service import priority_engine
-from backend.app.utils.seed_data import seed_database
+from backend.app.utils.seed_data import seed_database, seed_wards_and_config
 
 client = TestClient(app)
 
@@ -24,6 +25,7 @@ def setup_db():
     try:
         if db.query(User).count() == 0:
             seed_database(db=db, force=False)
+        seed_wards_and_config(db)
     finally:
         db.close()
     yield
@@ -341,8 +343,6 @@ def test_record_external_reference_and_dual_status():
     assert "1800 233 0080" in text_content
 
 
-
-
 def test_anonymous_report_submission_does_not_require_fake_user():
     """Anonymous reports must not create status rows with a made-up user ID."""
     img = Image.new("RGB", (320, 240), color=(90, 90, 90))
@@ -402,3 +402,240 @@ def test_anonymous_report_can_record_external_reference_without_fake_user():
     )
     assert updated.status_code == 200, updated.text
     assert updated.json()["external_submission_status"] == "CITIZEN_REPORTED_UNVERIFIED"
+
+
+def create_dummy_pavement_image():
+    img = Image.new("RGB", (320, 240), color=(70, 70, 70))
+    img_byte_arr = io.BytesIO()
+    img.save(img_byte_arr, format="JPEG")
+    img_byte_arr.seek(0)
+    return img_byte_arr
+
+
+def test_five_stage_verification_engine():
+    """
+    Verifies that creating a report executes all 5 sequential audit stages:
+    Stage 1: Image Authenticity & Quality
+    Stage 2: AI Detection & Bounding Box Localization
+    Stage 3: Physical Severity & SLA Computation
+    Stage 4: Geospatial & Ward Verification
+    Stage 5: Duplicate Grievance Verification
+    """
+    login_res = client.post("/api/v1/auth/login", json={"email": "citizen@civiclens.ai", "password": "DemoPass123!"})
+    citizen_token = login_res.json()["access_token"]
+
+    img_bytes = create_dummy_pavement_image()
+    files = {"image": ("pavement_audit_test.jpg", img_bytes, "image/jpeg")}
+    data = {
+        "title": "Severe road cavity near Dharampeth Market",
+        "description": "5-stage verification audit test.",
+        "latitude": 21.1445,
+        "longitude": 79.0635,
+        "address_text": "Gokulpeth, Dharampeth, Nagpur",
+        "road_classification": "ARTERIAL",
+        "auto_analyze": True
+    }
+    res = client.post(
+        "/api/v1/reports",
+        data=data,
+        files=files,
+        headers={"Authorization": f"Bearer {citizen_token}"}
+    )
+    assert res.status_code == 201
+    body = res.json()
+    assert body["ward_name"] == "Dharampeth"
+    assert "verification_stages" in body
+    stages = body["verification_stages"]
+    assert len(stages) == 5
+
+    stage_keys = [s["stage_key"] for s in stages]
+    assert "STAGE_1_IMAGE_AUTHENTICITY" in stage_keys
+    assert "STAGE_2_AI_DETECTION" in stage_keys
+    assert "STAGE_3_SEVERITY_ASSESSMENT" in stage_keys
+    assert "STAGE_4_GEOSPATIAL_WARD_VERIFICATION" in stage_keys
+    assert "STAGE_5_DUPLICATE_VERIFICATION" in stage_keys
+
+    # Verify stage 1 quality evidence
+    s1 = next(s for s in stages if s["stage_number"] == 1)
+    assert s1["status"] in ["PASSED", "WARNING"]
+    ev1 = json.loads(s1["evidence_json"])
+    assert "format" in ev1
+    assert "sharpness_laplacian" in ev1
+
+    # Verify stage 3 SLA evidence
+    s3 = next(s for s in stages if s["stage_number"] == 3)
+    ev3 = json.loads(s3["evidence_json"])
+    assert "estimated_surface_area_sqm" in ev3
+    assert "sla_hours" in ev3
+
+
+def test_nmc_adapter_simulation_and_idempotency():
+    """
+    Verifies the NMC Integration Adapter:
+    1. Submits report through simulated grievance intake adapter.
+    2. Receives verifiable official reference code (NMC-2026-GRV-XXXX).
+    3. Re-submits with identical idempotency key and confirms duplicate prevention.
+    """
+    # Create test report
+    img_bytes = create_dummy_pavement_image()
+    files = {"image": ("nmc_test.jpg", img_bytes, "image/jpeg")}
+    data = {
+        "title": "Road crater on Wardha Road near Lokmat Sq",
+        "latitude": 21.1350,
+        "longitude": 79.0830,
+        "address_text": "Wardha Road, Dhantoli, Nagpur",
+        "road_classification": "HIGHWAY"
+    }
+    create_res = client.post("/api/v1/reports", data=data, files=files)
+    assert create_res.status_code == 201
+    rep_id = create_res.json()["id"]
+
+    idemp_key = f"TEST-IDEMP-{rep_id}-ALPHA"
+
+    # Submit to NMC
+    submit_res = client.post(f"/api/v1/reports/{rep_id}/submit-nmc?idempotency_key={idemp_key}")
+    assert submit_res.status_code == 200
+    res_data = submit_res.json()
+    assert res_data["external_submission_status"] == "OFFICIALLY_SUBMITTED"
+    assert res_data["external_reference_id"].startswith("NMC-")
+    assert "GRV-" in res_data["external_reference_id"]
+
+    # Re-submit with same idempotency key
+    replay_res = client.post(f"/api/v1/reports/{rep_id}/submit-nmc?idempotency_key={idemp_key}")
+    assert replay_res.status_code == 200
+    replay_data = replay_res.json()
+    assert replay_data["external_reference_id"] == res_data["external_reference_id"]
+
+    # Check NMC Health
+    admin_login = client.post("/api/v1/auth/login", json={"email": "admin@civiclens.ai", "password": "DemoPass123!"})
+    admin_token = admin_login.json()["access_token"]
+    health_res = client.get("/api/v1/admin/nmc/health", headers={"Authorization": f"Bearer {admin_token}"})
+    assert health_res.status_code == 200
+    assert health_res.json()["is_healthy"] is True
+
+
+def test_before_after_repair_verification():
+    """
+    Verifies automated AI Before-and-After inspection:
+    1. Uploads post-repair image for an active defect.
+    2. Measures residual damage score.
+    3. Transitions workflow status to RESOLVED upon verification.
+    """
+    auth_login = client.post("/api/v1/auth/login", json={"email": "authority@civiclens.ai", "password": "DemoPass123!"})
+    authority_token = auth_login.json()["access_token"]
+
+    # Create test report
+    img_bytes = create_dummy_pavement_image()
+    files = {"image": ("pre_repair.jpg", img_bytes, "image/jpeg")}
+    data = {
+        "title": "Repair verification test report",
+        "latitude": 21.1200,
+        "longitude": 79.0700,
+        "address_text": "Pratap Nagar, Nagpur"
+    }
+    rep_res = client.post("/api/v1/reports", data=data, files=files)
+    rep_id = rep_res.json()["id"]
+
+    # Run repair verification with smooth patch
+    post_img = create_dummy_pavement_image()
+    repair_files = {"after_image": ("post_repair.jpg", post_img, "image/jpeg")}
+    repair_data = {
+        "contractor_name": "Nagpur Highway Infra Ltd",
+        "asphalt_mix_type": "Bituminous Concrete Grade 2",
+        "inspection_notes": "Patch leveled and compacted with 10-ton roller."
+    }
+    verify_res = client.post(
+        f"/api/v1/reports/{rep_id}/verify-repair",
+        data=repair_data,
+        files=repair_files,
+        headers={"Authorization": f"Bearer {authority_token}"}
+    )
+    assert verify_res.status_code == 200
+    v_body = verify_res.json()
+    assert "resolution_status" in v_body
+    assert "residual_damage_score" in v_body
+    assert v_body["residual_damage_score"] >= 0.0
+
+    # Verify resolution evidence record is persisted
+    detail_res = client.get(f"/api/v1/reports/{rep_id}")
+    assert detail_res.status_code == 200
+    assert len(detail_res.json()["repair_evidences"]) == 1
+    if v_body["resolution_status"] in ["VERIFIED_REPAIRED", "PARTIAL_REPAIR_DETECTED"]:
+        assert detail_res.json()["workflow_status"] == "RESOLVED"
+    else:
+        assert detail_res.json()["workflow_status"] in ["SUBMITTED", "IN_PROGRESS"]
+
+
+def test_nl_parser_endpoint():
+    """
+    Tests Natural Language grievance extraction into structured civic telemetry.
+    """
+    payload = {
+        "text": "Critical deep pothole near Shankar Nagar square on West High Court road damaging bikes since yesterday morning"
+    }
+    res = client.post("/api/v1/ai/parse-nl-report", json=payload)
+    assert res.status_code == 200
+    body = res.json()
+    assert body["parsed_successfully"] is True
+    assert body["predicted_damage_category"] == "Pothole"
+    assert body["severity_level"] == "CRITICAL"
+    assert body["extracted_landmark"] == "Shankar Nagar"
+    assert body["suggested_ward"] == "Dharampeth"
+    assert body["road_classification"] == "ARTERIAL"
+
+
+def test_nagpur_wards_endpoint():
+    """
+    Verifies that the 10 Nagpur Municipal Corporation wards are retrieved
+    with valid GeoJSON polygon boundaries and zonal contacts.
+    """
+    res = client.get("/api/v1/map/wards")
+    assert res.status_code == 200
+    wards = res.json()
+    assert len(wards) == 10
+    names = [w["ward_name"] for w in wards]
+    assert "Laxmi Nagar" in names
+    assert "Dharampeth" in names
+    assert "Hanuman Nagar" in names
+    assert "Dhantoli" in names
+    assert "Mangalwari" in names
+
+    # Verify polygon coordinate json is present
+    w1 = next(w for w in wards if w["zone_number"] == 1)
+    boundary = json.loads(w1["boundary_coordinates_json"])
+    assert len(boundary) >= 4
+
+
+def test_complaint_reopen_workflow():
+    """
+    Verifies citizen complaint reopen workflow when repair is disputed.
+    """
+    citizen_login = client.post("/api/v1/auth/login", json={"email": "citizen@civiclens.ai", "password": "DemoPass123!"})
+    citizen_token = citizen_login.json()["access_token"]
+
+    # Create test report
+    img_bytes = create_dummy_pavement_image()
+    files = {"image": ("reopen_test.jpg", img_bytes, "image/jpeg")}
+    data = {
+        "title": "Disputed pothole patch on Hingna Road",
+        "latitude": 21.1100,
+        "longitude": 79.0400,
+        "address_text": "Hingna Road, Nagpur"
+    }
+    rep_res = client.post("/api/v1/reports", data=data, files=files)
+    rep_id = rep_res.json()["id"]
+
+    # Reopen report
+    reopen_data = {
+        "reason": "Cold mix asphalt washed away after rain, hole has opened back up."
+    }
+    reopen_res = client.post(
+        f"/api/v1/reports/{rep_id}/reopen",
+        data=reopen_data,
+        headers={"Authorization": f"Bearer {citizen_token}"}
+    )
+    assert reopen_res.status_code == 200
+    body = reopen_res.json()
+    assert body["workflow_status"] == "IN_PROGRESS"
+    assert body["reopened_count"] == 1
+

@@ -285,6 +285,81 @@ class ApiClient {
     if (action) query.set('action', action);
     return this.request<AuditLogItem[]>(`/audit-logs?${query.toString()}`);
   }
+
+  // --- NMC Integration & Municipal Operations ---
+  async submitToNMC(id: number, idempotencyKey?: string, notes?: string): Promise<ReportDetail> {
+    const query = new URLSearchParams();
+    if (idempotencyKey) query.set('idempotency_key', idempotencyKey);
+    if (notes) query.set('notes', notes);
+    const qs = query.toString() ? `?${query.toString()}` : '';
+    return this.request<ReportDetail>(`/reports/${id}/submit-nmc${qs}`, {
+      method: 'POST',
+    });
+  }
+
+  async verifyRepair(id: number, fileOrFormData: File | FormData, notes?: string): Promise<any> {
+    let body: FormData;
+    if (fileOrFormData instanceof FormData) {
+      body = fileOrFormData;
+    } else {
+      body = new FormData();
+      body.append('after_image', fileOrFormData);
+      if (notes) body.append('inspection_notes', notes);
+    }
+    return this.request(`/reports/${id}/verify-repair`, {
+      method: 'POST',
+      body,
+    });
+  }
+
+  async reopenComplaint(
+    id: number, 
+    dataOrFormData: { reason: string; comments?: string; citizen_name?: string } | FormData
+  ): Promise<ReportDetail> {
+    let body: FormData;
+    if (dataOrFormData instanceof FormData) {
+      body = dataOrFormData;
+    } else {
+      body = new FormData();
+      body.append('reason', dataOrFormData.reason);
+      if (dataOrFormData.comments) body.append('comments', dataOrFormData.comments);
+      if (dataOrFormData.citizen_name) body.append('citizen_name', dataOrFormData.citizen_name);
+    }
+    return this.request<ReportDetail>(`/reports/${id}/reopen`, {
+      method: 'POST',
+      body,
+    });
+  }
+
+  async parseNLReport(text: string): Promise<any> {
+    return this.request('/ai/parse-nl-report', {
+      method: 'POST',
+      body: JSON.stringify({ text }),
+    });
+  }
+
+  async getNagpurWards(): Promise<any[]> {
+    return this.request<any[]>('/map/wards');
+  }
+
+  async getNMCConfig(): Promise<any> {
+    return this.request('/admin/nmc/config');
+  }
+
+  async updateNMCConfig(data: any): Promise<any> {
+    return this.request('/admin/nmc/config', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getNMCHealth(): Promise<any> {
+    return this.request('/admin/nmc/health');
+  }
+
+  async getNMCTransactions(limit: number = 50): Promise<any[]> {
+    return this.request<any[]>(`/admin/nmc/transactions?limit=${limit}`);
+  }
 }
 
 export const api = new ApiClient();

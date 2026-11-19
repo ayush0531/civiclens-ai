@@ -14,7 +14,7 @@ from backend.app.routers import (
     analytics, admin, audit
 )
 from backend.app.services.ai_service import ai_service
-from backend.app.utils.seed_data import seed_database
+from backend.app.utils.seed_data import seed_database, seed_wards_and_config
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -22,7 +22,7 @@ async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
     check_and_apply_migrations(engine)
     
-    # Auto-seed if database is empty
+    # Auto-seed if database is empty, and ensure Wards and NMC Config are present
     db = SessionLocal()
     try:
         from backend.app.models.models import User
@@ -34,6 +34,7 @@ async def lifespan(app: FastAPI):
             print("[CivicLens AI] Database is empty. Demo seeding is disabled; create the first administrator through the approved provisioning process.")
         else:
             print("[CivicLens AI] Database already contains records. Ready.")
+        seed_wards_and_config(db)
     except Exception as e:
         print(f"[CivicLens AI] Auto-seed check notice: {e}")
     finally:

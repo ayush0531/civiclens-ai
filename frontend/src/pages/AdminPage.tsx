@@ -14,10 +14,11 @@ import {
   Save,
   RefreshCw,
   Zap,
-  Info
+  Info,
+  Building2
 } from 'lucide-react';
 import { api } from '../services/api';
-import { User, AuditLogItem, PriorityPolicyData } from '../types';
+import { User, AuditLogItem, PriorityPolicyData, NMCIntegrationConfig, NMCTransactionAudit } from '../types';
 import { useAuth } from '../context/AuthContext';
 
 export const AdminPage: React.FC = () => {
@@ -32,6 +33,13 @@ export const AdminPage: React.FC = () => {
   const [reseeding, setReseeding] = useState(false);
   const [msg, setMsg] = useState<{ text: string; error: boolean } | null>(null);
 
+  // NMC Gateway Integration States
+  const [nmcConfig, setNmcConfig] = useState<NMCIntegrationConfig | null>(null);
+  const [nmcHealth, setNmcHealth] = useState<any | null>(null);
+  const [nmcTransactions, setNmcTransactions] = useState<NMCTransactionAudit[]>([]);
+  const [testingNmcHealth, setTestingNmcHealth] = useState<boolean>(false);
+  const [savingNmcConfig, setSavingNmcConfig] = useState<boolean>(false);
+
   useEffect(() => {
     loadData();
   }, []);
@@ -39,21 +47,58 @@ export const AdminPage: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [usersData, auditData, statusData, policyRes] = await Promise.all([
+      const [usersData, auditData, statusData, policyRes, nmcCfg, nmcTx] = await Promise.all([
         api.getAllUsers(),
         api.getAuditLogs(undefined, 25),
         api.getSystemStatus(),
         api.getPriorityPolicy(),
+        api.getNMCConfig().catch(() => null),
+        api.getNMCTransactions(15).catch(() => []),
       ]);
       setUsers(usersData);
       setAuditLogs(auditData);
       setSystemStatus(statusData);
       setPolicyData(policyRes);
       setEditedWeights(policyRes.policy || {});
+      if (nmcCfg) setNmcConfig(nmcCfg);
+      setNmcTransactions(nmcTx || []);
     } catch (err: any) {
       setMsg({ text: err.message || 'Failed to load administrative data.', error: true });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleTestNmcHealth = async () => {
+    setTestingNmcHealth(true);
+    try {
+      const h = await api.getNMCHealth();
+      setNmcHealth(h);
+      setMsg({ text: `Gateway health ping: ${h.health_status} (${h.adapter_mode}, ${h.latency_ms?.toFixed(1) || '0.0'}ms).`, error: false });
+    } catch (err: any) {
+      setMsg({ text: err.message || 'NMC health ping failed.', error: true });
+    } finally {
+      setTestingNmcHealth(false);
+    }
+  };
+
+  const handleSaveNmcConfig = async () => {
+    if (!nmcConfig) return;
+    setSavingNmcConfig(true);
+    try {
+      const updated = await api.updateNMCConfig({
+        adapter_mode: nmcConfig.adapter_mode,
+        endpoint_url: nmcConfig.endpoint_url,
+        api_key: nmcConfig.api_key_masked?.includes('***') ? undefined : nmcConfig.api_key_masked,
+        timeout_seconds: nmcConfig.timeout_seconds,
+        retry_limit: nmcConfig.retry_limit,
+      });
+      setNmcConfig(updated);
+      setMsg({ text: `NMC Integration configuration updated to mode '${updated.adapter_mode}'.`, error: false });
+    } catch (err: any) {
+      setMsg({ text: err.message || 'Failed to save NMC configuration.', error: true });
+    } finally {
+      setSavingNmcConfig(false);
     }
   };
 
@@ -279,6 +324,188 @@ export const AdminPage: React.FC = () => {
               </code>
               ensures municipal authorities can justify budget allocation transparently under civic audits.
             </span>
+          </div>
+        </div>
+
+        {/* Official NMC Municipal Integration Gateway & Governance */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-teal-600" />
+                <h2 className="text-base font-bold text-navy-900">Nagpur Municipal Corporation (NMC) Integration Gateway</h2>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Configure official municipal grievance dispatch adapters, idempotency locks, and inspect live transaction telemetry.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={testingNmcHealth}
+                onClick={handleTestNmcHealth}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-teal-200 bg-teal-50 hover:bg-teal-100 text-teal-800 text-xs font-bold transition-colors disabled:opacity-50"
+              >
+                <Zap className={`w-3.5 h-3.5 ${testingNmcHealth ? 'animate-spin' : ''}`} />
+                <span>Test Gateway Ping</span>
+              </button>
+
+              <button
+                type="button"
+                disabled={savingNmcConfig || !nmcConfig}
+                onClick={handleSaveNmcConfig}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-xs transition-colors disabled:opacity-50"
+              >
+                {savingNmcConfig ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                <span>Save Gateway Config</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Health Ping Feedback Banner */}
+          {nmcHealth && (
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className={`w-2.5 h-2.5 rounded-full ${nmcHealth.health_status === 'HEALTHY' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                <span className="font-bold text-slate-800">
+                  Gateway Mode: <span className="font-mono text-teal-700">{nmcHealth.adapter_mode}</span>
+                </span>
+                <span className="text-slate-400">•</span>
+                <span className="text-slate-600">Latency: <strong>{nmcHealth.latency_ms?.toFixed(1) || '0.0'}ms</strong></span>
+              </div>
+              <span className="text-[11px] text-slate-500 font-mono">
+                {nmcHealth.message}
+              </span>
+            </div>
+          )}
+
+          {/* Config Controls Grid */}
+          {nmcConfig && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Adapter Operating Mode</label>
+                <select
+                  value={nmcConfig.adapter_mode}
+                  onChange={(e) => setNmcConfig({ ...nmcConfig, adapter_mode: e.target.value as any })}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white font-semibold"
+                >
+                  <option value="SIMULATED">SIMULATED (Academic Demo Mode)</option>
+                  <option value="OFFICIAL_API">OFFICIAL_API (Authorized NMC Endpoint)</option>
+                </select>
+                <span className="text-[10px] text-slate-400 mt-0.5 block">
+                  Simulated mode generates realistic synthetic NMC references for evaluator demos.
+                </span>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Gateway Endpoint URL</label>
+                <input
+                  type="text"
+                  value={nmcConfig.endpoint_url || ''}
+                  onChange={(e) => setNmcConfig({ ...nmcConfig, endpoint_url: e.target.value })}
+                  placeholder="https://nmcnagpur.gov.in/api/v1/grievance"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white font-mono text-[11px]"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">API Key / Bearer Secret</label>
+                <input
+                  type="password"
+                  value={nmcConfig.api_key_masked || ''}
+                  onChange={(e) => setNmcConfig({ ...nmcConfig, api_key_masked: e.target.value })}
+                  placeholder="Bearer token or authorization header..."
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white font-mono text-[11px]"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Timeout & Retry Limit</label>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    value={nmcConfig.timeout_seconds}
+                    onChange={(e) => setNmcConfig({ ...nmcConfig, timeout_seconds: parseInt(e.target.value) || 15 })}
+                    className="w-1/2 px-3 py-2 rounded-xl border border-slate-300 focus:outline-none bg-white font-mono"
+                    title="Timeout in seconds"
+                  />
+                  <input
+                    type="number"
+                    value={nmcConfig.retry_limit}
+                    onChange={(e) => setNmcConfig({ ...nmcConfig, retry_limit: parseInt(e.target.value) || 3 })}
+                    className="w-1/2 px-3 py-2 rounded-xl border border-slate-300 focus:outline-none bg-white font-mono"
+                    title="Retry limit"
+                  />
+                </div>
+                <span className="text-[10px] text-slate-400 mt-0.5 block">
+                  Timeout: {nmcConfig.timeout_seconds}s • Max Retries: {nmcConfig.retry_limit}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Transaction Audit Log Table */}
+          <div className="space-y-2 pt-2 border-t border-slate-100">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-600">
+                Recent Gateway Dispatch Transactions ({nmcTransactions.length})
+              </span>
+              <span className="text-[10px] text-slate-400 font-mono">
+                Idempotency-Protected Records
+              </span>
+            </div>
+
+            {nmcTransactions.length === 0 ? (
+              <p className="text-xs text-slate-400 italic p-3 bg-slate-50 rounded-xl">
+                No recent municipal gateway transactions recorded. Submit a complaint to generate audit dispatches.
+              </p>
+            ) : (
+              <div className="overflow-x-auto border border-slate-200 rounded-xl">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 text-slate-500 uppercase font-semibold border-b border-slate-200">
+                    <tr>
+                      <th className="px-3 py-2">Timestamp</th>
+                      <th className="px-3 py-2">Report ID</th>
+                      <th className="px-3 py-2">Operation</th>
+                      <th className="px-3 py-2">Official Ref</th>
+                      <th className="px-3 py-2 text-center">Status</th>
+                      <th className="px-3 py-2">Idempotency Key</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-mono text-[11px]">
+                    {nmcTransactions.map((tx) => (
+                      <tr key={tx.id} className="hover:bg-slate-50">
+                        <td className="px-3 py-2 text-slate-600 whitespace-nowrap">
+                          {new Date(tx.timestamp).toLocaleString('en-IN')}
+                        </td>
+                        <td className="px-3 py-2 font-bold text-slate-800">
+                          #{tx.report_id}
+                        </td>
+                        <td className="px-3 py-2 text-slate-600">
+                          {tx.transaction_type}
+                        </td>
+                        <td className="px-3 py-2 text-teal-800 font-bold">
+                          {tx.official_reference_id || 'PENDING'}
+                        </td>
+                        <td className="px-3 py-2 text-center">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                            tx.http_status_code === 200 || tx.http_status_code === 201
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : 'bg-rose-100 text-rose-800'
+                          }`}>
+                            HTTP {tx.http_status_code}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 text-slate-400 truncate max-w-xs">
+                          {tx.idempotency_key}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
 

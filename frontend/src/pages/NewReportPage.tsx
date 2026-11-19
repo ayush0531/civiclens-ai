@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { 
   Camera, 
@@ -7,6 +7,7 @@ import {
   AlertCircle, 
   Sparkles, 
   CheckCircle2, 
+  CheckCircle,
   ArrowRight, 
   ArrowLeft,
   FileText, 
@@ -18,6 +19,9 @@ import {
   User as UserIcon,
   Phone,
   RefreshCw,
+  RotateCcw,
+  Loader2,
+  X,
   Cpu,
   ShieldCheck,
   Search
@@ -25,6 +29,7 @@ import {
 import { api, getImageUrl } from '../services/api';
 import { MapView } from '../components/MapView';
 import { NMCHandoffCard } from '../components/NMCHandoffCard';
+import { VerificationPipelineCard } from '../components/VerificationPipelineCard';
 import { QuickInspectResult } from '../types';
 
 interface NagpurPreset {
@@ -117,9 +122,16 @@ export const NewReportPage: React.FC = () => {
   // Wizard Step (1: Upload, 2: Incident Details, 3: AI Analysis, 4: Review & Submit, 5: Confirmation)
   const [currentStep, setCurrentStep] = useState<number>(1);
 
-  // Step 1: Photo
+  // Step 1: Photo & Camera State
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [isCameraCaptured, setIsCameraCaptured] = useState(false);
+  const [showWebcamModal, setShowWebcamModal] = useState(false);
+  const [webcamStream, setWebcamStream] = useState<MediaStream | null>(null);
+  const [cameraLoading, setCameraLoading] = useState(false);
 
   // Step 2: Incident Details
   const [title, setTitle] = useState('');
@@ -134,6 +146,13 @@ export const NewReportPage: React.FC = () => {
   const [longitude, setLongitude] = useState<number>(79.0882);
   const [addressText, setAddressText] = useState('Sitabuldi Interchange, Nagpur');
   const [roadClass, setRoadClass] = useState('ARTERIAL');
+  const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
+  const [locatingGps, setLocatingGps] = useState(false);
+
+  // Natural Language Grievance Parser state
+  const [nlInput, setNlInput] = useState('');
+  const [parsingNL, setParsingNL] = useState(false);
+  const [nlResult, setNlResult] = useState<any | null>(null);
 
   // Step 3: Quick AI Inspection
   const [aiInspectResult, setAiInspectResult] = useState<QuickInspectResult | null>(null);
@@ -146,7 +165,26 @@ export const NewReportPage: React.FC = () => {
   const [createdReport, setCreatedReport] = useState<any | null>(null);
   const [copied, setCopied] = useState(false);
 
-  // Handle Photo selection
+  // Clean up webcam stream on unmount
+  useEffect(() => {
+    return () => {
+      if (webcamStream) {
+        webcamStream.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, [webcamStream]);
+
+  // Connect video element when live webcam modal is displayed
+  useEffect(() => {
+    if (showWebcamModal && webcamStream && videoRef.current) {
+      videoRef.current.srcObject = webcamStream;
+      videoRef.current.play().catch((err) => {
+        console.warn('Webcam playback error:', err);
+      });
+    }
+  }, [showWebcamModal, webcamStream]);
+
+  // Handle Photo selection from gallery / file picker
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setError(null);
     if (e.target.files && e.target.files[0]) {
@@ -161,8 +199,138 @@ export const NewReportPage: React.FC = () => {
       }
       setSelectedFile(file);
       setPreviewUrl(URL.createObjectURL(file));
+      setIsCameraCaptured(false);
       setAiInspectResult(null); // Reset quick inspection if file changed
     }
+  };
+
+  // Handle Photo captured from device camera
+  const handleCameraCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setError(null);
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      if (!file.type.startsWith('image/')) {
+        setError('Please capture or select a valid image file.');
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        setError('Captured photograph exceeds the 10MB size limit.');
+        return;
+      }
+      const fileName = file.name && file.name !== 'image.jpg' 
+        ? file.name 
+        : `pothole_capture_${Date.now()}.jpg`;
+      const readyFile = new File([file], fileName, { type: file.type || 'image/jpeg' });
+      setSelectedFile(readyFile);
+      setPreviewUrl(URL.createObjectURL(readyFile));
+      setIsCameraCaptured(true);
+      setAiInspectResult(null);
+      if (!title) {
+        setTitle('Road Defect (Camera Capture)');
+      }
+    }
+  };
+
+  // Trigger device camera or desktop webcam
+  const handleTriggerCamera = async () => {
+    setError(null);
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
+    // On mobile devices, native input with capture="environment" launches rear camera directly
+    if (isMobile) {
+      if (cameraInputRef.current) {
+        cameraInputRef.current.click();
+      }
+      return;
+    }
+
+    // On desktop browsers, try opening live camera viewfinder modal with getUserMedia
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      setCameraLoading(true);
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+          audio: false
+        });
+        setWebcamStream(stream);
+        setShowWebcamModal(true);
+      } catch (err: any) {
+        console.warn('Webcam getUserMedia fallback to file input:', err);
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          setError('Camera permission was denied. Falling back to file selection.');
+        } else {
+          setError('Live camera stream unavailable on this device. Falling back to file selection.');
+        }
+        if (cameraInputRef.current) {
+          cameraInputRef.current.click();
+        } else if (fileInputRef.current) {
+          fileInputRef.current.click();
+        }
+      } finally {
+        setCameraLoading(false);
+      }
+    } else {
+      if (cameraInputRef.current) {
+        cameraInputRef.current.click();
+      } else if (fileInputRef.current) {
+        fileInputRef.current.click();
+      }
+    }
+  };
+
+  // Capture frame from desktop live webcam
+  const captureWebcamFrame = () => {
+    if (!videoRef.current) return;
+    const video = videoRef.current;
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth || 1280;
+    canvas.height = video.videoHeight || 720;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const file = new File([blob], `pothole_camera_${Date.now()}.jpg`, { type: 'image/jpeg' });
+      setSelectedFile(file);
+      setPreviewUrl(URL.createObjectURL(file));
+      setIsCameraCaptured(true);
+      setAiInspectResult(null);
+      if (!title) {
+        setTitle('Road Defect (Camera Capture)');
+      }
+      closeWebcamModal();
+    }, 'image/jpeg', 0.92);
+  };
+
+  // Close desktop webcam modal
+  const closeWebcamModal = () => {
+    if (webcamStream) {
+      webcamStream.getTracks().forEach((track) => track.stop());
+      setWebcamStream(null);
+    }
+    setShowWebcamModal(false);
+  };
+
+  // Retake photo action
+  const handleRetakePhoto = () => {
+    setSelectedFile(null);
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+    setPreviewUrl(null);
+    setAiInspectResult(null);
+    setIsCameraCaptured(false);
+    handleTriggerCamera();
+  };
+
+  // Fast Submit Photo
+  const handleSubmitPhotoImmediately = async () => {
+    if (!selectedFile) {
+      setError('Please take or upload a photograph first.');
+      return;
+    }
+    const defaultTitle = title.trim() || 'Road Defect Report (Camera Capture)';
+    await handleSubmit(defaultTitle);
   };
 
   const handleMapLocationSelect = (lat: number, lng: number) => {
@@ -180,6 +348,64 @@ export const NewReportPage: React.FC = () => {
     setRoadClass(preset.roadClass);
     if (!title) {
       setTitle(`Pavement Distress at ${preset.name}`);
+    }
+  };
+
+  // Browser Geolocation Detector
+  const handleDetectGps = () => {
+    if (!navigator.geolocation) {
+      setError('Geolocation is not supported by your browser.');
+      return;
+    }
+    setLocatingGps(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = Number(pos.coords.latitude.toFixed(6));
+        const lng = Number(pos.coords.longitude.toFixed(6));
+        const acc = Math.round(pos.coords.accuracy);
+        setLatitude(lat);
+        setLongitude(lng);
+        setGpsAccuracy(acc);
+        setAddressText(`GPS Location: ${lat.toFixed(4)}°N, ${lng.toFixed(4)}°E (±${acc}m accuracy)`);
+        setLocatingGps(false);
+      },
+      (err) => {
+        console.warn('Geolocation error:', err);
+        setError('Could not retrieve device GPS. Please select location on map or choose a preset.');
+        setLocatingGps(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
+    );
+  };
+
+  // Natural Language Grievance Parser
+  const handleParseNL = async () => {
+    if (!nlInput.trim()) return;
+    setParsingNL(true);
+    setError(null);
+    try {
+      const res = await api.parseNLReport(nlInput.trim());
+      setNlResult(res);
+      if (res.suggested_title && !title) {
+        setTitle(res.suggested_title);
+      } else if (!title) {
+        setTitle(`${res.distress_type} on Road`);
+      }
+      if (res.landmark && !landmark) {
+        setLandmark(res.landmark);
+      }
+      if (res.ward_name) {
+        const match = NAGPUR_LOCALITIES.find(loc => loc.toLowerCase().includes(res.ward_name.toLowerCase()));
+        if (match) setAreaLocality(match);
+      }
+      if (!description) {
+        setDescription(res.summary || nlInput.trim());
+      }
+    } catch (err: any) {
+      console.warn('NL parsing fallback:', err);
+      setError('Could not parse text description. Please fill in details manually.');
+    } finally {
+      setParsingNL(false);
     }
   };
 
@@ -213,13 +439,14 @@ export const NewReportPage: React.FC = () => {
   };
 
   // Final Submission
-  const handleSubmit = async () => {
+  const handleSubmit = async (overrideTitle?: string) => {
     if (!selectedFile) {
       setError('Please attach an image of the road damage.');
       setCurrentStep(1);
       return;
     }
-    if (!title.trim()) {
+    const finalTitle = (overrideTitle || title).trim() || 'Road Defect Report (Camera Capture)';
+    if (!finalTitle) {
       setError('Please provide a report title.');
       setCurrentStep(2);
       return;
@@ -230,8 +457,8 @@ export const NewReportPage: React.FC = () => {
 
     try {
       const formData = new FormData();
-      formData.append('title', title.trim());
-      formData.append('description', description.trim());
+      formData.append('title', finalTitle);
+      formData.append('description', description.trim() || 'Field camera capture of road defect submitted via CivicLens AI mobile intake.');
       formData.append('landmark', landmark.trim() || addressText);
       formData.append('area_locality', areaLocality);
       formData.append('city', city);
@@ -292,6 +519,68 @@ export const NewReportPage: React.FC = () => {
   return (
     <div className="flex-1 bg-slate-50 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto space-y-6">
+
+        {/* Live Camera Viewfinder Modal for Desktop Testing */}
+        {showWebcamModal && (
+          <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+            <div className="bg-slate-900 text-white rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-800 flex flex-col">
+              <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Camera className="w-5 h-5 text-teal-400" />
+                  <h3 className="font-bold text-sm">Capture Road Defect Photo</h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeWebcamModal}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="relative bg-black aspect-video flex items-center justify-center overflow-hidden">
+                <video
+                  ref={(el) => {
+                    videoRef.current = el;
+                    if (el && webcamStream && el.srcObject !== webcamStream) {
+                      el.srcObject = webcamStream;
+                      el.play().catch(console.warn);
+                    }
+                  }}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                  <div className="w-48 h-36 border-2 border-dashed border-teal-400/80 rounded-xl relative">
+                    <span className="absolute -top-5 left-1/2 -translate-x-1/2 text-[10px] font-mono bg-teal-500/90 px-2 py-0.5 rounded text-white shadow-xs">
+                      Align Road Defect
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 bg-slate-950 flex items-center justify-between gap-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={closeWebcamModal}
+                  className="px-4 py-2 rounded-xl border border-slate-700 text-slate-300 hover:bg-slate-800 text-xs font-semibold transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={captureWebcamFrame}
+                  className="px-6 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs shadow-lg shadow-teal-500/20 transition-all flex items-center gap-2"
+                >
+                  <Camera className="w-4 h-4" />
+                  <span>Snap Photo</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Wizard Header & Progress Bar */}
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
@@ -376,19 +665,55 @@ export const NewReportPage: React.FC = () => {
                 </div>
                 <h3 className="text-sm font-bold text-slate-800">Upload Pavement Image</h3>
                 <p className="text-xs text-slate-500 mt-1 mb-4">
-                  Drag and drop image here or click browse below.
+                  Select a photo from your gallery or take one directly with your camera.
                 </p>
-                <label className="cursor-pointer">
-                  <span className="text-xs font-bold text-white bg-teal-600 hover:bg-teal-700 px-4 py-2.5 rounded-xl shadow-xs transition-colors">
-                    {selectedFile ? 'Change Selected File' : 'Browse Files'}
-                  </span>
+
+                {/* Dual Options: Upload Image & Take Photo */}
+                <div className="flex flex-wrap items-center justify-center gap-3">
+                  {/* Upload Image */}
+                  <label className="cursor-pointer">
+                    <span className="text-xs font-bold text-white bg-teal-600 hover:bg-teal-700 px-5 py-2.5 rounded-xl shadow-xs transition-colors inline-flex items-center gap-2">
+                      <Upload className="w-4 h-4" />
+                      <span>Upload Image</span>
+                    </span>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
+                  </label>
+
+                  {/* Take Photo */}
+                  <button
+                    type="button"
+                    onClick={handleTriggerCamera}
+                    disabled={cameraLoading}
+                    className="text-xs font-bold text-teal-700 bg-teal-50 hover:bg-teal-100 border border-teal-200 hover:border-teal-300 px-5 py-2.5 rounded-xl shadow-xs transition-colors inline-flex items-center gap-2"
+                  >
+                    {cameraLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin text-teal-600" />
+                        <span>Opening Camera...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Camera className="w-4 h-4 text-teal-600" />
+                        <span>Take Photo</span>
+                      </>
+                    )}
+                  </button>
                   <input
+                    ref={cameraInputRef}
                     type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    onChange={handleFileChange}
+                    accept="image/*"
+                    capture="environment"
+                    onChange={handleCameraCapture}
                     className="hidden"
                   />
-                </label>
+                </div>
+
                 <span className="text-[11px] text-slate-400 mt-3 font-mono">
                   Supported: JPG, PNG, WebP (Max 10MB)
                 </span>
@@ -403,8 +728,41 @@ export const NewReportPage: React.FC = () => {
                       alt="Field Preview"
                       className="w-full h-64 object-cover object-center"
                     />
-                    <div className="absolute top-3 left-3 bg-black/70 backdrop-blur-xs text-white text-[10px] font-mono px-2 py-1 rounded">
-                      Selected: {selectedFile?.name} ({(selectedFile!.size / (1024 * 1024)).toFixed(2)} MB)
+                    <div className="absolute top-3 left-3 bg-black/70 backdrop-blur-xs text-white text-[10px] font-mono px-2.5 py-1 rounded-md shadow-xs">
+                      {isCameraCaptured ? '📸 Camera Capture' : '📁 Uploaded'}: {selectedFile?.name} ({(selectedFile!.size / (1024 * 1024)).toFixed(2)} MB)
+                    </div>
+
+                    {/* In-Preview Action Bar: Retake & Submit Photo */}
+                    <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between gap-2 bg-slate-900/85 backdrop-blur-md p-2 rounded-xl border border-white/10 shadow-lg">
+                      <button
+                        type="button"
+                        onClick={handleRetakePhoto}
+                        className="px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white font-bold text-xs inline-flex items-center gap-1.5 transition-colors"
+                        title="Retake photograph using camera"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        <span>Retake</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={submitting}
+                        onClick={handleSubmitPhotoImmediately}
+                        className="px-4 py-1.5 rounded-lg bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs inline-flex items-center gap-1.5 shadow-sm transition-colors disabled:opacity-50"
+                        title="Submit this photograph directly through CivicLens AI"
+                      >
+                        {submitting ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            <span>Submitting...</span>
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle className="w-3.5 h-3.5 text-slate-950" />
+                            <span>Submit Photo</span>
+                          </>
+                        )}
+                      </button>
                     </div>
                   </>
                 ) : (
@@ -420,19 +778,51 @@ export const NewReportPage: React.FC = () => {
             </div>
 
             {/* Step 1 Actions */}
-            <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
+            <div className="pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
               <span className="text-xs text-slate-400">
                 {selectedFile ? '✓ Image attached ready for details' : 'Attach photo to proceed'}
               </span>
-              <button
-                type="button"
-                disabled={!selectedFile}
-                onClick={() => setCurrentStep(2)}
-                className="px-6 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-md shadow-teal-600/20 transition-all disabled:opacity-50 flex items-center gap-2"
-              >
-                <span>Next: Incident Details</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-2">
+                {selectedFile && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleRetakePhoto}
+                      className="px-4 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs transition-colors inline-flex items-center gap-1.5"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>Retake</span>
+                    </button>
+                    <button
+                      type="button"
+                      disabled={submitting}
+                      onClick={handleSubmitPhotoImmediately}
+                      className="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-md shadow-teal-600/20 transition-all disabled:opacity-50 inline-flex items-center gap-2"
+                    >
+                      {submitting ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Submitting Report...</span>
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="w-4 h-4" />
+                          <span>Submit Photo</span>
+                        </>
+                      )}
+                    </button>
+                  </>
+                )}
+                <button
+                  type="button"
+                  disabled={!selectedFile || submitting}
+                  onClick={() => setCurrentStep(2)}
+                  className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-sm transition-all disabled:opacity-50 inline-flex items-center gap-2"
+                >
+                  <span>Next: Incident Details</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -469,6 +859,64 @@ export const NewReportPage: React.FC = () => {
                   </button>
                 ))}
               </div>
+            </div>
+
+            {/* AI Natural Language Grievance Assistant */}
+            <div className="p-4 rounded-xl bg-teal-50/60 border border-teal-200 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-teal-900 flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-teal-600" />
+                  AI Natural Language Assistant (Marathi / Hindi / English)
+                </span>
+                <span className="text-[10px] font-mono text-teal-700 bg-teal-100/80 px-2 py-0.5 rounded font-bold">
+                  Rule & NLP Parser
+                </span>
+              </div>
+              <p className="text-[11px] text-teal-800 leading-relaxed">
+                Describe the issue in your own words (e.g. <em>"Khup motha gadda Dharampeth coffee house javal"</em> or <em>"Deep pothole at Sitabuldi metro station"</em>). Our parser extracts distress classification, landmark, and municipal ward.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="text"
+                  value={nlInput}
+                  onChange={(e) => setNlInput(e.target.value)}
+                  placeholder="e.g. Severe pothole on Wardha Road near Rahate Colony square causing traffic..."
+                  className="flex-1 px-3 py-1.5 text-xs rounded-lg border border-teal-300 focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
+                />
+                <button
+                  type="button"
+                  disabled={parsingNL || !nlInput.trim()}
+                  onClick={handleParseNL}
+                  className="px-4 py-1.5 rounded-lg bg-teal-700 hover:bg-teal-800 text-white font-bold text-xs shadow-xs transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5 shrink-0"
+                >
+                  {parsingNL ? (
+                    <>
+                      <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>Extracting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>Auto-Fill Details</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {nlResult && (
+                <div className="p-2.5 rounded-lg bg-white/90 border border-teal-200 text-xs flex flex-wrap items-center gap-3 animate-in fade-in">
+                  <span className="text-[10px] uppercase font-bold text-teal-800">Extracted:</span>
+                  <span className="bg-teal-50 text-teal-800 px-2 py-0.5 rounded font-mono text-[11px] font-bold">
+                    Class: {nlResult.distress_type}
+                  </span>
+                  <span className="bg-teal-50 text-teal-800 px-2 py-0.5 rounded font-mono text-[11px]">
+                    Ward: {nlResult.ward_name}
+                  </span>
+                  <span className="bg-teal-50 text-teal-800 px-2 py-0.5 rounded font-mono text-[11px]">
+                    Severity: {nlResult.suggested_severity}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Form Fields */}
@@ -596,13 +1044,24 @@ export const NewReportPage: React.FC = () => {
 
               {/* Interactive Map Picker */}
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <label className="block text-xs font-bold text-slate-700">
                     Geospatial Pin (Click Map to Adjust Coordinates):
                   </label>
-                  <span className="font-mono text-xs text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
-                    {latitude.toFixed(4)}°N, {longitude.toFixed(4)}°E
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={locatingGps}
+                      onClick={handleDetectGps}
+                      className="px-2.5 py-1 rounded-lg border border-teal-300 bg-teal-50 hover:bg-teal-100 text-teal-800 text-[11px] font-bold flex items-center gap-1 transition-colors"
+                    >
+                      <MapPin className={`w-3 h-3 ${locatingGps ? 'animate-bounce text-teal-600' : 'text-teal-600'}`} />
+                      <span>{locatingGps ? 'Locating...' : 'Detect Device GPS'}</span>
+                    </button>
+                    <span className="font-mono text-xs text-teal-700 bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                      {latitude.toFixed(4)}°N, {longitude.toFixed(4)}°E {gpsAccuracy ? `(±${gpsAccuracy}m)` : ''}
+                    </span>
+                  </div>
                 </div>
                 <div className="h-60 rounded-xl overflow-hidden border border-slate-200">
                   <MapView
@@ -818,7 +1277,7 @@ export const NewReportPage: React.FC = () => {
               <button
                 type="button"
                 disabled={submitting}
-                onClick={handleSubmit}
+                onClick={() => handleSubmit()}
                 className="px-8 py-3 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-extrabold text-sm shadow-md shadow-teal-600/20 transition-all disabled:opacity-50 flex items-center gap-2"
               >
                 {submitting ? (
@@ -853,6 +1312,8 @@ CivicLens Report Created • NMC Registration Not Yet Confirmed
                 Your CivicLens report has been processed and saved. The analysis engine and its operating mode are shown below. NMC registration is a separate, citizen-assisted step until an authorized government integration is available.
               </p>
             </div>
+
+            <VerificationPipelineCard stages={createdReport?.verification_stages} />
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="bg-white border border-slate-200 rounded-xl p-4">

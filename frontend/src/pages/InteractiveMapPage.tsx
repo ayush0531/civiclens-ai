@@ -12,7 +12,7 @@ import {
   Info
 } from 'lucide-react';
 import { api, getImageUrl } from '../services/api';
-import { MapMarkerItem, SpatialCluster } from '../types';
+import { MapMarkerItem, SpatialCluster, NagpurWard } from '../types';
 import { MapView } from '../components/MapView';
 import { DamageBadge, SeverityBadge } from '../components/DamageBadge';
 import { StatusBadge } from '../components/StatusBadge';
@@ -23,6 +23,8 @@ export const InteractiveMapPage: React.FC = () => {
 
   const [markers, setMarkers] = useState<MapMarkerItem[]>([]);
   const [clusters, setClusters] = useState<SpatialCluster[]>([]);
+  const [wards, setWards] = useState<NagpurWard[]>([]);
+  const [showWards, setShowWards] = useState<boolean>(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeLayer, setActiveLayer] = useState<'all' | 'markers' | 'clusters'>('all');
@@ -41,16 +43,18 @@ export const InteractiveMapPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const [markerData, clusterData] = await Promise.all([
+      const [markerData, clusterData, wardData] = await Promise.all([
         api.getMapMarkers({
           category: selectedCategory || undefined,
           severity_level: selectedSeverity || undefined,
           workflow_status: selectedStatus || undefined,
         }),
         api.getSpatialClusters(clusterRadius, 2),
+        api.getNagpurWards(),
       ]);
       setMarkers(markerData);
       setClusters(clusterData);
+      setWards(wardData);
     } catch (err: any) {
       console.error('Failed to load map data', err);
       setError(err.message || 'Failed to load geospatial data from server.');
@@ -134,6 +138,16 @@ export const InteractiveMapPage: React.FC = () => {
               <Flame className="w-3 h-3 text-orange-500" />
               <span>Clusters Only</span>
             </button>
+            <button
+              onClick={() => setShowWards(!showWards)}
+              className={`px-2.5 py-1 rounded-md transition-all flex items-center gap-1 ml-1 ${
+                showWards ? 'bg-teal-50 text-teal-800 border border-teal-200 font-bold' : 'text-slate-500 hover:text-slate-800'
+              }`}
+              title="Toggle Nagpur Municipal Administrative Zones Overlay"
+            >
+              <Layers className="w-3 h-3 text-teal-600" />
+              <span>10 NMC Wards</span>
+            </button>
           </div>
 
           {/* DBSCAN Radius Filter */}
@@ -209,6 +223,8 @@ export const InteractiveMapPage: React.FC = () => {
         <MapView
           markers={markers}
           clusters={clusters}
+          wards={wards}
+          showWards={showWards}
           center={[21.1458, 79.0882]}
           zoom={13}
           height="100%"
@@ -244,6 +260,10 @@ export const InteractiveMapPage: React.FC = () => {
         <div className="pt-2 border-t border-slate-100 text-[10px] text-teal-800 flex items-center gap-1.5 font-semibold">
           <span className="w-3 h-3 rounded-full border-2 border-teal-500 bg-teal-500/20 shrink-0"></span>
           <span>DBSCAN Density Cluster Ring</span>
+        </div>
+        <div className="text-[10px] text-teal-700 flex items-center gap-1.5 font-medium">
+          <span className="w-3 h-1 border-b-2 border-dashed border-teal-600 shrink-0"></span>
+          <span>10 NMC Zone Boundaries</span>
         </div>
       </div>
 

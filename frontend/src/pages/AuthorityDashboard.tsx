@@ -8,13 +8,18 @@ import {
   Clock, 
   Filter, 
   Search, 
-  ChevronRight,
-  TrendingUp,
-  MapPin,
-  ArrowUpDown,
-  Download,
-  Flame,
-  Radio
+  ChevronRight, 
+  TrendingUp, 
+  MapPin, 
+  ArrowUpDown, 
+  Download, 
+  Flame, 
+  Radio,
+  Camera,
+  ShieldCheck,
+  Sparkles,
+  Upload,
+  X
 } from 'lucide-react';
 import { api } from '../services/api';
 import { RoadDamageReport, OverviewStats, SpatialCluster } from '../types';
@@ -22,6 +27,19 @@ import { DamageBadge } from '../components/DamageBadge';
 import { StatusBadge } from '../components/StatusBadge';
 import { PriorityBadge } from '../components/PriorityBadge';
 import { SeverityBadge } from '../components/DamageBadge';
+
+const NAGPUR_ZONES = [
+  'Laxmi Nagar',
+  'Dharampeth',
+  'Hanuman Nagar',
+  'Dhantoli',
+  'Nehru Nagar',
+  'Gandhibagh',
+  'Satranjipura',
+  'Lakadganj',
+  'Ashi Nagar',
+  'Mangalwari'
+];
 
 export const AuthorityDashboard: React.FC = () => {
   const [reports, setReports] = useState<RoadDamageReport[]>([]);
@@ -32,6 +50,15 @@ export const AuthorityDashboard: React.FC = () => {
   const [selectedClusterId, setSelectedClusterId] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [wardFilter, setWardFilter] = useState<string>('all');
+
+  // AI Repair Verification Modal State
+  const [verifyModalReport, setVerifyModalReport] = useState<RoadDamageReport | null>(null);
+  const [repairPhoto, setRepairPhoto] = useState<File | null>(null);
+  const [repairNotes, setRepairNotes] = useState<string>('');
+  const [verifying, setVerifying] = useState<boolean>(false);
+  const [verifyResult, setVerifyResult] = useState<any | null>(null);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchDashboardData();
@@ -65,6 +92,12 @@ export const AuthorityDashboard: React.FC = () => {
     // Category filter
     if (categoryFilter !== 'all' && r.predicted_damage_category !== categoryFilter) {
       return false;
+    }
+
+    // Ward zone filter
+    if (wardFilter !== 'all') {
+      const wName = (r.ward_name || r.area_locality || '').toLowerCase();
+      if (!wName.includes(wardFilter.toLowerCase())) return false;
     }
 
     // Tab filter
@@ -121,6 +154,32 @@ export const AuthorityDashboard: React.FC = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const handleVerifyRepairSubmit = async () => {
+    if (!verifyModalReport || !repairPhoto) {
+      setVerifyError('Please upload a post-repair verification photograph.');
+      return;
+    }
+    setVerifying(true);
+    setVerifyError(null);
+    try {
+      const res = await api.verifyRepair(verifyModalReport.id, repairPhoto, repairNotes);
+      setVerifyResult(res);
+      await fetchDashboardData();
+    } catch (err: any) {
+      setVerifyError(err.message || 'Repair verification inspection failed.');
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const openVerifyModal = (report: RoadDamageReport) => {
+    setVerifyModalReport(report);
+    setRepairPhoto(null);
+    setRepairNotes('');
+    setVerifyResult(null);
+    setVerifyError(null);
   };
 
   return (
@@ -312,7 +371,19 @@ export const AuthorityDashboard: React.FC = () => {
             </div>
 
             {/* Filter and Search */}
-            <div className="flex items-center gap-2 w-full md:w-auto">
+            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+              {/* Ward Filter */}
+              <select
+                value={wardFilter}
+                onChange={(e) => setWardFilter(e.target.value)}
+                className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-white font-medium text-slate-700"
+              >
+                <option value="all">All Nagpur Zones (10)</option>
+                {NAGPUR_ZONES.map((zone) => (
+                  <option key={zone} value={zone}>Zone: {zone}</option>
+                ))}
+              </select>
+
               <select
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value)}
@@ -363,6 +434,7 @@ export const AuthorityDashboard: React.FC = () => {
                     <th className="px-4 py-3 text-center">Priority Score</th>
                     <th className="px-4 py-3 text-center">Severity</th>
                     <th className="px-4 py-3">Workflow Status</th>
+                    <th className="px-4 py-3">SLA Status</th>
                     <th className="px-4 py-3">Assigned Crew</th>
                     <th className="px-4 py-3 text-right">Actions</th>
                   </tr>
@@ -420,6 +492,26 @@ export const AuthorityDashboard: React.FC = () => {
                         </div>
                       </td>
 
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {item.is_sla_breached ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
+                            ⚠️ Breached
+                          </span>
+                        ) : item.sla_deadline_at ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-mono text-slate-700">
+                            <Clock className="w-3 h-3 text-teal-600" />
+                            {new Date(item.sla_deadline_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-slate-400">Standard</span>
+                        )}
+                        {item.reopened_count && item.reopened_count > 0 ? (
+                          <span className="block text-[9px] font-mono font-bold text-amber-700 mt-0.5">
+                            Reopened x{item.reopened_count}
+                          </span>
+                        ) : null}
+                      </td>
+
                       <td className="px-4 py-3 text-slate-600 whitespace-nowrap">
                         {item.assigned_authority_name || (
                           <span className="text-slate-400 italic">Unassigned</span>
@@ -427,6 +519,15 @@ export const AuthorityDashboard: React.FC = () => {
                       </td>
 
                       <td className="px-4 py-3 text-right whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={() => openVerifyModal(item)}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 font-semibold text-xs transition-colors mr-1.5"
+                          title="Run AI Before/After Repair Inspection"
+                        >
+                          <ShieldCheck className="w-3.5 h-3.5 text-teal-600" />
+                          <span>Verify AI</span>
+                        </button>
                         <Link
                           to={`/case/${item.id}`}
                           className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white border border-slate-300 text-teal-700 hover:bg-teal-50 font-semibold text-xs transition-colors shadow-2xs"
@@ -446,6 +547,144 @@ export const AuthorityDashboard: React.FC = () => {
         </div>
 
       </div>
+
+      {/* AI Repair Verification Modal */}
+      {verifyModalReport && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="text-base font-extrabold text-navy-900 flex items-center gap-2">
+                  <ShieldCheck className="w-5 h-5 text-teal-600" />
+                  <span>AI Repair Quality Verification (Computer Vision)</span>
+                </h3>
+                <p className="text-xs text-slate-500 mt-1">
+                  Upload post-patching photo for case <span className="font-mono font-bold text-slate-800">{verifyModalReport.reference_number}</span> ({verifyModalReport.title}).
+                </p>
+              </div>
+              <button
+                onClick={() => setVerifyModalReport(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {verifyError && (
+              <div className="p-3 rounded-xl text-xs bg-rose-50 text-rose-800 border border-rose-200">
+                {verifyError}
+              </div>
+            )}
+
+            {verifyResult ? (
+              <div className="space-y-4">
+                <div className={`p-4 rounded-xl border space-y-2 ${
+                  verifyResult.verification_status === 'VERIFIED_REPAIRED'
+                    ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
+                    : verifyResult.verification_status === 'PARTIAL_REPAIR_DETECTED'
+                    ? 'bg-amber-50 border-amber-300 text-amber-900'
+                    : 'bg-rose-50 border-rose-300 text-rose-900'
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider">AI Inspection Verdict:</span>
+                    <span className="font-mono font-black text-xs px-2.5 py-0.5 rounded-full bg-white/80 border">
+                      {verifyResult.verification_status}
+                    </span>
+                  </div>
+                  <p className="text-xs leading-relaxed">
+                    Residual Defect Index: <strong>{verifyResult.residual_damage_index.toFixed(1)}/100</strong> • Resolution Confidence: <strong>{(verifyResult.confidence_score * 100).toFixed(0)}%</strong>
+                  </p>
+                  <p className="text-[11px] opacity-90">
+                    {verifyResult.verification_status === 'VERIFIED_REPAIRED'
+                      ? '✓ Pavement surface successfully restored. Defect cavity neutralized. Case transitioned to RESOLVED.'
+                      : verifyResult.verification_status === 'PARTIAL_REPAIR_DETECTED'
+                      ? '⚠️ Partial repair detected. Surface uneven or remaining minor cavity. Crew notified for re-inspection.'
+                      : '❌ Defect remains active! Road damage void persists in uploaded evidence.'}
+                  </p>
+                </div>
+
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setVerifyModalReport(null)}
+                    className="px-5 py-2 text-xs font-bold rounded-xl bg-teal-600 hover:bg-teal-700 text-white shadow-xs"
+                  >
+                    Done & Close
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                    Post-Repair Road Photograph <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="border-2 border-dashed border-slate-300 hover:border-teal-500 rounded-xl p-4 text-center bg-slate-50">
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          setRepairPhoto(e.target.files[0]);
+                        }
+                      }}
+                      className="text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-teal-600 file:text-white hover:file:bg-teal-700 cursor-pointer"
+                    />
+                    {repairPhoto && (
+                      <span className="text-xs text-teal-700 font-medium block mt-2">
+                        ✓ Selected: {repairPhoto.name}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Field Inspection Notes (Optional)
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={repairNotes}
+                    onChange={(e) => setRepairNotes(e.target.value)}
+                    placeholder="e.g. Cold mix asphalt compacted with 2-ton vibratory roller on WHC Road lane..."
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  />
+                </div>
+
+                <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setVerifyModalReport(null)}
+                    className="px-4 py-2 text-xs font-semibold rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={verifying || !repairPhoto}
+                    onClick={handleVerifyRepairSubmit}
+                    className="px-5 py-2 text-xs font-bold rounded-xl bg-teal-600 hover:bg-teal-700 text-white shadow-xs transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                  >
+                    {verifying ? (
+                      <>
+                        <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        <span>Evaluating Computer Vision...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>Run AI Resolution Inspection</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

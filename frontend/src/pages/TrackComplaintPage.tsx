@@ -26,6 +26,8 @@ import { api, getImageUrl } from '../services/api';
 import { PublicTrackReport, WorkflowStatus } from '../types';
 import { NMCHandoffCard } from '../components/NMCHandoffCard';
 import { StatusBadge } from '../components/StatusBadge';
+import { VerificationPipelineCard } from '../components/VerificationPipelineCard';
+import { RepairComparisonCard } from '../components/RepairComparisonCard';
 
 interface StepDefinition {
   key: WorkflowStatus;
@@ -52,6 +54,13 @@ export const TrackComplaintPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
+
+  // Dispute & Reopen Grievance State
+  const [showReopenModal, setShowReopenModal] = useState(false);
+  const [reopenReason, setReopenReason] = useState<'DEFECT_NOT_REPAIRED' | 'POOR_QUALITY_REPAIR' | 'SURFACE_UNEVEN' | 'OTHER'>('DEFECT_NOT_REPAIRED');
+  const [reopenComments, setReopenComments] = useState('');
+  const [reopening, setReopening] = useState(false);
+  const [reopenMsg, setReopenMsg] = useState<{ text: string; error: boolean } | null>(null);
 
   // Load recent searches from localStorage
   useEffect(() => {
@@ -109,6 +118,31 @@ export const TrackComplaintPage: React.FC = () => {
     navigator.clipboard.writeText(ref);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleReopenSubmit = async () => {
+    if (!report) return;
+    if (!reopenComments.trim()) {
+      setReopenMsg({ text: 'Please explain why the resolution is disputed.', error: true });
+      return;
+    }
+    setReopening(true);
+    setReopenMsg(null);
+    try {
+      await api.reopenComplaint(report.id, {
+        reason: reopenReason,
+        comments: reopenComments.trim(),
+        citizen_name: 'Concerned Citizen'
+      });
+      setReopenMsg({ text: 'Dispute submitted. Complaint status has been reopened for municipal review.', error: false });
+      // Refresh report data
+      await fetchComplaint(report.reference_number || String(report.id));
+      setTimeout(() => setShowReopenModal(false), 2000);
+    } catch (err: any) {
+      setReopenMsg({ text: err.message || 'Failed to submit dispute.', error: true });
+    } finally {
+      setReopening(false);
+    }
   };
 
   // Determine stage progression index (0 to 4, or -1 if rejected)
@@ -367,6 +401,80 @@ export const TrackComplaintPage: React.FC = () => {
               showContinueTrackingButton={false}
             />
 
+            {/* SLA Status Banner */}
+            {report.sla_deadline_at && (
+              <div className={`p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs ${
+                report.is_sla_breached
+                  ? 'bg-rose-50 border-rose-200 text-rose-800'
+                  : 'bg-teal-50 border-teal-200 text-teal-800'
+              }`}>
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-teal-600 shrink-0" />
+                  <div>
+                    <span className="font-bold block">
+                      Municipal SLA Resolution Target:{' '}
+                      {new Date(report.sla_deadline_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                    <span className="text-[11px] opacity-80">
+                      Standard NMC Road Pavement Service Level Agreement
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {report.reopened_count && report.reopened_count > 0 ? (
+                    <span className="px-2.5 py-1 rounded-full font-mono font-bold text-[10px] uppercase bg-amber-100 text-amber-900 border border-amber-300">
+                      Reopened x{report.reopened_count}
+                    </span>
+                  ) : null}
+                  <span className={`px-3 py-1 rounded-full font-mono font-bold text-xs uppercase ${
+                    report.is_sla_breached
+                      ? 'bg-rose-200 text-rose-900 border border-rose-300'
+                      : 'bg-teal-200 text-teal-900 border border-teal-300'
+                  }`}>
+                    {report.is_sla_breached ? '⚠️ SLA Breached' : '✓ SLA Active'}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* 5-Stage Automated Verification Pipeline Audit Card */}
+            {report.verification_stages && report.verification_stages.length > 0 && (
+              <VerificationPipelineCard stages={report.verification_stages} />
+            )}
+
+            {/* AI Before-and-After Repair Verification Comparison */}
+            {(report.repair_evidences && report.repair_evidences.length > 0) || report.resolution_image_path ? (
+              <RepairComparisonCard
+                evidence={report.repair_evidences?.[0]}
+                beforeImagePath={report.image_path}
+                afterImagePath={report.resolution_image_path || undefined}
+              />
+            ) : null}
+
+            {/* Dispute Resolution Card for Citizens if Resolved */}
+            {report.workflow_status === 'RESOLVED' && (
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-600" />
+                    <h4 className="text-xs font-bold text-amber-900">
+                      Pavement Defect Marked Resolved: Disagree with the Repair Quality?
+                    </h4>
+                  </div>
+                  <p className="text-[11px] text-amber-700 leading-relaxed max-w-xl">
+                    If asphalt patching is incomplete, the cavity has recurred, or the road surface remains uneven, citizens can dispute the repair to trigger secondary municipal inspection.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowReopenModal(true)}
+                  className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-xs transition-colors shrink-0"
+                >
+                  Dispute Resolution / Reopen Grievance
+                </button>
+              </div>
+            )}
+
             {/* Lifecycle Progress Stepper (5 Municipal Steps) */}
             <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-6">
               <div className="flex items-center justify-between">
@@ -620,6 +728,96 @@ export const TrackComplaintPage: React.FC = () => {
               )}
             </div>
 
+          </div>
+        )}
+
+        {/* Dispute & Reopen Grievance Modal */}
+        {showReopenModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
+            <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h3 className="text-base font-extrabold text-navy-900 flex items-center gap-2">
+                    <AlertTriangle className="w-5 h-5 text-amber-500" />
+                    <span>Dispute Repair & Reopen Grievance</span>
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Submit secondary inspection request to NMC zonal triage team for case{' '}
+                    <span className="font-mono font-bold text-slate-800">{report?.reference_number}</span>.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowReopenModal(false)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                >
+                  &times;
+                </button>
+              </div>
+
+              {reopenMsg && (
+                <div className={`p-3 rounded-xl text-xs ${
+                  reopenMsg.error ? 'bg-rose-50 text-rose-800 border border-rose-200' : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                }`}>
+                  {reopenMsg.text}
+                </div>
+              )}
+
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Dispute Reason Category
+                  </label>
+                  <select
+                    value={reopenReason}
+                    onChange={(e: any) => setReopenReason(e.target.value)}
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
+                  >
+                    <option value="DEFECT_NOT_REPAIRED">Defect Not Repaired (Cavity still fully active)</option>
+                    <option value="POOR_QUALITY_REPAIR">Substandard Patch Quality (Gravel loose / eroding)</option>
+                    <option value="SURFACE_UNEVEN">Dangerous Surface Level Disparity (Vehicle bumper scrape risk)</option>
+                    <option value="OTHER">Other Ground Reality Deficiency</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Citizen Field Feedback & Remarks <span className="text-rose-500">*</span>
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={reopenComments}
+                    onChange={(e) => setReopenComments(e.target.value)}
+                    placeholder="Describe specific defects observed post-repair (e.g. 'Patch sank after rain, 4-inch dip remains in left lane')..."
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setShowReopenModal(false)}
+                  className="px-4 py-2 text-xs font-semibold rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={reopening || !reopenComments.trim()}
+                  onClick={handleReopenSubmit}
+                  className="px-5 py-2 text-xs font-bold rounded-xl bg-amber-600 hover:bg-amber-700 text-white shadow-xs transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  {reopening ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>Submitting Dispute...</span>
+                    </>
+                  ) : (
+                    <span>Confirm & Reopen Complaint</span>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         )}
 

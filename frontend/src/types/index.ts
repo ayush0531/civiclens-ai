@@ -145,6 +145,13 @@ export interface RoadDamageReport {
   external_reference_notes?: string | null;
   external_reference_recorded_at?: string | null;
   road_jurisdiction?: string | null;
+  ward_name?: string | null;
+  sla_deadline_at?: string | null;
+  is_sla_breached?: boolean;
+  reopened_count?: number;
+  estimated_surface_area_sqm?: number;
+  verification_stages?: ReportVerificationStage[];
+  repair_evidences?: RepairResolutionEvidence[];
   is_demo_data: boolean;
   created_at: string;
   updated_at: string;
@@ -178,6 +185,13 @@ export interface PublicTrackReport {
   resolution_image_path?: string | null;
   status_history: StatusHistoryItem[];
   analyses: AIAnalysis[];
+  verification_stages?: ReportVerificationStage[];
+  repair_evidences?: RepairResolutionEvidence[];
+  ward_name?: string | null;
+  sla_deadline_at?: string | null;
+  is_sla_breached?: boolean;
+  reopened_count?: number;
+  estimated_surface_area_sqm?: number;
   external_reference_id?: string | null;
   external_reference_notes?: string | null;
   external_reference_recorded_at?: string | null;
@@ -375,3 +389,92 @@ export interface PriorityPolicyData {
   policy: Record<string, number>;
   weights_description: Record<string, string>;
 }
+
+export interface ReportVerificationStage {
+  id: number;
+  report_id: number;
+  stage_number: number;
+  stage_key: string;
+  stage_title: string;
+  status: 'PASSED' | 'FAILED' | 'WARNING' | 'IN_PROGRESS';
+  confidence_score: number;
+  summary: string;
+  evidence_json?: string | null;
+  failure_reason?: string | null;
+  executed_at: string;
+}
+
+export interface RepairResolutionEvidence {
+  id: number;
+  report_id: number;
+  assignment_id?: number | null;
+  before_image_path: string;
+  after_image_path: string;
+  residual_damage_score: number;
+  resolution_status: 'VERIFIED_REPAIRED' | 'PARTIAL_REPAIR_DETECTED' | 'DEFECT_REMAINS_ACTIVE';
+  ai_confidence: number;
+  inspection_notes?: string | null;
+  contractor_name?: string | null;
+  asphalt_mix_type?: string | null;
+  created_at: string;
+}
+
+export interface NagpurWard {
+  id: number;
+  zone_number: number;
+  ward_name: string;
+  marathi_name?: string | null;
+  office_address?: string | null;
+  zonal_officer_name?: string | null;
+  contact_phone?: string | null;
+  contact_email?: string | null;
+  latitude: number;
+  longitude: number;
+  boundary_coordinates_json?: string | null;
+  active_defects_count: number;
+}
+
+export interface NMCIntegrationConfig {
+  id: number;
+  adapter_mode: 'SIMULATED' | 'OFFICIAL_API';
+  endpoint_url: string;
+  api_key_masked?: string | null;
+  mou_reference: string;
+  timeout_seconds: number;
+  retry_limit: number;
+  is_healthy: boolean;
+  last_ping_ms: number;
+  last_heartbeat_at: string;
+  updated_at: string;
+}
+
+export interface NMCTransactionAudit {
+  id: number;
+  report_id: number;
+  idempotency_key: string;
+  transaction_type: string;
+  external_status: string;
+  official_reference_id?: string | null;
+  request_payload_json?: string | null;
+  response_payload_json?: string | null;
+  http_status_code: number;
+  retry_count: number;
+  notes?: string | null;
+  timestamp: string;
+}
+
+export interface NLParseResult {
+  parsed_successfully: boolean;
+  structured_title?: string;
+  predicted_damage_category?: string;
+  category_confidence?: number;
+  severity_level?: string;
+  estimated_severity_score?: number;
+  road_classification?: string;
+  suggested_ward?: string;
+  extracted_landmark?: string;
+  urgency_level?: string;
+  extracted_from_input?: string;
+  message?: string;
+}
+

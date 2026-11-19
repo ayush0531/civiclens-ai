@@ -32,6 +32,8 @@ import { StatusBadge } from '../components/StatusBadge';
 import { PriorityBadge } from '../components/PriorityBadge';
 import { ImageModal } from '../components/ImageModal';
 import { MapView } from '../components/MapView';
+import { VerificationPipelineCard } from '../components/VerificationPipelineCard';
+import { RepairComparisonCard } from '../components/RepairComparisonCard';
 
 export const CaseDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -591,6 +593,20 @@ export const CaseDetailsPage: React.FC = () => {
           </div>
 
         </div>
+
+        {/* 5-Stage Automated Verification Pipeline Telemetry */}
+        {report.verification_stages && report.verification_stages.length > 0 && (
+          <VerificationPipelineCard stages={report.verification_stages} />
+        )}
+
+        {/* AI Before-and-After Photogrammetric Repair Verification */}
+        {((report.repair_evidences && report.repair_evidences.length > 0) || report.resolution_image_path) && (
+          <RepairComparisonCard
+            evidence={report.repair_evidences?.[0]}
+            beforeImagePath={report.image_path}
+            afterImagePath={report.resolution_image_path || undefined}
+          />
+        )}
 
         {/* Duplicate Candidates Card */}
         {report.duplicate_candidates && report.duplicate_candidates.length > 0 && (

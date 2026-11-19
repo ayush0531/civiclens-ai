@@ -142,6 +142,11 @@ class ReportResponse(BaseModel):
     external_reference_notes: Optional[str] = None
     external_reference_recorded_at: Optional[datetime] = None
     road_jurisdiction: Optional[str] = "NMC"
+    ward_name: Optional[str] = "Dharampeth"
+    sla_deadline_at: Optional[datetime] = None
+    is_sla_breached: bool = False
+    reopened_count: int = 0
+    estimated_surface_area_sqm: float = 0.0
     external_submission_label: Optional[str] = "Not yet registered through NMC"
     internal_status_label: Optional[str] = "Saved within CivicLens"
     official_portal_url: Optional[str] = "https://nmcnagpur.gov.in/grievance/complaint_form.php"
@@ -191,6 +196,13 @@ class PublicTrackResponse(BaseModel):
     resolution_image_path: Optional[str] = None
     status_history: List[StatusHistoryResponse] = []
     analyses: List[AIAnalysisResponse] = []
+    verification_stages: List[Any] = []
+    repair_evidences: List[Any] = []
+    ward_name: Optional[str] = "Dharampeth"
+    sla_deadline_at: Optional[datetime] = None
+    is_sla_breached: bool = False
+    reopened_count: int = 0
+    estimated_surface_area_sqm: float = 0.0
     external_reference_id: Optional[str] = None
     external_reference_notes: Optional[str] = None
     external_reference_recorded_at: Optional[datetime] = None
@@ -232,6 +244,8 @@ class ReportDetailResponse(ReportResponse):
     analyses: List[AIAnalysisResponse] = []
     assignments: List[AssignmentResponse] = []
     status_history: List[StatusHistoryResponse] = []
+    verification_stages: List[Any] = []
+    repair_evidences: List[Any] = []
     resolution_notes: Optional[str] = None
     resolution_image_path: Optional[str] = None
     resolved_at: Optional[datetime] = None
@@ -309,3 +323,147 @@ class AuditLogResponse(BaseModel):
     timestamp: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# ----------------- Verification & Resolution Schemas -----------------
+class ReportVerificationStageResponse(BaseModel):
+    id: int
+    report_id: int
+    stage_number: int
+    stage_key: str
+    stage_title: str
+    status: str
+    confidence_score: float
+    summary: str
+    evidence_json: Optional[str] = None
+    failure_reason: Optional[str] = None
+    executed_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class RepairResolutionEvidenceResponse(BaseModel):
+    id: int
+    report_id: int
+    assignment_id: Optional[int] = None
+    before_image_path: str
+    after_image_path: str
+    residual_damage_score: float
+    resolution_status: str
+    ai_confidence: float
+    inspection_notes: Optional[str] = None
+    contractor_name: Optional[str] = None
+    asphalt_mix_type: Optional[str] = None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class NagpurWardResponse(BaseModel):
+    id: int
+    zone_number: int
+    ward_name: str
+    marathi_name: Optional[str] = None
+    office_address: Optional[str] = None
+    zonal_officer_name: Optional[str] = None
+    contact_phone: Optional[str] = None
+    contact_email: Optional[str] = None
+    latitude: float
+    longitude: float
+    boundary_coordinates_json: Optional[str] = None
+    active_defects_count: int = 0
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class NMCIntegrationConfigResponse(BaseModel):
+    id: int
+    adapter_mode: str
+    endpoint_url: str
+    api_key_masked: Optional[str] = None
+    mou_reference: str
+    timeout_seconds: int
+    retry_limit: int
+    is_healthy: bool
+    last_ping_ms: float
+    last_heartbeat_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class NMCIntegrationConfigUpdate(BaseModel):
+    adapter_mode: Optional[str] = None
+    endpoint_url: Optional[str] = None
+    api_key: Optional[str] = None
+    timeout_seconds: Optional[int] = None
+    retry_limit: Optional[int] = None
+
+
+class NMCTransactionAuditResponse(BaseModel):
+    id: int
+    report_id: int
+    idempotency_key: str
+    transaction_type: str
+    external_status: str
+    official_reference_id: Optional[str] = None
+    request_payload_json: Optional[str] = None
+    response_payload_json: Optional[str] = None
+    http_status_code: int
+    retry_count: int
+    notes: Optional[str] = None
+    timestamp: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ComplaintReopenCreate(BaseModel):
+    reopen_reason: str = Field(..., min_length=10, max_length=500)
+    evidence_image_path: Optional[str] = None
+
+
+class ComplaintReopenResponse(BaseModel):
+    id: int
+    report_id: int
+    citizen_id: int
+    reopen_reason: str
+    new_evidence_image_path: Optional[str] = None
+    status: str
+    officer_review_notes: Optional[str] = None
+    created_at: datetime
+    reviewed_at: Optional[datetime] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class NLParseRequest(BaseModel):
+    text: str = Field(..., min_length=5, max_length=1000)
+
+
+class NLParseResponse(BaseModel):
+    parsed_successfully: bool
+    structured_title: Optional[str] = None
+    suggested_title: Optional[str] = None
+    predicted_damage_category: Optional[str] = None
+    distress_type: Optional[str] = None
+    category_confidence: Optional[float] = None
+    severity_level: Optional[str] = None
+    suggested_severity: Optional[str] = None
+    estimated_severity_score: Optional[float] = None
+    road_classification: Optional[str] = None
+    suggested_ward: Optional[str] = None
+    ward_name: Optional[str] = None
+    extracted_landmark: Optional[str] = None
+    landmark: Optional[str] = None
+    summary: Optional[str] = None
+    urgency_level: Optional[str] = None
+    extracted_from_input: Optional[str] = None
+    message: Optional[str] = None
+
+
+class RepairVerificationRequest(BaseModel):
+    after_image_path: str
+    contractor_name: Optional[str] = None
+    asphalt_mix_type: Optional[str] = "Hot Mix Asphalt (Bituminous Concrete)"
+    inspection_notes: Optional[str] = None
+

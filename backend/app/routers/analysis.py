@@ -7,11 +7,12 @@ from sqlalchemy.orm import Session
 from backend.app.config import settings
 from backend.app.database import get_db
 from backend.app.models.models import RoadDamageReport, AIAnalysis, AuditLog, User
-from backend.app.schemas.schemas import AIAnalysisResponse, QuickInspectResponse
+from backend.app.schemas.schemas import AIAnalysisResponse, QuickInspectResponse, NLParseRequest, NLParseResponse
 from backend.app.services.auth_service import get_current_user, require_roles
 from backend.app.services.ai_service import ai_service
 from backend.app.services.duplicate_service import duplicate_service
 from backend.app.services.priority_service import priority_engine
+from backend.app.services.nl_parser import nl_parser
 from backend.app.utils.file_storage import save_upload_image
 
 router = APIRouter(tags=["AI Road Damage Inference & Evaluation"])
@@ -179,3 +180,14 @@ def set_ai_inference_mode(
         "message": f"AI Inference mode switched to {ai_service.mode}",
         "engine_info": ai_service.get_engine_info()
     }
+
+
+@router.post("/ai/parse-nl-report", response_model=NLParseResponse)
+def parse_natural_language_report(payload: NLParseRequest):
+    """
+    Natural Language Road Grievance Parser.
+    Extracts structured civic engineering fields from citizen descriptions.
+    """
+    res = nl_parser.parse_description(payload.text)
+    return NLParseResponse(**res)
+
