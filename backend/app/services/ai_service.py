@@ -47,6 +47,7 @@ class AIInferenceService:
 
     def __init__(self):
         self.requested_mode = settings.AI_INFERENCE_MODE.upper()
+        self.mode = "DEMO"
         self.weights_path = settings.AI_ONNX_MODEL_PATH
         self.model_artifact_bytes = os.path.getsize(self.weights_path) if os.path.isfile(self.weights_path) else 0
         # The checked-in artifact is ~62 KB, far below the repository's claimed
@@ -67,6 +68,7 @@ class AIInferenceService:
                 self.providers = self.onnx_session.get_providers()
                 self.model_name = "CivicLens road-defect ONNX model (operator-approved)"
                 self.model_version = "2.0.0"
+                self.mode = "REAL"
                 self.model_validation_status = "OPERATOR_APPROVED_NOT_INDEPENDENTLY_VERIFIED"
                 self.model_validation_reason = "Operator approval is configured; independent benchmark verification is still required."
             except Exception as e:
