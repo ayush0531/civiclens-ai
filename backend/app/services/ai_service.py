@@ -9,14 +9,13 @@ import onnxruntime as ort
 
 from backend.app.config import settings
 
-# Standardized 6-class distress taxonomy mapped to RDD2022
+# RDD2022 India class order used by ml/prepare_rdd2022.py and YOLO training.
+# 0=D00 longitudinal, 1=D10 transverse, 2=D20 alligator, 3=D40 pothole.
 TAXONOMY_CLASSES = [
-    "Pothole",
     "Longitudinal crack",
     "Transverse crack",
     "Alligator cracking",
-    "Surface deterioration",
-    "Other / uncertain"
+    "Pothole",
 ]
 
 CLASS_SEVERITY_FACTORS = {
@@ -24,24 +23,20 @@ CLASS_SEVERITY_FACTORS = {
     "Alligator cracking": 0.85,
     "Transverse crack": 0.70,
     "Longitudinal crack": 0.65,
-    "Surface deterioration": 0.50,
-    "Other / uncertain": 0.30
 }
 
 CLASS_COLOR_MAP = {
-    "Pothole": (239, 68, 68),            # Rose / Red
-    "Alligator cracking": (249, 115, 22), # Orange
-    "Transverse crack": (245, 158, 11),  # Amber
-    "Longitudinal crack": (234, 179, 8),  # Yellow
-    "Surface deterioration": (6, 182, 212), # Cyan
-    "Other / uncertain": (107, 114, 128)  # Slate / Gray
+    "Pothole": (239, 68, 68),
+    "Alligator cracking": (249, 115, 22),
+    "Transverse crack": (245, 158, 11),
+    "Longitudinal crack": (234, 179, 8),
 }
 
 class AIInferenceService:
     """
     CivicLens AI 2.0 Modular Computer Vision Service.
     Supports:
-    - Mode A: Real ONNX Runtime inference using trained YOLOv8-RDD2022 model.
+    - Mode A: Real ONNX Runtime inference using trained YOLO11-RDD2022 model.
     - Mode B: Deterministic computer vision image morphology heuristic fallback.
     """
 
@@ -66,7 +61,7 @@ class AIInferenceService:
                 opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
                 self.onnx_session = ort.InferenceSession(self.weights_path, sess_options=opts)
                 self.providers = self.onnx_session.get_providers()
-                self.model_name = "CivicLens road-defect ONNX model (operator-approved)"
+                self.model_name = "CivicLens YOLO11 RDD2022 India (ONNX)"
                 self.model_version = "2.0.0"
                 self.mode = "REAL"
                 self.model_validation_status = "OPERATOR_APPROVED_NOT_INDEPENDENTLY_VERIFIED"
@@ -97,7 +92,7 @@ class AIInferenceService:
         mode_upper = mode.upper()
         if mode_upper == "REAL" and self.onnx_session is not None and self.model_validation_approved:
             self.mode = "REAL"
-            self.model_name = "CivicLens-YOLOv8-RDD2022 (ONNX Deep Learning Engine)"
+            self.model_name = "CivicLens-YOLO11-RDD2022 (ONNX Deep Learning Engine)"
         else:
             self.mode = "DEMO"
             self.model_name = "CivicLens-EdgeCV-v2.0 (Deterministic Heuristic Engine)"
@@ -188,87 +183,141 @@ class AIInferenceService:
             "analysis_metadata": metadata
         }
 
+    @staticmethod
+    def _nms_xyxy(boxes: np.ndarray, scores: np.ndarray, iou_threshold: float = 0.45) -> List[int]:
+        """Greedy class-wise NMS; boxes use original-image xyxy coordinates."""
+        if len(boxes) == 0:
+            return []
+        x1, y1, x2, y2 = boxes.T
+        areas = np.maximum(0.0, x2 - x1) * np.maximum(0.0, y2 - y1)
+        order = scores.argsort()[::-1]
+        keep: List[int] = []
+        while order.size:
+            i = int(order[0])
+            keep.append(i)
+            if order.size == 1:
+                break
+            rest = order[1:]
+            xx1 = np.maximum(x1[i], x1[rest])
+            yy1 = np.maximum(y1[i], y1[rest])
+            xx2 = np.minimum(x2[i], x2[rest])
+            yy2 = np.minimum(y2[i], y2[rest])
+            inter = np.maximum(0.0, xx2 - xx1) * np.maximum(0.0, yy2 - yy1)
+            union = areas[i] + areas[rest] - inter
+            iou = inter / np.maximum(union, 1e-9)
+            order = rest[iou <= iou_threshold]
+        return keep
+
     def _run_onnx_model_inference(self, img: Image.Image, image_path: str) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
-        """
-        Genuine deep learning inference through ONNX Runtime:
-        1. Letterbox pre-processes image to 640x640 float32 tensor.
-        2. Normalizes pixel values [0, 1].
-        3. Runs inference session graph.
-        4. Decodes anchor outputs and applies Non-Maximum Suppression (NMS).
-        """
+        """Run standard Ultralytics YOLO11 ONNX detection output with letterboxing and NMS."""
         orig_w, orig_h = img.size
+        input_meta = self.onnx_session.get_inputs()[0]
+        input_name = input_meta.name
+        input_shape = input_meta.shape
+        height = int(input_shape[2]) if isinstance(input_shape[2], int) else 640
+        width = int(input_shape[3]) if isinstance(input_shape[3], int) else 640
+        if height <= 0 or width <= 0:
+            height, width = 640, 640
 
-        # Pre-process: Resize to 640x640
-        resized = img.resize((640, 640), Image.Resampling.BILINEAR)
-        img_np = np.array(resized, dtype=np.float32) / 255.0  # Normalize [0, 1]
-        
-        # Transpose HWC -> CHW, add batch dimension -> [1, 3, 640, 640]
-        tensor_input = np.transpose(img_np, (2, 0, 1))
-        tensor_input = np.expand_dims(tensor_input, axis=0)
+        # Ultralytics letterbox: preserve aspect ratio and pad with 114.
+        scale = min(width / orig_w, height / orig_h)
+        resized_w, resized_h = int(round(orig_w * scale)), int(round(orig_h * scale))
+        resized = img.resize((resized_w, resized_h), Image.Resampling.BILINEAR)
+        pad_x = (width - resized_w) // 2
+        pad_y = (height - resized_h) // 2
+        canvas = Image.new("RGB", (width, height), (114, 114, 114))
+        canvas.paste(resized, (pad_x, pad_y))
+        array = np.asarray(canvas, dtype=np.float32) / 255.0
+        tensor = np.transpose(array, (2, 0, 1))[None, ...].astype(np.float32)
 
-        # Execute ONNX Runtime Graph
-        outputs = self.onnx_session.run(['output0'], {'images': tensor_input})
-        output_matrix = outputs[0][0]  # Shape [10, 6400]
+        output_name = self.onnx_session.get_outputs()[0].name
+        raw = self.onnx_session.run([output_name], {input_name: tensor})[0]
+        pred = np.asarray(raw)
+        if pred.ndim != 3 or pred.shape[0] != 1:
+            raise ValueError(f"Unsupported YOLO ONNX output shape: {pred.shape}")
+        pred = pred[0]
+        # Standard YOLO export is [4 + classes, anchors]; normalize to [anchors, fields].
+        if pred.shape[0] in (4 + len(TAXONOMY_CLASSES), 4 + len(TAXONOMY_CLASSES) + 1):
+            pred = pred.T
+        if pred.shape[1] < 5:
+            raise ValueError(f"Unsupported YOLO detection tensor shape: {raw.shape}")
 
-        # Extract features and anchor activations
-        # Channel 0..3: cx, cy, w, h
-        # Channel 4..9: 6 class probabilities
-        class_activations = output_matrix[4:10, :]  # Shape [6, 6400]
-        
-        # Find peak activation anchors
-        max_class_scores = np.max(class_activations, axis=0)
-        best_class_indices = np.argmax(class_activations, axis=0)
+        # Standard non-end-to-end YOLO output: cx,cy,w,h followed by class scores.
+        # An optional objectness column is supported for older YOLO exports.
+        if pred.shape[1] == 4 + len(TAXONOMY_CLASSES) + 1:
+            objectness = pred[:, 4]
+            class_scores = pred[:, 5:] * objectness[:, None]
+        else:
+            class_scores = pred[:, 4:]
+        if class_scores.shape[1] != len(TAXONOMY_CLASSES):
+            raise ValueError(
+                f"Expected {len(TAXONOMY_CLASSES)} RDD2022 classes, got {class_scores.shape[1]}. "
+                "Check the trained model's class order."
+            )
 
-        # Image texture guidance: compute edge intensity to anchor realistic physical bounds
-        gray = img.convert("L")
-        stat = ImageStat.Stat(gray)
-        edge_energy = ImageStat.Stat(gray.filter(ImageFilter.FIND_EDGES)).mean[0]
+        class_ids = np.argmax(class_scores, axis=1)
+        confidences = class_scores[np.arange(len(class_scores)), class_ids]
+        candidate_ids = np.where(confidences >= 0.25)[0]
+        if candidate_ids.size == 0:
+            return [], {
+                "framework": "ONNX Runtime",
+                "model_format": "Ultralytics YOLO detection export",
+                "input_name": input_name,
+                "output_name": output_name,
+                "tensor_input_shape": list(tensor.shape),
+                "output_tensor_shape": list(raw.shape),
+                "candidate_count": 0,
+                "confidence_threshold": 0.25,
+                "nms_iou_threshold": 0.45,
+            }
 
-        # Select top 1 to 3 distinct detection candidates
-        detections = []
-        scale_x = orig_w / 640.0
-        scale_y = orig_h / 640.0
+        rows = pred[candidate_ids]
+        scores = confidences[candidate_ids]
+        classes = class_ids[candidate_ids]
+        cx, cy, bw, bh = rows[:, 0], rows[:, 1], rows[:, 2], rows[:, 3]
+        # Undo letterbox padding and scale to source image coordinates.
+        x1 = (cx - bw / 2 - pad_x) / scale
+        y1 = (cy - bh / 2 - pad_y) / scale
+        x2 = (cx + bw / 2 - pad_x) / scale
+        y2 = (cy + bh / 2 - pad_y) / scale
+        boxes = np.stack([
+            np.clip(x1, 0, orig_w), np.clip(y1, 0, orig_h),
+            np.clip(x2, 0, orig_w), np.clip(y2, 0, orig_h)
+        ], axis=1)
 
-        # Anchor clustering for bounding boxes
-        top_indices = np.argsort(max_class_scores)[-3:]
-        
-        for idx in reversed(top_indices):
-            cls_idx = int(best_class_indices[idx]) % len(TAXONOMY_CLASSES)
-            label = TAXONOMY_CLASSES[cls_idx]
-            
-            # Retrieve box coordinates from tensor
-            cx = float(output_matrix[0, idx]) * scale_x
-            cy = float(output_matrix[1, idx]) * scale_y
-            bw = float(output_matrix[2, idx]) * scale_x
-            bh = float(output_matrix[3, idx]) * scale_y
-
-            # Clamp box to image bounds
-            x = max(10.0, min(float(orig_w) - 60.0, cx - bw / 2.0))
-            y = max(float(orig_h) * 0.30, min(float(orig_h) - 60.0, cy - bh / 2.0))
-            w = max(45.0, min(float(orig_w) * 0.50, bw))
-            h = max(35.0, min(float(orig_h) * 0.45, bh))
-
-            conf = round(float(max_class_scores[idx]), 4)
-
-            detections.append({
-                "x": round(x, 1),
-                "y": round(y, 1),
-                "width": round(w, 1),
-                "height": round(h, 1),
-                "label": label,
-                "confidence": conf
-            })
-
+        detections: List[Dict[str, Any]] = []
+        for class_id in np.unique(classes):
+            local = np.where(classes == class_id)[0]
+            keep = self._nms_xyxy(boxes[local], scores[local], 0.45)
+            for k in keep:
+                i = int(local[k])
+                bx1, by1, bx2, by2 = boxes[i]
+                if bx2 <= bx1 or by2 <= by1:
+                    continue
+                detections.append({
+                    "x": round(float(bx1), 1),
+                    "y": round(float(by1), 1),
+                    "width": round(float(bx2 - bx1), 1),
+                    "height": round(float(by2 - by1), 1),
+                    "label": TAXONOMY_CLASSES[int(classes[i])],
+                    "confidence": round(float(scores[i]), 4),
+                })
+        detections.sort(key=lambda d: d["confidence"], reverse=True)
+        detections = detections[:300]
         metadata = {
-            "onnx_execution_provider": self.providers[0] if self.providers else "CPUExecutionProvider",
-            "model_format": "ONNX IR v10 (Opset 18)",
-            "tensor_input_shape": list(tensor_input.shape),
-            "output_tensor_shape": list(outputs[0].shape),
-            "edge_energy": round(edge_energy, 2),
-            "raw_activation_peaks": int(len(top_indices)),
-            "framework": "ONNX Runtime v1.31.0"
+            "framework": "ONNX Runtime",
+            "model_format": "Ultralytics YOLO detection export",
+            "input_name": input_name,
+            "output_name": output_name,
+            "tensor_input_shape": list(tensor.shape),
+            "output_tensor_shape": list(raw.shape),
+            "candidate_count": int(candidate_ids.size),
+            "detection_count_after_nms": len(detections),
+            "confidence_threshold": 0.25,
+            "nms_iou_threshold": 0.45,
+            "class_order": TAXONOMY_CLASSES,
+            "preprocessing": "RGB, letterbox padding 114, float32 [0,1]",
         }
-
         return detections, metadata
 
     def _run_feature_based_demo_analysis(self, img: Image.Image, image_path: str) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
@@ -380,7 +429,7 @@ class AIInferenceService:
 
         # Watermark
         tag_line = (
-            "CivicLens AI 2.0 • YOLOv8-RDD2022 (ONNX)"
+            "CivicLens AI 2.0 • YOLO11-RDD2022 (ONNX)"
             if not self.is_demo_mode()
             else "CivicLens AI 2.0 • HEURISTIC DEMO MODE"
         )
