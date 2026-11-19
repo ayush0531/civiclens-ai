@@ -31,7 +31,7 @@ export const Navbar: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchModalOpen, setSearchModalOpen] = useState(false);
   const [aiModalOpen, setAiModalOpen] = useState(false);
-  const [aiStatus, setAiStatus] = useState<{ mode: string; is_demo_mode: boolean } | null>(null);
+  const [aiStatus, setAiStatus] = useState<{ mode: string; is_demo_mode: boolean; model_validation_status?: string } | null>(null);
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -39,7 +39,7 @@ export const Navbar: React.FC = () => {
   const refreshAIStatus = async () => {
     try {
       const res = await api.getAIStatus();
-      setAiStatus({ mode: res.mode, is_demo_mode: res.is_demo_mode });
+      setAiStatus({ mode: res.mode, is_demo_mode: res.is_demo_mode, model_validation_status: res.model_validation_status });
     } catch (e) {
       // ignore in offline/initial load
     }
@@ -126,7 +126,7 @@ export const Navbar: React.FC = () => {
                 >
                   <FlaskConical className="w-3.5 h-3.5 text-teal-600" />
                   <span>Model Lab</span>
-                  <span className="text-[9px] px-1 py-0.2 bg-teal-100 text-teal-800 rounded font-mono font-bold">mAP</span>
+                  <span className="text-[9px] px-1 py-0.2 bg-amber-100 text-amber-800 rounded font-mono font-bold">LAB</span>
                 </Link>
                 <Link
                   to="/analytics"
