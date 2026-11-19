@@ -6,8 +6,8 @@ from pathlib import Path
 
 # Keep Ultralytics' optional W&B callback from treating the filesystem output
 # directory as a W&B project name (absolute paths contain forbidden slashes).
-os.environ.setdefault("WANDB_MODE", "disabled")
-os.environ.setdefault("WANDB_SILENT", "true")
+os.environ["WANDB_MODE"] = "disabled"
+os.environ["WANDB_SILENT"] = "true"
 
 from ultralytics import YOLO, settings
 
