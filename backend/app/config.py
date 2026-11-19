@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = f"sqlite:///{PROJECT_ROOT}/civiclens.db"
     
+    # Demo fixtures are opt-in; never seed shared demo credentials by default.
+    SEED_DEMO_DATA: bool = False
+
     # Security
     JWT_SECRET: str = os.getenv("JWT_SECRET") or os.getenv("SECRET_KEY") or "development-only-change-me-before-deploy"
     JWT_ALGORITHM: str = "HS256"
