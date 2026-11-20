@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     
     # AI Engine Configuration ("REAL" for ONNX model or "DEMO" for heuristic fallback)
     AI_INFERENCE_MODE: str = os.getenv("AI_INFERENCE_MODE", "REAL")
-    AI_MODEL_NAME: str = "CivicLens-YOLOv8-RDD2022 (ONNX Deep Learning Engine)"
+    AI_MODEL_NAME: str = "CivicLens YOLO11-RDD2022 (ONNX; validation required)"
     AI_MODEL_VERSION: str = "2.0.0"
     AI_ONNX_MODEL_PATH: str = str(PROJECT_ROOT / "models" / "road_damage_yolo.onnx")
     
