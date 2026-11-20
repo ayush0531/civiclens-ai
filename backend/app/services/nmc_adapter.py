@@ -122,7 +122,7 @@ class SimulatedNMCAdapter(NMCAdapterBase):
                 "is_idempotent_replay": True,
                 "status": existing_tx.external_status,
                 "official_reference": existing_tx.official_reference_id,
-                "message": "Idempotent request: returning existing municipal transaction acknowledgement."
+                "message": "Idempotent replay of a CivicLens demonstration transaction. This is not an NMC acknowledgement."
             }
 
         dept_info = NMC_CATEGORY_MAP.get(
@@ -133,7 +133,7 @@ class SimulatedNMCAdapter(NMCAdapterBase):
         # Generate academic evaluation demonstration reference
         year = datetime.datetime.utcnow().year
         seq_num = report.id + 2400
-        simulated_ref = f"NMC-SIM-{year}-GRV-{seq_num:05d}"
+        simulated_ref = f"CVL-DEMO-{year}-{seq_num:05d}"
 
         # Construct sanitized payload
         request_payload = {
@@ -157,8 +157,8 @@ class SimulatedNMCAdapter(NMCAdapterBase):
         }
 
         response_payload = {
-            "status": "OFFICIALLY_SUBMITTED",
-            "acknowledgement_code": simulated_ref,
+            "status": "SIMULATED_DEMONSTRATION",
+            "demonstration_reference": simulated_ref,
             "registration_timestamp": datetime.datetime.utcnow().isoformat(),
             "assigned_division": dept_info["dept_name"],
             "target_sla_days": 2 if report.severity_level == "CRITICAL" else 5,
@@ -167,7 +167,7 @@ class SimulatedNMCAdapter(NMCAdapterBase):
         }
 
         # Update parent report
-        report.external_submission_status = "OFFICIALLY_SUBMITTED"
+        report.external_submission_status = "DEMO_ENVIRONMENT"
         report.external_reference_id = simulated_ref
         report.external_reference_recorded_at = datetime.datetime.utcnow()
         report.external_reference_notes = (
@@ -180,8 +180,8 @@ class SimulatedNMCAdapter(NMCAdapterBase):
             report_id=report.id,
             idempotency_key=idempotency_key,
             transaction_type="SUBMISSION",
-            external_status="OFFICIALLY_SUBMITTED",
-            official_reference_id=simulated_ref,
+            external_status="DEMO_ENVIRONMENT",
+            official_reference_id=None,
             request_payload_json=json.dumps(request_payload),
             response_payload_json=json.dumps(response_payload),
             http_status_code=201,
@@ -196,8 +196,8 @@ class SimulatedNMCAdapter(NMCAdapterBase):
             report_id=report.id,
             previous_status=report.workflow_status,
             new_status="ACTION_PLANNED" if report.workflow_status == "SUBMITTED" else report.workflow_status,
-            changed_by_id=report.reporter_id or 1,
-            notes=f"NMC Grievance Reference recorded: {simulated_ref} (Simulated Sandbox).",
+            changed_by_id=report.reporter_id,
+            notes=f"CivicLens demonstration transaction {simulated_ref}; no complaint was sent to NMC.",
             timestamp=datetime.datetime.utcnow()
         )
         db.add(hist)
@@ -207,8 +207,9 @@ class SimulatedNMCAdapter(NMCAdapterBase):
         return {
             "success": True,
             "is_idempotent_replay": False,
-            "status": "OFFICIALLY_SUBMITTED",
-            "official_reference": simulated_ref,
+            "status": "DEMO_ENVIRONMENT",
+            "official_reference": None,
+            "demonstration_reference": simulated_ref,
             "department": dept_info["dept_name"],
             "request_payload": request_payload,
             "response_payload": response_payload
@@ -244,7 +245,7 @@ class SimulatedNMCAdapter(NMCAdapterBase):
             "endpoint_url": cfg.endpoint_url if cfg else "https://nmcnagpur.gov.in/grievance/complaint_form.php",
             "mou_reference": cfg.mou_reference if cfg else "MOU-NMC-CIVICLENS-2026-ENG-42",
             "simulated_environment": True,
-            "message": "NMC Demonstration Gateway is operational. Ready for evaluation transactions."
+            "message": "Local demonstration adapter only. No connection to NMC and no official complaint submission."
         }
 
 
@@ -256,13 +257,15 @@ class AuthorizedNMCAdapter(NMCAdapterBase):
     """
 
     def __init__(self):
-        self.api_url = os.getenv("NMC_API_URL", "https://api.nmcnagpur.gov.in/v1/grievance/intake")
+        self.api_url = os.getenv("NMC_API_URL")
         self.client_id = os.getenv("NMC_CLIENT_ID")
         self.client_secret = os.getenv("NMC_CLIENT_SECRET")
         self.api_key = os.getenv("NMC_API_KEY")
 
     def is_configured(self) -> bool:
-        return bool(self.api_key or (self.client_id and self.client_secret))
+        approved = os.getenv("NMC_INTEGRATION_APPROVED", "false").lower() == "true"
+        mou_reference = os.getenv("NMC_MOU_REFERENCE", "").strip()
+        return bool(approved and mou_reference and self.api_url and (self.api_key or (self.client_id and self.client_secret)))
 
     def submit_complaint(
         self,
@@ -277,8 +280,8 @@ class AuthorizedNMCAdapter(NMCAdapterBase):
                 "status": "INTEGRATION_UNAVAILABLE",
                 "official_reference": None,
                 "message": (
-                    "Direct NMC API credentials are not configured in this environment. "
-                    "Use Citizen-Assisted Handoff mode or enable Simulated Demonstration Mode in Admin Settings."
+                    "Live NMC submission is disabled. It requires written NMC authorization, an approved API contract, "
+                    "NMC_INTEGRATION_APPROVED=true, NMC_MOU_REFERENCE, the assigned endpoint, and credentials."
                 )
             }
 
@@ -300,12 +303,12 @@ class AuthorizedNMCAdapter(NMCAdapterBase):
     def check_health(self, db: Session) -> Dict[str, Any]:
         cfg = db.query(NMCIntegrationConfig).first()
         return {
-            "service": "NMC Official Production REST Gateway",
-            "adapter_mode": "OFFICIAL_API",
+            "service": "NMC integration adapter",
+            "adapter_mode": "OFFICIAL_API_PENDING_AUTHORIZATION",
             "is_healthy": False,
             "latency_ms": 0.0,
             "endpoint_url": self.api_url,
-            "message": "External API credentials not connected. Fallback to Simulated Mode recommended."
+            "message": "No live NMC endpoint is assumed. Obtain written authorization and the official API specification before enabling submissions."
         }
 
 
