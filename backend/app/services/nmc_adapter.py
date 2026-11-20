@@ -168,10 +168,10 @@ class SimulatedNMCAdapter(NMCAdapterBase):
 
         # Update parent report
         report.external_submission_status = "DEMO_ENVIRONMENT"
-        report.external_reference_id = simulated_ref
+        report.external_reference_id = None
         report.external_reference_recorded_at = datetime.datetime.utcnow()
         report.external_reference_notes = (
-            f"[SIMULATED DEMONSTRATION MODE] Official reference {simulated_ref} registered in evaluation sandbox. "
+            f"[SIMULATED DEMONSTRATION MODE] Local demo transaction {simulated_ref}; no NMC complaint was registered. "
             f"Assigned to {dept_info['dept_name']}."
         )
 
