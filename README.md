@@ -37,7 +37,7 @@ Do not quote model accuracy, precision, recall, mAP, or inference latency as mea
 
 ### Training
 
-See [the ML training guide](ml/README.md) and [the Google Colab notebook](ml/CivicLens_RDD2022_YOLO11_Training.ipynb).
+See [the ML training guide](ml/README.md), [the Kaggle free-GPU notebook](ml/CivicLens_RDD2022_YOLO11_Kaggle.ipynb), and [the Google Colab notebook](ml/CivicLens_RDD2022_YOLO11_Training.ipynb).
 
 The reproducible pipeline:
 1. Prepares Pascal VOC annotations as YOLO labels.
@@ -47,7 +47,7 @@ The reproducible pipeline:
 5. Exports ONNX and checks that ONNX Runtime can load and execute the graph.
 6. Packages the checkpoint, ONNX file, evaluation summary, and plots.
 
-Training requires an available GPU runtime and sufficient disk space. A notebook in the repository is an execution recipe, not evidence that training has completed.
+Training requires an available GPU runtime and sufficient disk space. The Kaggle notebook is configured for Kaggle GPU sessions; free accelerator quota is controlled by Kaggle and is not guaranteed. A notebook in the repository is an execution recipe, not evidence that training has completed.
 
 ### Model promotion requirements
 
