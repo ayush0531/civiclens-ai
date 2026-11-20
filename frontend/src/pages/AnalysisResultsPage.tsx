@@ -215,7 +215,7 @@ export const AnalysisResultsPage: React.FC = () => {
                 </span>
               </div>
               <p className="text-xs text-amber-900 leading-relaxed">
-                {latestAnalysis?.disclaimer || 'This result was produced using image morphology heuristics for capstone workflow evaluation.'}
+                {latestAnalysis?.disclaimer || 'This result was produced using image morphology heuristics for civic defect triage.'}
               </p>
             </div>
           </div>
@@ -360,7 +360,7 @@ export const AnalysisResultsPage: React.FC = () => {
             </div>
 
             <p className="text-[11px] text-slate-500 leading-normal pt-1">
-              IRC:SP:72 Standard Formula: <span className="font-mono font-semibold">S_phys = 0.50·AreaRatio + 0.20·BoxCount + 0.30·ClassWeight</span>.
+              Physical severity derived from surface area ratio, defect instance count, and distress category multiplier.
             </p>
           </div>
 

@@ -492,19 +492,19 @@ def test_nmc_adapter_simulation_and_idempotency():
 
     idemp_key = f"TEST-IDEMP-{rep_id}-ALPHA"
 
-    # Submit to NMC
+    # Submit to NMC simulated demonstration
     submit_res = client.post(f"/api/v1/reports/{rep_id}/submit-nmc?idempotency_key={idemp_key}")
     assert submit_res.status_code == 200
     res_data = submit_res.json()
-    assert res_data["external_submission_status"] == "OFFICIALLY_SUBMITTED"
-    assert res_data["external_reference_id"].startswith("NMC-")
-    assert "GRV-" in res_data["external_reference_id"]
+    assert res_data["external_submission_status"] == "DEMO_ENVIRONMENT"
+    assert "CVL-DEMO-" in (res_data["external_reference_notes"] or "")
 
     # Re-submit with same idempotency key
     replay_res = client.post(f"/api/v1/reports/{rep_id}/submit-nmc?idempotency_key={idemp_key}")
     assert replay_res.status_code == 200
     replay_data = replay_res.json()
-    assert replay_data["external_reference_id"] == res_data["external_reference_id"]
+    assert replay_data["external_submission_status"] == res_data["external_submission_status"]
+    assert replay_data["external_reference_notes"] == res_data["external_reference_notes"]
 
     # Check NMC Health
     admin_login = client.post("/api/v1/auth/login", json={"email": "admin@civiclens.ai", "password": "DemoPass123!"})

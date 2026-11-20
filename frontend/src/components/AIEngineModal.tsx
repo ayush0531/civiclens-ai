@@ -142,7 +142,7 @@ export const AIEngineModal: React.FC<AIEngineModalProps> = ({ isOpen, onClose, o
                 <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/70">
                   <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Architecture / Model</span>
                   <span className="font-mono font-semibold text-navy-900 block truncate">
-                    {engineInfo?.model_name || 'YOLOv8-RDD2022'}
+                    {engineInfo?.model_name || 'CivicLens Inference Engine'}
                   </span>
                 </div>
 

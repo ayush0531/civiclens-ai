@@ -102,7 +102,7 @@ class NMCAdapterBase(ABC):
 
 class SimulatedNMCAdapter(NMCAdapterBase):
     """
-    Demonstration Adapter for Academic Defense and Technical Viva.
+    Demonstration Adapter for Prototype Evaluation and Offline Testing.
     Clearly tags all transactions with [SIMULATED DEMONSTRATION MODE]
     and never presents generated records as real NMC government filings.
     """
@@ -191,16 +191,17 @@ class SimulatedNMCAdapter(NMCAdapterBase):
         )
         db.add(tx)
 
-        # Record in StatusHistory
-        hist = StatusHistory(
-            report_id=report.id,
-            previous_status=report.workflow_status,
-            new_status="ACTION_PLANNED" if report.workflow_status == "SUBMITTED" else report.workflow_status,
-            changed_by_id=report.reporter_id,
-            notes=f"CivicLens demonstration transaction {simulated_ref}; no complaint was sent to NMC.",
-            timestamp=datetime.datetime.utcnow()
-        )
-        db.add(hist)
+        # Record in StatusHistory if reporter_id is present
+        if report.reporter_id is not None:
+            hist = StatusHistory(
+                report_id=report.id,
+                previous_status=report.workflow_status,
+                new_status="ACTION_PLANNED" if report.workflow_status == "SUBMITTED" else report.workflow_status,
+                changed_by_id=report.reporter_id,
+                notes=f"CivicLens demonstration transaction {simulated_ref}; no complaint was sent to NMC.",
+                timestamp=datetime.datetime.utcnow()
+            )
+            db.add(hist)
         db.commit()
         db.refresh(report)
 

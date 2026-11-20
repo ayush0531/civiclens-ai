@@ -41,7 +41,7 @@ export const LandingPage: React.FC = () => {
         <div className="relative mx-auto grid max-w-7xl gap-12 px-5 py-20 sm:px-8 lg:grid-cols-[1.15fr_.85fr] lg:items-center lg:py-28">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-teal-300/30 bg-teal-300/10 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[.18em] text-teal-200">
-              <span className="h-2 w-2 rounded-full bg-teal-300" /> B.Tech Artificial Intelligence · Capstone prototype
+              <span className="h-2 w-2 rounded-full bg-teal-300" /> AI-Powered Road Intelligence · Nagpur Municipal Prototype
             </div>
             <h1 className="mt-7 max-w-3xl text-4xl font-black leading-[1.08] tracking-tight sm:text-5xl lg:text-6xl">
               See the road.

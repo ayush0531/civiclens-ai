@@ -604,7 +604,7 @@ export const TrackComplaintPage: React.FC = () => {
                     AI Telemetry & Severity Analysis
                   </h3>
                   <span className="text-[10px] font-mono bg-teal-50 text-teal-700 px-2 py-0.5 rounded border border-teal-200 font-bold">
-                    ONNX YOLOv8-RDD2022
+                    {report.analyses?.[0]?.model_identifier || (report.prediction_confidence ? 'AI Detection' : 'Heuristic Screening')}
                   </span>
                 </div>
 
@@ -612,20 +612,20 @@ export const TrackComplaintPage: React.FC = () => {
                   <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
                     <span className="text-[10px] font-bold uppercase text-slate-400 block">Damage Category</span>
                     <span className="text-sm font-black text-navy-900 mt-1 block">
-                      {report.predicted_damage_category}
+                      {report.predicted_damage_category || 'Pending Triage'}
                     </span>
                     <span className="text-[11px] text-teal-700 font-mono mt-0.5 block">
-                      IRC:SP:72-2015 Code
+                      Classified Defect
                     </span>
                   </div>
 
                   <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
                     <span className="text-[10px] font-bold uppercase text-slate-400 block">AI Confidence</span>
                     <span className="text-sm font-black text-teal-700 font-mono mt-1 block">
-                      {(report.prediction_confidence * 100).toFixed(1)}%
+                      {report.prediction_confidence ? `${(report.prediction_confidence * 100).toFixed(1)}%` : 'Pending'}
                     </span>
                     <span className="text-[11px] text-slate-500 mt-0.5 block">
-                      Softmax Score
+                      Model Confidence
                     </span>
                   </div>
 
