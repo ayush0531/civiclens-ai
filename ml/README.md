@@ -86,3 +86,10 @@ Open the notebook in this repository:
 In Colab, select **Runtime → Change runtime type → GPU**, then run the cells from top to bottom. It downloads the published RDD2022 archive, extracts the India-labelled subset, converts annotations, trains YOLO11n, evaluates a held-out split, and exports ONNX and PyTorch weights. The archive is large and the session needs sufficient disk space.
 
 The notebook is a reproducible execution environment, not proof that training has already run. Keep the downloaded dataset and trained weights out of Git unless you have checked the dataset redistribution terms and repository storage limits.
+
+
+## Kaggle free-GPU workflow
+
+Open [CivicLens_RDD2022_YOLO11_Kaggle.ipynb](CivicLens_RDD2022_YOLO11_Kaggle.ipynb) in Kaggle using **File → Import Notebook** (or download the notebook and import it). Enable **GPU** and **Internet** in the notebook settings, then run from top to bottom. The notebook checks CUDA availability, downloads the RDD2022 archive, prepares the India split, trains YOLO11n, evaluates the held-out split, exports ONNX, and packages artifacts under `/kaggle/working/CivicLens_YOLO11_Training_Artifacts.zip`.
+
+Kaggle controls free GPU availability and session limits. If a GPU is not assigned or the session quota is exhausted, training cannot run until Kaggle makes free accelerator capacity available. The workflow does not use paid compute.
