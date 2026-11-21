@@ -1221,6 +1221,53 @@ def test_ai_vehicle_without_potholes_zero_detections():
     assert len(data["bounding_boxes"]) == 0
 
 
+def test_ai_water_filled_pothole_detected_test():
+    """
+    CRITICAL ACCURACY TEST: Water-filled pothole with asphalt rim,
+    surrounded by road pavement with background cars, trees, and road divider.
+    Verifies Problem B fix:
+    - Pothole with standing water is detected.
+    - Background objects (cars, trees, road divider) are NOT detected.
+    - Overlapping / fragmented boxes merged into exactly 1 bounding box.
+    """
+    img = Image.new("RGB", (640, 480), (120, 120, 120))
+    d = ImageDraw.Draw(img)
+    # Sky
+    d.rectangle([0, 0, 640, 140], fill=(135, 195, 245))
+    # Roadside tree with foliage canopy and dark trunk
+    d.ellipse([30, 20, 180, 200], fill=(38, 95, 34))
+    d.rectangle([95, 180, 125, 270], fill=(62, 45, 30))
+    # Road
+    d.rectangle([0, 160, 640, 480], fill=(105, 105, 105))
+    # Road divider / median barrier
+    d.rectangle([0, 160, 640, 175], fill=(180, 180, 180))
+    # Background car
+    d.rectangle([410, 190, 570, 250], fill=(180, 30, 30))
+    d.rectangle([440, 170, 540, 200], fill=(30, 35, 40))
+    # Large water-filled pothole in foreground (damaged asphalt rim + blue-sky water reflection inside)
+    d.ellipse([200, 300, 360, 420], fill=(35, 32, 28))
+    d.ellipse([215, 315, 345, 405], fill=(95, 135, 175))
+
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG")
+    buf.seek(0)
+
+    files = {"image": ("water_filled_pothole.jpg", buf, "image/jpeg")}
+    res = client.post("/api/v1/ai/quick-inspect", files=files)
+    assert res.status_code == 200
+    data = res.json()
+
+    assert data["is_road_scene"] is True
+    assert data["detected_pothole_count"] == 1
+    assert len(data["bounding_boxes"]) == 1
+    assert data["predicted_damage_category"] == "Pothole"
+    box = data["bounding_boxes"][0]
+    assert box["label"] == "Pothole"
+    # Ensure detection box accurately encloses the pothole in the foreground
+    assert 180 <= box["x"] <= 220
+    assert 280 <= box["y"] <= 320
+
+
 
 
 

@@ -68,7 +68,7 @@ export const Footer: React.FC = () => {
         </div>
 
         <div className="mt-8 pt-6 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-500 gap-3">
-          <p>&copy; {new Date().getFullYear()} Civic Lens AI — Intelligent Municipal Road Defect Management.</p>
+          <p>Civic Lens AI | Intelligent Road Damage Detection</p>
           <p className="text-slate-500">
             Nagpur Municipal Pilot • Grievance Intelligence System
           </p>

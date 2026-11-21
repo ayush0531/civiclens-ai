@@ -442,8 +442,13 @@ class AIInferenceService:
 
         width, height = img.size
         rgb = np.array(img.convert("RGB"), dtype=np.float32)
-        r, g, b = rgb[:, :, 0], rgb[:, :, 1], rgb[:, :, 2]
-        lum = 0.299 * r + 0.587 * g + 0.114 * b
+        r_raw, g_raw, b_raw = rgb[:, :, 0], rgb[:, :, 1], rgb[:, :, 2]
+        lum = 0.299 * r_raw + 0.587 * g_raw + 0.114 * b_raw
+
+        # Sensor noise reduction via spatial smoothing for chromaticity checks
+        r = ndimage.gaussian_filter(r_raw, sigma=2.0)
+        g = ndimage.gaussian_filter(g_raw, sigma=2.0)
+        b = ndimage.gaussian_filter(b_raw, sigma=2.0)
 
         c_max = np.maximum(r, np.maximum(g, b))
         c_min = np.minimum(r, np.minimum(g, b))
@@ -454,19 +459,26 @@ class AIInferenceService:
         veg_mask = (g > r + 3) & (g > b + 5) & (saturation > 0.10) & (2 * g - r - b > 6)
 
         # 2. Sky mask: upper background region with blue tones or bright overcast luminance
-        sky_y = int(height * 0.55)
+        sky_y = int(height * 0.45)
         sky_mask = np.zeros((height, width), dtype=bool)
         sky_mask[:sky_y, :] = ((b[:sky_y, :] > r[:sky_y, :] + 12) & (b[:sky_y, :] > g[:sky_y, :] + 8)) | (lum[:sky_y, :] > 215)
 
-        # 3. Vehicle / Saturated Object mask: detects high-chroma painted car bodies, reflective signs, and vehicle lights
-        colored_vehicle_mask = (chroma > 50) & (lum > 35)
+        # Smooth luminance gradient magnitude for texture detection
+        smoothed = ndimage.gaussian_filter(lum, sigma=2.0)
+        gy, gx = np.gradient(ndimage.gaussian_filter(lum, 1.5))
+        grad_mag = np.hypot(gx, gy)
+
+        # Standing water candidate: puddles reflecting daylight sky on roadway with smooth internal surface
+        water_candidate = (b > r + 8) & (b > g + 4) & (b > 60) & (grad_mag < 12.0) & (~sky_mask) & (~veg_mask)
+
+        # 3. Vehicle / Saturated Object mask: detects high-chroma painted car bodies, reflective signs, and vehicle lights (excluding standing water)
+        colored_vehicle_mask = (chroma > 50) & (lum > 35) & (~veg_mask) & (~sky_mask) & (~water_candidate)
 
         # 4. Pavement mask: neutral gray/earthy tones on the ground surface, excluding vegetation, sky, and vehicles
         diff = np.maximum(abs(r - g), np.maximum(abs(g - b), abs(r - b)))
         pavement_mask = (diff < 44) & (lum >= 35) & (lum <= 220) & (~veg_mask) & (~sky_mask) & (~colored_vehicle_mask)
 
-        # 5. Extract candidate cavities ONLY on road surface
-        smoothed = ndimage.gaussian_filter(lum, sigma=2.0)
+        # 5. Extract candidate cavities & standing water puddles ONLY on road surface
         road_pixels = smoothed[pavement_mask]
         road_base = float(np.percentile(road_pixels, 70)) if len(road_pixels) > 0 else float(np.percentile(smoothed, 70))
         road_std = float(np.std(road_pixels)) if len(road_pixels) > 0 else float(np.std(smoothed))
@@ -478,21 +490,23 @@ class AIInferenceService:
         # Only search within non-vegetation, non-sky, non-colored road regions
         valid_region = (~veg_mask) & (~sky_mask) & (~colored_vehicle_mask)
         cavity_raw = (smoothed < cavity_threshold) & (smoothed > 4.0) & valid_region
+        water_raw = water_candidate & valid_region
+        defect_raw = (cavity_raw | water_raw)
 
         # Morphological closing bridges small stones/dirt inside the same physical pothole
-        closing_k = max(7, int(min(width, height) * 0.025))
+        closing_k = max(9, int(min(width, height) * 0.03))
         if closing_k % 2 == 0:
             closing_k += 1
-        cavity_closed = ndimage.binary_closing(cavity_raw, structure=np.ones((closing_k, closing_k)))
+        defect_closed = ndimage.binary_closing(defect_raw, structure=np.ones((closing_k, closing_k)))
 
         # Morphological opening cleans up speckle noise and merges connected cavity core
         kernel_size = max(5, int(min(width, height) * 0.015))
         if kernel_size % 2 == 0:
             kernel_size += 1
-        cavity_clean = ndimage.binary_opening(cavity_closed, structure=np.ones((kernel_size, kernel_size)))
+        defect_clean = ndimage.binary_opening(defect_closed, structure=np.ones((kernel_size, kernel_size)))
 
         # Label separate connected components
-        labeled, num_features = ndimage.label(cavity_clean)
+        labeled, num_features = ndimage.label(defect_clean)
         total_frame_area = float(width * height)
         pad = max(8, int(min(width, height) * 0.025))
         raw_detections: List[Dict[str, Any]] = []
@@ -586,7 +600,7 @@ class AIInferenceService:
                 continue
 
             cavity_lum = float(np.mean(smoothed[feature_mask]))
-            contrast = max(0.15, (road_base - cavity_lum) / max(1.0, road_base))
+            contrast = max(0.15, abs(road_base - cavity_lum) / max(1.0, road_base))
             confidence = round(min(0.96, max(0.65, 0.60 + 0.38 * contrast)), 2)
 
             raw_detections.append({
