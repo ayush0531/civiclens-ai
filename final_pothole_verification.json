@@ -1,0 +1,382 @@
+[
+  {
+    "test_label": "1 Pothole (Demo)",
+    "image_path": "backend/uploads/demo_road_2_pothole.jpg",
+    "detected_pothole_count": 1,
+    "predicted_damage_category": "Pothole",
+    "prediction_confidence": 0.79,
+    "road_scene_status": "VERIFIED",
+    "bounding_boxes": [
+      {
+        "x": 231,
+        "y": 263,
+        "width": 225,
+        "height": 112,
+        "label": "Pothole",
+        "confidence": 0.79,
+        "area_pct": 4.94
+      }
+    ],
+    "potholes_breakdown": [
+      {
+        "index": 1,
+        "label": "Pothole",
+        "pixel_dimensions": "225 \u00d7 112 px",
+        "estimated_length_cm": 43.9,
+        "estimated_width_cm": 21.9,
+        "estimated_area_sqm": 0.076,
+        "damage_level": "High",
+        "confidence_pct": 79,
+        "bounding_box": {
+          "x": 231,
+          "y": 263,
+          "width": 225,
+          "height": 112
+        }
+      }
+    ]
+  },
+  {
+    "test_label": "1 Pothole (Photo)",
+    "image_path": "backend/uploads/36f0d451d00a4e5dbe26a39951afa1d2.jpg",
+    "detected_pothole_count": 1,
+    "predicted_damage_category": "Pothole",
+    "prediction_confidence": 0.66,
+    "road_scene_status": "VERIFIED",
+    "bounding_boxes": [
+      {
+        "x": 199,
+        "y": 299,
+        "width": 162,
+        "height": 122,
+        "label": "Pothole",
+        "confidence": 0.66,
+        "area_pct": 5.14
+      }
+    ],
+    "potholes_breakdown": [
+      {
+        "index": 1,
+        "label": "Pothole",
+        "pixel_dimensions": "162 \u00d7 122 px",
+        "estimated_length_cm": 31.6,
+        "estimated_width_cm": 23.8,
+        "estimated_area_sqm": 0.059,
+        "damage_level": "Moderate",
+        "confidence_pct": 66,
+        "bounding_box": {
+          "x": 199,
+          "y": 299,
+          "width": 162,
+          "height": 122
+        }
+      }
+    ]
+  },
+  {
+    "test_label": "2 Separate Potholes",
+    "image_path": "backend/uploads/ae400aeb956948f089f36c618307964d.jpg",
+    "detected_pothole_count": 2,
+    "predicted_damage_category": "Pothole",
+    "prediction_confidence": 0.87,
+    "road_scene_status": "VERIFIED",
+    "bounding_boxes": [
+      {
+        "x": 379,
+        "y": 219,
+        "width": 142,
+        "height": 122,
+        "label": "Pothole",
+        "confidence": 0.87,
+        "area_pct": 4.52
+      },
+      {
+        "x": 99,
+        "y": 239,
+        "width": 142,
+        "height": 122,
+        "label": "Pothole",
+        "confidence": 0.86,
+        "area_pct": 4.51
+      }
+    ],
+    "potholes_breakdown": [
+      {
+        "index": 1,
+        "label": "Pothole",
+        "pixel_dimensions": "142 \u00d7 122 px",
+        "estimated_length_cm": 27.7,
+        "estimated_width_cm": 23.8,
+        "estimated_area_sqm": 0.052,
+        "damage_level": "Moderate",
+        "confidence_pct": 87,
+        "bounding_box": {
+          "x": 379,
+          "y": 219,
+          "width": 142,
+          "height": 122
+        }
+      },
+      {
+        "index": 2,
+        "label": "Pothole",
+        "pixel_dimensions": "142 \u00d7 122 px",
+        "estimated_length_cm": 27.7,
+        "estimated_width_cm": 23.8,
+        "estimated_area_sqm": 0.052,
+        "damage_level": "Moderate",
+        "confidence_pct": 86,
+        "bounding_box": {
+          "x": 99,
+          "y": 239,
+          "width": 142,
+          "height": 122
+        }
+      }
+    ]
+  },
+  {
+    "test_label": "3 Separate Potholes",
+    "image_path": "backend/uploads/54f0972761f14867a699fef0c02fb79c.jpg",
+    "detected_pothole_count": 3,
+    "predicted_damage_category": "Pothole",
+    "prediction_confidence": 0.84,
+    "road_scene_status": "VERIFIED",
+    "bounding_boxes": [
+      {
+        "x": 299,
+        "y": 319,
+        "width": 132,
+        "height": 82,
+        "label": "Pothole",
+        "confidence": 0.84,
+        "area_pct": 2.81
+      },
+      {
+        "x": 79,
+        "y": 199,
+        "width": 102,
+        "height": 72,
+        "label": "Pothole",
+        "confidence": 0.83,
+        "area_pct": 1.91
+      },
+      {
+        "x": 489,
+        "y": 219,
+        "width": 102,
+        "height": 72,
+        "label": "Pothole",
+        "confidence": 0.82,
+        "area_pct": 1.91
+      }
+    ],
+    "potholes_breakdown": [
+      {
+        "index": 1,
+        "label": "Pothole",
+        "pixel_dimensions": "132 \u00d7 82 px",
+        "estimated_length_cm": 25.8,
+        "estimated_width_cm": 16.0,
+        "estimated_area_sqm": 0.032,
+        "damage_level": "Moderate",
+        "confidence_pct": 84,
+        "bounding_box": {
+          "x": 299,
+          "y": 319,
+          "width": 132,
+          "height": 82
+        }
+      },
+      {
+        "index": 2,
+        "label": "Pothole",
+        "pixel_dimensions": "102 \u00d7 72 px",
+        "estimated_length_cm": 19.9,
+        "estimated_width_cm": 14.1,
+        "estimated_area_sqm": 0.022,
+        "damage_level": "Moderate",
+        "confidence_pct": 83,
+        "bounding_box": {
+          "x": 79,
+          "y": 199,
+          "width": 102,
+          "height": 72
+        }
+      },
+      {
+        "index": 3,
+        "label": "Pothole",
+        "pixel_dimensions": "102 \u00d7 72 px",
+        "estimated_length_cm": 19.9,
+        "estimated_width_cm": 14.1,
+        "estimated_area_sqm": 0.022,
+        "damage_level": "Moderate",
+        "confidence_pct": 82,
+        "bounding_box": {
+          "x": 489,
+          "y": 219,
+          "width": 102,
+          "height": 72
+        }
+      }
+    ]
+  },
+  {
+    "test_label": "5 Separate Potholes",
+    "image_path": "backend/uploads/1c2c395a6c244167a2677d3663944c64.jpg",
+    "detected_pothole_count": 5,
+    "predicted_damage_category": "Pothole",
+    "prediction_confidence": 0.86,
+    "road_scene_status": "VERIFIED",
+    "bounding_boxes": [
+      {
+        "x": 139,
+        "y": 319,
+        "width": 92,
+        "height": 82,
+        "label": "Pothole",
+        "confidence": 0.86,
+        "area_pct": 1.99
+      },
+      {
+        "x": 199,
+        "y": 179,
+        "width": 82,
+        "height": 72,
+        "label": "Pothole",
+        "confidence": 0.85,
+        "area_pct": 1.56
+      },
+      {
+        "x": 349,
+        "y": 189,
+        "width": 82,
+        "height": 72,
+        "label": "Pothole",
+        "confidence": 0.85,
+        "area_pct": 1.55
+      },
+      {
+        "x": 399,
+        "y": 309,
+        "width": 102,
+        "height": 82,
+        "label": "Pothole",
+        "confidence": 0.85,
+        "area_pct": 2.2
+      },
+      {
+        "x": 59,
+        "y": 199,
+        "width": 82,
+        "height": 72,
+        "label": "Pothole",
+        "confidence": 0.84,
+        "area_pct": 1.55
+      }
+    ],
+    "potholes_breakdown": [
+      {
+        "index": 1,
+        "label": "Pothole",
+        "pixel_dimensions": "92 \u00d7 82 px",
+        "estimated_length_cm": 18.0,
+        "estimated_width_cm": 16.0,
+        "estimated_area_sqm": 0.023,
+        "damage_level": "Moderate",
+        "confidence_pct": 86,
+        "bounding_box": {
+          "x": 139,
+          "y": 319,
+          "width": 92,
+          "height": 82
+        }
+      },
+      {
+        "index": 2,
+        "label": "Pothole",
+        "pixel_dimensions": "82 \u00d7 72 px",
+        "estimated_length_cm": 16.0,
+        "estimated_width_cm": 14.1,
+        "estimated_area_sqm": 0.018,
+        "damage_level": "Moderate",
+        "confidence_pct": 85,
+        "bounding_box": {
+          "x": 199,
+          "y": 179,
+          "width": 82,
+          "height": 72
+        }
+      },
+      {
+        "index": 3,
+        "label": "Pothole",
+        "pixel_dimensions": "82 \u00d7 72 px",
+        "estimated_length_cm": 16.0,
+        "estimated_width_cm": 14.1,
+        "estimated_area_sqm": 0.018,
+        "damage_level": "Moderate",
+        "confidence_pct": 85,
+        "bounding_box": {
+          "x": 349,
+          "y": 189,
+          "width": 82,
+          "height": 72
+        }
+      },
+      {
+        "index": 4,
+        "label": "Pothole",
+        "pixel_dimensions": "102 \u00d7 82 px",
+        "estimated_length_cm": 19.9,
+        "estimated_width_cm": 16.0,
+        "estimated_area_sqm": 0.025,
+        "damage_level": "Moderate",
+        "confidence_pct": 85,
+        "bounding_box": {
+          "x": 399,
+          "y": 309,
+          "width": 102,
+          "height": 82
+        }
+      },
+      {
+        "index": 5,
+        "label": "Pothole",
+        "pixel_dimensions": "82 \u00d7 72 px",
+        "estimated_length_cm": 16.0,
+        "estimated_width_cm": 14.1,
+        "estimated_area_sqm": 0.018,
+        "damage_level": "Moderate",
+        "confidence_pct": 84,
+        "bounding_box": {
+          "x": 59,
+          "y": 199,
+          "width": 82,
+          "height": 72
+        }
+      }
+    ]
+  },
+  {
+    "test_label": "Normal Road (0 Potholes)",
+    "image_path": "backend/uploads/092a78b017694260bbf37f9513945a52.jpg",
+    "detected_pothole_count": 0,
+    "predicted_damage_category": "Other / uncertain",
+    "prediction_confidence": 0.0,
+    "road_scene_status": "VERIFIED",
+    "bounding_boxes": [],
+    "potholes_breakdown": []
+  },
+  {
+    "test_label": "Non-Road (Selfie Rejected)",
+    "image_path": "backend/uploads/f8f3ff48973d443799803d8a269053d7.jpg",
+    "detected_pothole_count": 0,
+    "predicted_damage_category": "Other / uncertain",
+    "prediction_confidence": 0.0,
+    "road_scene_status": "REJECTED",
+    "bounding_boxes": [],
+    "potholes_breakdown": []
+  }
+]
