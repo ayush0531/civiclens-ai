@@ -219,6 +219,23 @@ export interface ExternalReferencePayload {
   road_jurisdiction?: string;
 }
 
+export interface PotholeBreakdownItem {
+  index: number;
+  label: string;
+  pixel_dimensions: string;
+  estimated_length_cm: number;
+  estimated_width_cm: number;
+  estimated_area_sqm: number;
+  damage_level: 'Low' | 'Moderate' | 'High' | 'Critical';
+  confidence_pct: number;
+  bounding_box: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+}
+
 export interface QuickInspectResult {
   predicted_damage_category: string;
   prediction_confidence: number;
@@ -232,6 +249,14 @@ export interface QuickInspectResult {
   model_identifier: string;
   is_demo_result: boolean;
   disclaimer: string;
+  is_road_scene?: boolean;
+  road_scene_status?: string;
+  road_scene_message?: string;
+  quality_status?: string;
+  quality_message?: string;
+  detected_pothole_count?: number;
+  potholes_breakdown?: PotholeBreakdownItem[];
+  estimated_surface_area_sqm?: number;
 }
 
 export interface ReportDetail extends RoadDamageReport {

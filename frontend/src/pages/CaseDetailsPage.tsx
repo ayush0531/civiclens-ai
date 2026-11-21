@@ -71,7 +71,7 @@ export const CaseDetailsPage: React.FC = () => {
       setCopiedSummary(true);
       setTimeout(() => setCopiedSummary(false), 2000);
     } catch {
-      const text = `CivicLens Ref: ${report.reference_number}\nTitle: ${report.title}\nSeverity: ${report.severity_score}/100\nPriority: ${report.priority_score}/100`;
+      const text = `Civic Lens AI Ref: ${report.reference_number}\nTitle: ${report.title}\nSeverity: ${report.severity_score}/100\nPriority: ${report.priority_score}/100`;
       await navigator.clipboard.writeText(text);
       setCopiedSummary(true);
       setTimeout(() => setCopiedSummary(false), 2000);
@@ -86,7 +86,7 @@ export const CaseDetailsPage: React.FC = () => {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `CivicLens_Case_${report.reference_number || report.id}.txt`;
+      link.download = `Civic_Lens_AI_Case_${report.reference_number || report.id}.txt`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -296,7 +296,7 @@ export const CaseDetailsPage: React.FC = () => {
                   {report.reference_number}
                 </span>
                 <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-teal-800 bg-teal-100 px-2 py-0.5 rounded border border-teal-200">
-                  CivicLens Internal ID
+                  Civic Lens AI Internal ID
                 </span>
                 <StatusBadge status={report.workflow_status} />
                 <PriorityBadge score={report.priority_score} />
@@ -405,7 +405,7 @@ export const CaseDetailsPage: React.FC = () => {
           <div className="p-3.5 rounded-xl bg-amber-50/80 border border-amber-200 flex items-start gap-2.5 text-xs text-amber-900">
             <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
             <div className="leading-relaxed">
-              <strong>[Simulated Demonstration Workflow]</strong> Maintenance operations and status shifts executed here reflect internal CivicLens AI triage for college evaluation. Actions taken in this demonstration dashboard do not modify official government records on the NMC portal without an authorized municipal API gateway agreement.
+              <strong>[Simulated Demonstration Workflow]</strong> Maintenance operations and status shifts executed here reflect internal Civic Lens AI triage for college evaluation. Actions taken in this demonstration dashboard do not modify official government records on the NMC portal without an authorized municipal API gateway agreement.
             </div>
           </div>
 

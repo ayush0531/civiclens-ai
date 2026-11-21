@@ -152,7 +152,15 @@ def quick_inspect_image(
         inference_mode=analysis_result["inference_mode"],
         model_identifier=analysis_result["model_identifier"],
         is_demo_result=analysis_result["is_demo_result"],
-        disclaimer=analysis_result["disclaimer"]
+        disclaimer=analysis_result["disclaimer"],
+        is_road_scene=analysis_result.get("is_road_scene", True),
+        road_scene_status=analysis_result.get("road_scene_status", "VERIFIED"),
+        road_scene_message=analysis_result.get("road_scene_message", "Road pavement scene successfully verified."),
+        quality_status=analysis_result.get("quality_status", "PASSED"),
+        quality_message=analysis_result.get("quality_message", "Photograph quality verified."),
+        detected_pothole_count=analysis_result.get("detected_pothole_count", len(analysis_result["bounding_boxes"])),
+        potholes_breakdown=analysis_result.get("potholes_breakdown", []),
+        estimated_surface_area_sqm=analysis_result.get("estimated_surface_area_sqm", 0.0)
     )
 
 

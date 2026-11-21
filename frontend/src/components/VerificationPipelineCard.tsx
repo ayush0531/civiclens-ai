@@ -113,7 +113,7 @@ export const VerificationPipelineCard: React.FC<VerificationPipelineCardProps> =
           </div>
           <div>
             <h3 className="text-sm font-bold text-slate-900 tracking-tight flex items-center gap-2">
-              CivicLens 5-Stage Verification Engine
+              Civic Lens AI 5-Stage Verification Engine
               <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-200/80 text-slate-700">
                 AUDIT TRAIL
               </span>

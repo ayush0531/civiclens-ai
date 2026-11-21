@@ -57,11 +57,11 @@ export const NMCHandoffCard: React.FC<Props> = ({
     const lat = report.latitude ? Number(report.latitude).toFixed(6) : '0.000000';
     const lon = report.longitude ? Number(report.longitude).toFixed(6) : '0.000000';
 
-    return `CIVICLENS.AI — ROAD DEFECT COMPLAINT SUMMARY
+    return `CIVIC LENS AI — ROAD DEFECT COMPLAINT SUMMARY
 ============================================================
-CivicLens Internal Reference ID : ${report.reference_number}
-Date Recorded in CivicLens      : ${createdStr}
-Incident Observation Date       : ${incidentStr}
+Civic Lens AI Internal Reference ID : ${report.reference_number}
+Date Recorded in Civic Lens AI      : ${createdStr}
+Incident Observation Date           : ${incidentStr}
 
 1. LOCATION & ROADWAY
 ------------------------------------------------------------
@@ -88,7 +88,7 @@ Maintenance Priority: ${preflightOnly ? 'NOT ASSIGNED' : Number(report.priority_
 ------------------------------------------------------------
 Submit on official NMC Portal: ${officialPortalUrl}
 Complete mobile OTP verification, paste the details above, upload your photo,
-and record your official NMC complaint number in CivicLens.AI.
+and record your official NMC complaint number in Civic Lens AI.
 
 State PWD Nagpur Regional Helpline: ${pwdTollFree}
 (${pwdOfficialUrl})
@@ -114,7 +114,7 @@ State PWD Nagpur Regional Helpline: ${pwdTollFree}
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `CivicLens_Complaint_${report.reference_number || report.id}.txt`;
+    link.download = `Civic_Lens_AI_Complaint_${report.reference_number || report.id}.txt`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -157,7 +157,7 @@ State PWD Nagpur Regional Helpline: ${pwdTollFree}
     <div className="space-y-6">
 
       {/* ========================================================= */}
-      {/* SECTION A: CIVICLENS INTERNAL REPORT */}
+      {/* SECTION A: CIVIC LENS AI INTERNAL REPORT */}
       {/* ========================================================= */}
       <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs overflow-hidden">
         
@@ -167,11 +167,11 @@ State PWD Nagpur Regional Helpline: ${pwdTollFree}
             <div className="flex items-center gap-2 mb-1">
               <span className="w-2 h-2 rounded-full bg-teal-400"></span>
               <span className="text-[10px] font-mono uppercase font-bold tracking-wider text-teal-300">
-                Section A • CivicLens Report Record
+                Section A • Civic Lens AI Report Record
               </span>
             </div>
             <div className="flex items-center gap-3 flex-wrap">
-              <span className="text-xs font-semibold text-slate-300">CivicLens Reference ID:</span>
+              <span className="text-xs font-semibold text-slate-300">Civic Lens AI Complaint ID:</span>
               <span className="font-mono text-lg font-black text-white bg-slate-800 px-3 py-0.5 rounded-lg border border-slate-700">
                 {report.reference_number}
               </span>
@@ -179,7 +179,7 @@ State PWD Nagpur Regional Helpline: ${pwdTollFree}
                 type="button"
                 onClick={handleCopyId}
                 className="px-2.5 py-1 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center gap-1.5 transition-colors"
-                title="Copy CivicLens Reference ID"
+                title="Copy Civic Lens AI Complaint ID"
               >
                 {copiedId ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                 <span>{copiedId ? 'Copied' : 'Copy ID'}</span>
@@ -187,13 +187,13 @@ State PWD Nagpur Regional Helpline: ${pwdTollFree}
             </div>
             <p className="text-[11px] text-amber-300/90 mt-1.5 flex items-center gap-1.5">
               <Info className="w-3.5 h-3.5 shrink-0" />
-              <span>Internal CivicLens Reference ID — this is <strong>not</strong> an official NMC complaint number.</span>
+              <span>Internal Civic Lens AI Reference ID — this is <strong>not</strong> an official NMC complaint number.</span>
             </p>
           </div>
 
           <div className="flex flex-col md:items-end gap-1.5 text-xs">
             <div className="flex items-center gap-2">
-              <span className="text-slate-400 text-[11px]">CivicLens Workflow:</span>
+              <span className="text-slate-400 text-[11px]">Civic Lens AI Workflow:</span>
               <StatusBadge status={report.workflow_status || 'SAVED'} size="sm" />
             </div>
             <span className="text-[11px] text-slate-400 flex items-center gap-1 font-mono">
@@ -321,10 +321,10 @@ State PWD Nagpur Regional Helpline: ${pwdTollFree}
               <ShieldAlert className="h-3.5 w-3.5" /> Government integration status
             </span>
             <h2 className="text-xl font-black tracking-tight text-slate-950 sm:text-2xl">
-              CivicLens report saved · NMC registration pending
+              Civic Lens AI report saved · NMC registration pending
             </h2>
             <p className="max-w-2xl text-sm leading-6 text-slate-600">
-              CivicLens has completed its own report workflow. This deployment does not have an authorized NMC API connection, so it cannot submit the grievance, complete OTP verification, or retrieve an official government acknowledgement on your behalf.
+              Civic Lens AI has completed its own report workflow. This deployment does not have an authorized NMC API connection, so it cannot submit the grievance, complete OTP verification, or retrieve an official government acknowledgement on your behalf.
             </p>
           </div>
           <span className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-900">
@@ -334,7 +334,7 @@ State PWD Nagpur Regional Helpline: ${pwdTollFree}
 
         <div className="grid gap-3 md:grid-cols-3">
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">1 · CivicLens</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">1 · Civic Lens AI</span>
             <p className="mt-1 text-sm font-bold text-slate-900">Analysis and case record</p>
             <p className="mt-1 text-xs leading-5 text-slate-600">Image analysis, location, severity and internal reference are stored in this application.</p>
           </div>
@@ -346,14 +346,14 @@ State PWD Nagpur Regional Helpline: ${pwdTollFree}
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">3 · Link records</span>
             <p className="mt-1 text-sm font-bold text-slate-900">Record the official reference</p>
-            <p className="mt-1 text-xs leading-5 text-slate-600">Enter the reference issued by NMC below. CivicLens labels citizen-entered references as unverified.</p>
+            <p className="mt-1 text-xs leading-5 text-slate-600">Enter the reference issued by NMC below. Civic Lens AI labels citizen-entered references as unverified.</p>
           </div>
         </div>
 
         <div className="flex flex-col gap-3 rounded-xl border border-teal-200 bg-teal-50/60 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-bold text-teal-950">Ready to use the official NMC channel?</p>
-            <p className="mt-1 text-xs text-teal-900">Your CivicLens record remains available here. The link opens the government website in a separate tab.</p>
+            <p className="mt-1 text-xs text-teal-900">Your Civic Lens AI record remains available here. The link opens the government website in a separate tab.</p>
           </div>
           <a href={officialPortalUrl} target="_blank" rel="noopener noreferrer" className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-teal-700 px-5 py-3 text-xs font-extrabold text-white transition hover:bg-teal-800">
             Open NMC grievance portal <ExternalLink className="h-4 w-4" />
@@ -461,7 +461,7 @@ State PWD Nagpur Regional Helpline: ${pwdTollFree}
 
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
             <p className="text-[11px] text-slate-400 italic">
-              Note: CivicLens records your reference and monitors it. Manually recorded numbers are labeled as citizen-reported unverified until confirmed via authorized integration.
+              Note: Civic Lens AI records your reference and monitors it. Manually recorded numbers are labeled as citizen-reported unverified until confirmed via authorized integration.
             </p>
 
             <button

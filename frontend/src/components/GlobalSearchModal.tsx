@@ -178,7 +178,7 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({ isOpen, on
         <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
           <span className="flex items-center gap-1">
             <ShieldCheck className="w-3.5 h-3.5 text-teal-600" />
-            CivicLens AI 2.0 Global Index
+            Civic Lens AI Global Index
           </span>
           <span>Click report to open maintenance dispatch record</span>
         </div>

@@ -102,7 +102,7 @@ def health_check():
         "database": db_status,
         "ai_engine": engine_info,
         "server_time_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        "disclaimer": "CivicLens AI is an engineering capstone prototype. AI outputs are decision-support heuristics."
+        "disclaimer": "Civic Lens AI is an engineering capstone prototype. AI outputs are decision-support heuristics."
     }
 
 # Register all API routers under /api/v1

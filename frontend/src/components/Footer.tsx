@@ -11,7 +11,7 @@ export const Footer: React.FC = () => {
           {/* Brand & Platform Info */}
           <div className="md:col-span-2 space-y-3">
             <div className="flex items-center gap-2">
-              <span className="font-bold text-white text-base tracking-tight">CivicLens.AI</span>
+              <span className="font-bold text-white text-base tracking-tight">Civic Lens AI</span>
               <span className="bg-teal-500/20 text-teal-300 font-mono text-[10px] px-2 py-0.5 rounded border border-teal-500/30">
                 Civic Prototype
               </span>
@@ -30,7 +30,7 @@ export const Footer: React.FC = () => {
             <h4 className="font-bold text-slate-200 text-xs uppercase tracking-wider mb-3">Platform & Resources</h4>
             <ul className="space-y-2">
               <li>
-                <Link to="/about" className="hover:text-teal-400 transition-colors">About CivicLens.AI</Link>
+                <Link to="/about" className="hover:text-teal-400 transition-colors">About Civic Lens AI</Link>
               </li>
               <li>
                 <Link to="/track" className="hover:text-teal-400 transition-colors">Track Complaint</Link>
@@ -57,7 +57,7 @@ export const Footer: React.FC = () => {
           <div>
             <h4 className="font-bold text-slate-200 text-xs uppercase tracking-wider mb-3">System Notice</h4>
             <p className="text-[11px] text-slate-400 leading-normal">
-              CivicLens.AI is an engineering prototype designed to assist municipal road maintenance decision-making. Citizen grievances remain recorded within the system until official handoff to the NMC portal.
+              Civic Lens AI is an engineering prototype designed to assist municipal road maintenance decision-making. Citizen grievances remain recorded within the system until official handoff to the NMC portal.
             </p>
             <div className="mt-3 flex items-center gap-1.5 text-[11px] text-teal-400">
               <Cpu className="w-3.5 h-3.5 text-teal-400" />
@@ -68,7 +68,7 @@ export const Footer: React.FC = () => {
         </div>
 
         <div className="mt-8 pt-6 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-500 gap-3">
-          <p>&copy; {new Date().getFullYear()} CivicLens.AI — Intelligent Municipal RoadDefect Management.</p>
+          <p>&copy; {new Date().getFullYear()} Civic Lens AI — Intelligent Municipal RoadDefect Management.</p>
           <p className="flex items-center gap-1">
             Developed with <Heart className="w-3 h-3 text-rose-500 inline" /> for Smarter Indian Municipal Infrastructure
           </p>

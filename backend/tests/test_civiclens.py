@@ -3,7 +3,7 @@ import io
 import json
 import datetime
 import pytest
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFilter
 from fastapi.testclient import TestClient
 
 from backend.app.main import app
@@ -337,7 +337,7 @@ def test_record_external_reference_and_dual_status():
     summary_res = client.get(f"/api/v1/reports/{report_id}/summary-text")
     assert summary_res.status_code == 200
     text_content = summary_res.text
-    assert "CIVICLENS.AI — ROAD DEFECT COMPLAINT SUMMARY" in text_content
+    assert "CIVIC LENS AI — ROAD DEFECT COMPLAINT SUMMARY" in text_content
     assert ext_ref in text_content or track_data["reference_number"] in text_content
     assert "https://nmcnagpur.gov.in" in text_content
     assert "1800 233 0080" in text_content
@@ -638,4 +638,285 @@ def test_complaint_reopen_workflow():
     body = reopen_res.json()
     assert body["workflow_status"] == "IN_PROGRESS"
     assert body["reopened_count"] == 1
+
+
+# =====================================================================
+# MANDATORY SPECIFICATION TESTS A - F: FALSE POSITIVE & DETECTION AUDIT
+# =====================================================================
+
+def test_ai_human_photograph_rejected_test_a():
+    """
+    TEST A: Upload a person's photograph / selfie.
+    The system rejects it as an unrelated road image. It must never identify
+    the person as a pothole.
+    """
+    # Create synthetic portrait / selfie
+    img = Image.new("RGB", (320, 320), (230, 240, 250))
+    draw = ImageDraw.Draw(img)
+    draw.ellipse([70, 50, 250, 270], fill=(225, 175, 145))  # Skin face
+    draw.ellipse([100, 110, 130, 140], fill=(70, 40, 30))   # Left eye
+    draw.ellipse([190, 110, 220, 140], fill=(70, 40, 30))   # Right eye
+    draw.ellipse([135, 190, 185, 210], fill=(180, 60, 60))  # Lips
+
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG")
+    buf.seek(0)
+
+    files = {"image": ("selfie.jpg", buf, "image/jpeg")}
+    res = client.post("/api/v1/ai/quick-inspect", files=files)
+    assert res.status_code == 200
+    data = res.json()
+
+    assert data["is_road_scene"] is False
+    assert data["road_scene_status"] == "REJECTED"
+    assert "doesn't look like a road photograph" in data["road_scene_message"]
+    assert len(data["bounding_boxes"]) == 0
+    assert data["detected_pothole_count"] == 0
+    assert data["predicted_damage_category"] != "Pothole"
+
+
+def test_ai_building_photograph_rejected_test_b():
+    """
+    TEST B: Upload a building photograph.
+    The system rejects it as an unrelated road image.
+    """
+    img = Image.new("RGB", (320, 320), (100, 180, 255))  # Blue sky
+    draw = ImageDraw.Draw(img)
+    draw.rectangle([40, 90, 280, 320], fill=(190, 75, 55))  # Red brick building
+    for row in range(110, 300, 35):
+        for col in range(60, 260, 40):
+            draw.rectangle([col, row, col + 24, row + 20], fill=(240, 240, 255))  # Windows
+
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG")
+    buf.seek(0)
+
+    files = {"image": ("building.jpg", buf, "image/jpeg")}
+    res = client.post("/api/v1/ai/quick-inspect", files=files)
+    assert res.status_code == 200
+    data = res.json()
+
+    assert data["is_road_scene"] is False
+    assert data["road_scene_status"] == "REJECTED"
+    assert "doesn't look like a road photograph" in data["road_scene_message"]
+    assert len(data["bounding_boxes"]) == 0
+    assert data["detected_pothole_count"] == 0
+
+
+def test_ai_road_without_pothole_accepted_test_c():
+    """
+    TEST C: Upload a clean road surface without potholes.
+    Recognize the road scene but report no pothole detected.
+    """
+    import random
+    img = Image.new("RGB", (320, 240), (68, 70, 72))  # Asphalt gray
+    rng = random.Random(42)
+    for _ in range(3000):
+        rx, ry = rng.randint(0, 319), rng.randint(0, 239)
+        gv = rng.randint(50, 88)
+        img.putpixel((rx, ry), (gv, gv, gv))
+
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG")
+    buf.seek(0)
+
+    files = {"image": ("clean_road.jpg", buf, "image/jpeg")}
+    res = client.post("/api/v1/ai/quick-inspect", files=files)
+    assert res.status_code == 200
+    data = res.json()
+
+    assert data["is_road_scene"] is True
+    assert data["road_scene_status"] == "VERIFIED"
+    assert data["detected_pothole_count"] == 0
+    assert len(data["bounding_boxes"]) == 0
+
+
+def test_ai_actual_pothole_detected_test_d():
+    """
+    TEST D: Upload actual road photograph with a pothole.
+    Detect the pothole, show its bounding box and actual confidence score.
+    """
+    pothole_img_path = "backend/uploads/demo_road_2_pothole.jpg"
+    with open(pothole_img_path, "rb") as f:
+        files = {"image": ("pothole.jpg", f, "image/jpeg")}
+        res = client.post("/api/v1/ai/quick-inspect", files=files)
+
+    assert res.status_code == 200
+    data = res.json()
+
+    assert data["is_road_scene"] is True
+    assert data["road_scene_status"] == "VERIFIED"
+    assert data["detected_pothole_count"] >= 1
+    assert len(data["bounding_boxes"]) >= 1
+    assert data["predicted_damage_category"] == "Pothole"
+    assert data["prediction_confidence"] >= 0.60
+    assert data["severity_score"] > 0.0
+
+    # Verify bounding box structure
+    box = data["bounding_boxes"][0]
+    assert "x" in box and "y" in box and "width" in box and "height" in box
+    assert box["label"] == "Pothole"
+
+
+def test_ai_multiple_potholes_detected_test_e():
+    """
+    TEST E: Upload road image with multiple distinct potholes.
+    Identify separate potholes where present.
+    """
+    import random
+    img = Image.new("RGB", (640, 480), (65, 70, 75))
+    draw = ImageDraw.Draw(img)
+    rng = random.Random(123)
+    for _ in range(8000):
+        rx, ry = rng.randint(0, 639), rng.randint(0, 479)
+        gv = rng.randint(45, 95)
+        img.putpixel((rx, ry), (gv, gv, gv))
+
+    # Pothole 1 on left side
+    draw.ellipse([110, 180, 230, 270], fill=(16, 16, 18))
+    # Pothole 2 on right side
+    draw.ellipse([410, 250, 560, 360], fill=(14, 14, 16))
+
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG")
+    buf.seek(0)
+
+    files = {"image": ("two_potholes.jpg", buf, "image/jpeg")}
+    res = client.post("/api/v1/ai/quick-inspect", files=files)
+    assert res.status_code == 200
+    data = res.json()
+
+    assert data["is_road_scene"] is True
+    assert data["detected_pothole_count"] >= 2
+    assert len(data["bounding_boxes"]) >= 2
+    assert len(data["potholes_breakdown"]) >= 2
+
+
+def test_ai_blurry_image_warning_test_f():
+    """
+    TEST F: Upload blurry road photograph.
+    Requests a clearer photograph.
+    """
+    # Create smooth blurred image
+    img = Image.new("RGB", (320, 240), (70, 70, 70))
+    # Gaussian blur with radius
+    img = img.filter(ImageFilter.GaussianBlur(radius=10.0))
+
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG")
+    buf.seek(0)
+
+    files = {"image": ("blurry_road.jpg", buf, "image/jpeg")}
+    res = client.post("/api/v1/ai/quick-inspect", files=files)
+    assert res.status_code == 200
+    data = res.json()
+
+    assert data["quality_status"] in ["WARNING", "FAILED"]
+    assert "blurry" in data["quality_message"].lower()
+
+
+def test_workflow_submission_contract_test_g_and_i():
+    """
+    TEST G & I:
+    Workflow inspection only runs preflight; complaint is submitted and created
+    ONLY after the final submission call.
+    """
+    # 1. Quick inspect does not create any database records
+    initial_reports_count = client.get("/api/v1/map/reports").json()
+    count_before = len(initial_reports_count)
+
+    img = Image.new("RGB", (320, 240), color=(70, 70, 70))
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG")
+    buf.seek(0)
+    inspect_res = client.post("/api/v1/ai/quick-inspect", files={"image": ("inspect_only.jpg", buf, "image/jpeg")})
+    assert inspect_res.status_code == 200
+
+    # Verify no complaint was created by inspection alone
+    count_after_inspect = len(client.get("/api/v1/map/reports").json())
+    assert count_after_inspect == count_before
+
+    # 2. Only explicit submission creates the complaint
+    buf.seek(0)
+    post_res = client.post(
+        "/api/v1/reports",
+        data={
+            "title": "Road Problem at Dharampeth Square",
+            "latitude": 21.1420,
+            "longitude": 79.0620,
+            "address_text": "West High Court Road, Dharampeth, Nagpur",
+            "road_classification": "COLLECTOR",
+            "auto_analyze": "true"
+        },
+        files={"image": ("confirmed_report.jpg", buf, "image/jpeg")}
+    )
+    assert post_res.status_code == 201
+    created_data = post_res.json()
+    assert created_data["reference_number"].startswith("CVL-")
+    assert created_data["workflow_status"] == "SUBMITTED"
+
+
+def test_backend_failure_validation_test_j():
+    """
+    TEST J: Invalid payload must return an error response, never a false success.
+    """
+    # Missing required image and invalid latitude
+    res = client.post(
+        "/api/v1/reports",
+        data={
+            "title": "Invalid Coordinates Test",
+            "latitude": 999.0,  # Invalid latitude out of [-90, 90]
+            "longitude": 79.0880
+        }
+    )
+    assert res.status_code == 422
+    assert "detail" in res.json()
+
+
+def test_complaint_tracking_retrieval_test_k():
+    """
+    TEST K: The actual submitted complaint can be retrieved using its complaint ID.
+    """
+    img = Image.new("RGB", (320, 240), color=(70, 70, 70))
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG")
+    buf.seek(0)
+
+    create_res = client.post(
+        "/api/v1/reports",
+        data={
+            "title": "Grievance for Tracking Verification",
+            "latitude": 21.1458,
+            "longitude": 79.0882,
+            "address_text": "Sitabuldi Interchange, Nagpur",
+            "auto_analyze": "false"
+        },
+        files={"image": ("tracking_test.jpg", buf, "image/jpeg")}
+    )
+    assert create_res.status_code == 201
+    created = create_res.json()
+    ref_id = created["reference_number"]
+
+    # Retrieve complaint by reference code
+    track_res = client.get(f"/api/v1/reports/track/{ref_id}")
+    assert track_res.status_code == 200
+    track_data = track_res.json()
+    assert track_data["reference_number"] == ref_id
+    assert track_data["id"] == created["id"]
+    assert track_data["workflow_status"] == "SUBMITTED"
+
+
+def test_branding_exact_civic_lens_ai_test_l():
+    """
+    TEST L: Exact branding 'Civic Lens AI' (three separate words).
+    """
+    assert settings.PROJECT_NAME == "Civic Lens AI"
+
+    health_res = client.get("/api/v1/health")
+    assert health_res.status_code == 200
+    health_data = health_res.json()
+    assert health_data["service"] == "Civic Lens AI"
+    assert "Civic Lens AI" in health_data["disclaimer"]
+
+
 

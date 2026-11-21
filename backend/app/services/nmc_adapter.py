@@ -122,7 +122,7 @@ class SimulatedNMCAdapter(NMCAdapterBase):
                 "is_idempotent_replay": True,
                 "status": existing_tx.external_status,
                 "official_reference": existing_tx.official_reference_id,
-                "message": "Idempotent replay of a CivicLens demonstration transaction. This is not an NMC acknowledgement."
+                "message": "Idempotent replay of a Civic Lens AI demonstration transaction. This is not an NMC acknowledgement."
             }
 
         dept_info = NMC_CATEGORY_MAP.get(
@@ -137,7 +137,7 @@ class SimulatedNMCAdapter(NMCAdapterBase):
 
         # Construct sanitized payload
         request_payload = {
-            "grievance_source": "CivicLens.AI Automated Adapter (Evaluation Sandbox)",
+            "grievance_source": "Civic Lens AI Automated Adapter (Evaluation Sandbox)",
             "external_case_id": report.reference_number,
             "department_code": dept_info["dept_code"],
             "department_name": dept_info["dept_name"],
@@ -198,7 +198,7 @@ class SimulatedNMCAdapter(NMCAdapterBase):
                 previous_status=report.workflow_status,
                 new_status="ACTION_PLANNED" if report.workflow_status == "SUBMITTED" else report.workflow_status,
                 changed_by_id=report.reporter_id,
-                notes=f"CivicLens demonstration transaction {simulated_ref}; no complaint was sent to NMC.",
+                notes=f"Civic Lens AI demonstration transaction {simulated_ref}; no complaint was sent to NMC.",
                 timestamp=datetime.datetime.utcnow()
             )
             db.add(hist)

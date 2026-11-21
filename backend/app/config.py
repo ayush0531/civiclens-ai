@@ -5,7 +5,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "CivicLens AI"
+    PROJECT_NAME: str = "Civic Lens AI"
     VERSION: str = "1.0.0"
     DESCRIPTION: str = "Intelligent Road Damage Detection and Maintenance Prioritization System"
     API_V1_PREFIX: str = "/api/v1"

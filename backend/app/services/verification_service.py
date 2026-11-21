@@ -170,20 +170,27 @@ class VerificationPipelineService:
             primary_label = analysis_res.get("predicted_damage_category", "Surface deterioration")
             confidence = analysis_res.get("prediction_confidence", 0.50)
             latency_ms = analysis_res.get("inference_duration_ms", 0.0)
-            model_id = analysis_res.get("model_identifier", "YOLOv8-RDD2022")
+            model_id = analysis_res.get("model_identifier", "Civic Lens AI Computer Vision Engine")
+            is_road = analysis_res.get("is_road_scene", True)
 
-            status = "PASSED" if confidence >= 0.40 else "WARNING"
-            summary = (
-                f"Model {model_id} detected {len(boxes)} road distress feature(s). "
-                f"Primary classification: '{primary_label}' with {confidence*100:.1f}% confidence in {latency_ms:.1f}ms."
-            )
+            if not is_road:
+                status = "REJECTED"
+                summary = analysis_res.get("road_scene_message", "This doesn't look like a road photograph. Please upload a clear picture of a road or pothole.")
+                failure_reason = summary
+            else:
+                status = "PASSED" if (confidence >= 0.40 or len(boxes) > 0) else "WARNING"
+                failure_reason = None
+                summary = (
+                    f"Model {model_id} detected {len(boxes)} road distress feature(s). "
+                    f"Primary classification: '{primary_label}' with {confidence*100:.1f}% confidence in {latency_ms:.1f}ms."
+                )
 
             return {
                 "stage_number": 2,
                 "stage_key": "STAGE_2_AI_DETECTION",
                 "stage_title": "AI Distress Detection & Feature Localization",
                 "status": status,
-                "confidence_score": round(confidence, 3),
+                "confidence_score": round(confidence, 3) if is_road else 0.0,
                 "summary": summary,
                 "evidence": {
                     "model_identifier": model_id,
@@ -192,11 +199,13 @@ class VerificationPipelineService:
                     "feature_count": len(boxes),
                     "bounding_boxes": boxes,
                     "inference_duration_ms": latency_ms,
-                    "engine_mode": analysis_res.get("inference_mode", "ONNX"),
-                    "annotated_path": annotated_abs_path
+                    "engine_mode": analysis_res.get("inference_mode", "REAL"),
+                    "annotated_path": annotated_abs_path,
+                    "is_road_scene": is_road,
+                    "road_scene_status": analysis_res.get("road_scene_status", "VERIFIED")
                 },
                 "analysis_result": analysis_res,
-                "failure_reason": None,
+                "failure_reason": failure_reason,
                 "executed_at": executed_at
             }
         except Exception as e:

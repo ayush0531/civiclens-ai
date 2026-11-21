@@ -310,7 +310,7 @@ export const TrackComplaintPage: React.FC = () => {
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-4 border-b border-slate-100">
                 <div>
                   <div className="flex items-center gap-2.5 flex-wrap">
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">CivicLens Ref:</span>
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Civic Lens AI Ref:</span>
                     <span className="font-mono text-base sm:text-lg font-black text-navy-900 bg-slate-100 px-3 py-1 rounded-lg border border-slate-200">
                       {report.reference_number}
                     </span>
@@ -484,7 +484,7 @@ export const TrackComplaintPage: React.FC = () => {
                     Municipal Resolution Stepper [Internal Demonstration Lifecycle]
                   </h3>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    Milestone tracking through the internal CivicLens simulated triage and dispatch cycle
+                    Milestone tracking through the internal Civic Lens AI simulated triage and dispatch cycle
                   </p>
                 </div>
                 {report.workflow_status === 'RESOLVED' && (
