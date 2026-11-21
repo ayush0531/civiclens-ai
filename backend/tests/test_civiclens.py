@@ -1310,6 +1310,35 @@ def test_ai_two_and_five_potholes_counting():
     assert data5["predicted_damage_category"] == "Pothole"
 
 
+def test_ai_user_water_filled_pothole_single_detection():
+    """
+    CRITICAL ACCEPTANCE TEST:
+    The user-provided road photograph containing a large water-filled pothole
+    with background trees, vehicles, and striped divider curb must be detected
+    with exactly ONE bounding box around the actual pothole and zero false positives.
+    """
+    test_img_path = "backend/tests/fixtures/water_filled_pothole_user_test.jpg"
+    with open(test_img_path, "rb") as f:
+        img_bytes = f.read()
+
+    res = client.post(
+        "/api/v1/ai/quick-inspect",
+        files={"image": ("water_filled_pothole.jpg", io.BytesIO(img_bytes), "image/jpeg")}
+    )
+    assert res.status_code == 200
+    data = res.json()
+    assert data["is_road_scene"] is True
+    assert data["detected_pothole_count"] == 1
+    assert len(data["bounding_boxes"]) == 1
+    assert data["predicted_damage_category"] == "Pothole"
+    assert data["prediction_confidence"] >= 0.70
+    box = data["bounding_boxes"][0]
+    assert box["label"] == "Pothole"
+    # Covers the water-filled pothole crater in the center foreground
+    assert box["x"] >= 30 and box["y"] >= 30
+    assert box["width"] >= 300 and box["height"] >= 150
+
+
 
 
 

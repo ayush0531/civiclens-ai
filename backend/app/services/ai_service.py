@@ -596,15 +596,8 @@ class AIInferenceService:
                 continue
 
             # Reject candidate boxes touching the top border of the photograph (sky, background, tree canopies)
-            if min_y <= pad:
-                continue
-
-            # Reject candidates situated directly below sky or inside/under tree canopy
-            pad_above = max(10, int(bh * 0.40))
-            y_above = max(0, min_y - pad_above)
-            top_is_sky = float(np.mean(sky_mask[y_above:min_y, min_x:max_x]))
-            top_is_veg = float(np.mean(veg_mask[y_above:min_y, min_x:max_x]))
-            if top_is_sky > 0.10 or top_is_veg > 0.10:
+            edge_pad = max(4, int(min(width, height) * 0.015))
+            if min_y <= edge_pad:
                 continue
 
             # Perimeter pavement enclosure test:
@@ -624,18 +617,30 @@ class AIInferenceService:
 
             enclosure = (top_p + bottom_p + left_p + right_p) / 4.0 * 100.0
 
+            # Immediate region above: check immediate boundary above (not distant background trees)
+            pad_above = max(6, min(pad, int(bh * 0.15)))
+            y_above = max(0, min_y - pad_above)
+            top_is_sky = float(np.mean(sky_mask[y_above:min_y, min_x:max_x]))
+            top_is_veg = float(np.mean(veg_mask[y_above:min_y, min_x:max_x]))
+            # Only reject if top is predominantly sky/veg AND NOT enclosed by pavement
+            if (top_is_sky > 0.35 or top_is_veg > 0.35) and top_p < 0.25:
+                continue
+
             # Horizon & vertical perspective check:
             # Near the road horizon, perspective compresses vertical dimensions on the ground plane.
             # An upright standing structure (vehicle, tree, building) rising above the pavement near the horizon
             # has low upper pavement enclosure and significant vertical height.
             dist_from_road_top = min_y - road_top
-            if (top_is_sky > 0.05 or top_is_veg > 0.05 or top_p < 0.20) and dist_from_road_top < 0.25 * road_height and bh > 0.22 * road_height:
+            if (top_is_sky > 0.15 or top_is_veg > 0.15 or top_p < 0.15) and dist_from_road_top < 0.20 * road_height and bh > 0.25 * road_height and enclosure < 50.0:
                 continue
 
-            # Reject non-road structures: must have surrounding pavement contact
-            if min_y > pad and top_p < 0.20 and bottom_p < 0.20:
+            # Road border cutoff: reject curb dividers and edge artifacts that touch image boundaries without pavement
+            if (min_x <= edge_pad and left_p < 0.20) or (max_x >= width - edge_pad and right_p < 0.20):
                 continue
-            if min_x > pad and left_p < 0.20 and right_p < 0.20:
+
+            # Must have pavement contact on at least 3 sides (or high overall enclosure)
+            sides_with_pavement = sum([top_p >= 0.18, bottom_p >= 0.18, left_p >= 0.18, right_p >= 0.18])
+            if sides_with_pavement < 3 and enclosure < 45.0:
                 continue
             if enclosure < 35.0:
                 continue
