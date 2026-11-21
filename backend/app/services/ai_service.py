@@ -493,8 +493,14 @@ class AIInferenceService:
                 "message": "Image was rejected during road scene verification. No defects analyzed."
             }
 
-        width, height = img.size
-        rgb = np.array(img.convert("RGB"), dtype=np.float32)
+        orig_w, orig_h = img.size
+        # Standardize internal detection canvas to (640, 480) for resolution-invariant morphological analysis
+        det_canvas = img.resize((640, 480))
+        width, height = 640, 480
+        scale_x = orig_w / 640.0
+        scale_y = orig_h / 480.0
+
+        rgb = np.array(det_canvas.convert("RGB"), dtype=np.float32)
         r_raw, g_raw, b_raw = rgb[:, :, 0], rgb[:, :, 1], rgb[:, :, 2]
         lum = 0.299 * r_raw + 0.587 * g_raw + 0.114 * b_raw
 
@@ -533,12 +539,13 @@ class AIInferenceService:
 
         # 5. Extract candidate cavities & standing water puddles ONLY on road surface
         road_pixels = smoothed[pavement_mask]
-        road_base = float(np.percentile(road_pixels, 70)) if len(road_pixels) > 0 else float(np.percentile(smoothed, 70))
-        road_std = float(np.std(road_pixels)) if len(road_pixels) > 0 else float(np.std(smoothed))
+        road_median = float(np.median(road_pixels)) if len(road_pixels) > 0 else float(np.median(smoothed))
+        road_base = road_median
+        road_std = float(np.std(road_pixels)) if len(road_pixels) > 0 else 10.0
 
         # Dynamic cavity drop threshold adapting to road lighting
-        lum_drop = max(14.0, 0.20 * road_base)
-        cavity_threshold = road_base - lum_drop
+        lum_drop = max(10.0, min(22.0, 1.4 * max(5.0, road_std)))
+        cavity_threshold = road_median - lum_drop
 
         # Only search within non-vegetation, non-sky, non-colored road regions
         valid_region = (~veg_mask) & (~sky_mask) & (~colored_vehicle_mask)
@@ -547,21 +554,18 @@ class AIInferenceService:
         defect_raw = (cavity_raw | water_raw)
 
         # Morphological closing bridges small stones/dirt inside the same physical pothole
-        closing_k = max(9, int(min(width, height) * 0.03))
-        if closing_k % 2 == 0:
-            closing_k += 1
+        closing_k = 7
         defect_closed = ndimage.binary_closing(defect_raw, structure=np.ones((closing_k, closing_k)))
 
         # Morphological opening cleans up speckle noise and merges connected cavity core
-        kernel_size = max(5, int(min(width, height) * 0.015))
-        if kernel_size % 2 == 0:
-            kernel_size += 1
+        kernel_size = 5
         defect_clean = ndimage.binary_opening(defect_closed, structure=np.ones((kernel_size, kernel_size)))
 
         # Label separate connected components
         labeled, num_features = ndimage.label(defect_clean)
         total_frame_area = float(width * height)
-        pad = max(8, int(min(width, height) * 0.025))
+        pad = 12
+        edge_pad = 6
         raw_detections: List[Dict[str, Any]] = []
 
         road_rows = np.where(np.any(pavement_mask, axis=1))[0]
@@ -596,8 +600,11 @@ class AIInferenceService:
                 continue
 
             # Reject candidate boxes touching the top border of the photograph (sky, background, tree canopies)
-            edge_pad = max(4, int(min(width, height) * 0.015))
             if min_y <= edge_pad:
+                continue
+
+            # Filter tiny distant horizon artifacts in perspective views
+            if min_y < 0.22 * height and area_pct < 2.0:
                 continue
 
             # Perimeter pavement enclosure test:
@@ -654,14 +661,20 @@ class AIInferenceService:
                 continue
 
             cavity_lum = float(np.mean(smoothed[feature_mask]))
-            contrast = max(0.15, abs(road_base - cavity_lum) / max(1.0, road_base))
+            contrast = max(0.15, abs(road_median - cavity_lum) / max(1.0, road_median))
             confidence = round(min(0.96, max(0.65, 0.60 + 0.38 * contrast)), 2)
 
+            # Map coordinates back to original image dimensions
+            orig_box_x = int(round(min_x * scale_x))
+            orig_box_y = int(round(min_y * scale_y))
+            orig_box_w = int(round(bw * scale_x))
+            orig_box_h = int(round(bh * scale_y))
+
             raw_detections.append({
-                "x": min_x,
-                "y": min_y,
-                "width": bw,
-                "height": bh,
+                "x": orig_box_x,
+                "y": orig_box_y,
+                "width": orig_box_w,
+                "height": orig_box_h,
                 "label": "Pothole",
                 "confidence": confidence,
                 "area_pct": round(area_pct, 2)
@@ -874,7 +887,11 @@ class AIInferenceService:
             prediction_confidence = 0.0
 
         # Generate annotated image
-        annotated_path = output_annotated_path or image_path.replace(".", "_annotated.")
+        if output_annotated_path:
+            annotated_path = output_annotated_path
+        else:
+            base, ext = os.path.splitext(image_path)
+            annotated_path = f"{base}_annotated{ext or '.jpg'}"
         self._generate_annotated_image(img_rgb, detections, annotated_path)
 
         engine_info = self.get_engine_info()
