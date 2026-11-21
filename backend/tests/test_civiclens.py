@@ -1115,6 +1115,113 @@ def test_ai_accuracy_car_or_tree_photo_zero_potholes_test_4():
     assert len(data["bounding_boxes"]) == 0
 
 
+def test_ai_duplicate_pothole_fragments_merged_into_one():
+    """
+    CRITICAL ACCURACY TEST: Duplicate/Fragmented Pothole Boxes Merged.
+    One physical pothole with multiple internal cavity contours / stone divisions.
+    Expected: Exactly ONE bounding box covering the complete physical pothole.
+    """
+    img = Image.new("RGB", (640, 480), (105, 105, 105))
+    d = ImageDraw.Draw(img)
+    # One single physical pothole divided into 3 touching/adjacent sub-regions
+    d.ellipse([200, 310, 260, 370], fill=(38, 34, 30))  # Fragment 1
+    d.ellipse([240, 320, 300, 380], fill=(36, 32, 28))  # Fragment 2
+    d.ellipse([220, 350, 280, 400], fill=(34, 30, 26))  # Fragment 3
+
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG")
+    buf.seek(0)
+
+    files = {"image": ("fragmented_pothole.jpg", buf, "image/jpeg")}
+    res = client.post("/api/v1/ai/quick-inspect", files=files)
+    assert res.status_code == 200
+    data = res.json()
+
+    assert data["is_road_scene"] is True
+    assert data["detected_pothole_count"] == 1
+    assert len(data["bounding_boxes"]) == 1
+    box = data["bounding_boxes"][0]
+    assert box["label"] == "Pothole"
+    # Verify the unified box covers the entire physical pothole footprint (~200 to 300 x, ~310 to 400 y)
+    assert box["x"] <= 205
+    assert box["y"] <= 315
+    assert (box["x"] + box["width"]) >= 290
+    assert (box["y"] + box["height"]) >= 390
+
+
+def test_ai_tree_and_single_pothole_scene_no_tree_false_positive():
+    """
+    CRITICAL ACCURACY TEST: Road Scene with a Tree and ONE Pothole.
+    Ensures:
+    1. Exactly ONE detection for the pothole.
+    2. Zero detections around the tree (canopy or trunk).
+    3. Primary damage is Pothole.
+    """
+    img = Image.new("RGB", (640, 480), (120, 120, 120))
+    d = ImageDraw.Draw(img)
+    # Sky
+    d.rectangle([0, 0, 640, 140], fill=(135, 195, 245))
+    # Roadside tree with foliage canopy and dark trunk
+    d.ellipse([30, 20, 180, 200], fill=(38, 95, 34))
+    d.rectangle([95, 180, 125, 270], fill=(62, 45, 30))
+    # Road
+    d.rectangle([0, 160, 640, 480], fill=(105, 105, 105))
+    # Car parked on right
+    d.rectangle([410, 210, 570, 270], fill=(180, 30, 30))
+    d.rectangle([440, 180, 540, 215], fill=(30, 35, 40))
+    # ONE actual pothole in roadway with internal shadow variation
+    d.ellipse([210, 320, 270, 380], fill=(38, 34, 30))
+    d.ellipse([250, 330, 310, 390], fill=(36, 32, 28))
+
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG")
+    buf.seek(0)
+
+    files = {"image": ("tree_and_pothole.jpg", buf, "image/jpeg")}
+    res = client.post("/api/v1/ai/quick-inspect", files=files)
+    assert res.status_code == 200
+    data = res.json()
+
+    assert data["is_road_scene"] is True
+    assert data["detected_pothole_count"] == 1
+    assert len(data["bounding_boxes"]) == 1
+    assert data["predicted_damage_category"] == "Pothole"
+    box = data["bounding_boxes"][0]
+    assert box["label"] == "Pothole"
+    # Ensure detection is around the pothole (x ~ 210..310, y ~ 320..390), NOT the tree (x < 180)
+    assert box["x"] >= 195
+    assert box["y"] >= 305
+
+
+def test_ai_vehicle_without_potholes_zero_detections():
+    """
+    CRITICAL ACCURACY TEST: Vehicle alone on road without potholes.
+    Expected: Exactly zero pothole detections.
+    """
+    img = Image.new("RGB", (640, 480), (135, 195, 245))
+    d = ImageDraw.Draw(img)
+    # Road
+    d.rectangle([0, 200, 640, 480], fill=(105, 105, 105))
+    # Red vehicle
+    d.rectangle([100, 180, 540, 380], fill=(180, 30, 30))
+    d.ellipse([140, 350, 220, 430], fill=(20, 20, 20))
+    d.ellipse([420, 350, 500, 430], fill=(20, 20, 20))
+    d.rectangle([180, 200, 460, 270], fill=(40, 45, 55))
+
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG")
+    buf.seek(0)
+
+    files = {"image": ("vehicle_no_potholes.jpg", buf, "image/jpeg")}
+    res = client.post("/api/v1/ai/quick-inspect", files=files)
+    assert res.status_code == 200
+    data = res.json()
+
+    assert data["detected_pothole_count"] == 0
+    assert len(data["bounding_boxes"]) == 0
+
+
+
 
 
 

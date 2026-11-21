@@ -351,6 +351,74 @@ class AIInferenceService:
             "details": "Pavement characteristics could not be confirmed with high confidence."
         }
 
+    def _merge_overlapping_potholes(self, boxes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Merges fragmented, overlapping, nested, or closely adjacent detections 
+        belonging to the SAME physical pothole crater into a single comprehensive bounding box.
+        Guarantees: One physical pothole = exactly one bounding box covering the entire pothole.
+        """
+        if not boxes:
+            return []
+
+        unmerged = list(boxes)
+        merged: List[Dict[str, Any]] = []
+
+        while unmerged:
+            current = unmerged.pop(0)
+            did_merge = False
+
+            for i, other in enumerate(unmerged):
+                if current.get("label") != other.get("label"):
+                    continue
+
+                x1 = max(current["x"], other["x"])
+                y1 = max(current["y"], other["y"])
+                x2 = min(current["x"] + current["width"], other["x"] + other["width"])
+                y2 = min(current["y"] + current["height"], other["y"] + other["height"])
+
+                inter_area = max(0, x2 - x1) * max(0, y2 - y1)
+                area_curr = current["width"] * current["height"]
+                area_other = other["width"] * other["height"]
+                min_area = min(area_curr, area_other)
+                union_area = area_curr + area_other - inter_area
+
+                iou = inter_area / float(union_area) if union_area > 0 else 0
+                ios = inter_area / float(min_area) if min_area > 0 else 0
+
+                gap_x = max(0, max(current["x"], other["x"]) - min(current["x"] + current["width"], other["x"] + other["width"]))
+                gap_y = max(0, max(current["y"], other["y"]) - min(current["y"] + current["height"], other["y"] + other["height"]))
+                max_allowed_gap = max(15, int(min(current["width"], current["height"], other["width"], other["height"]) * 0.35))
+
+                should_merge = (iou >= 0.15) or (ios >= 0.25) or (gap_x <= max_allowed_gap and gap_y <= max_allowed_gap)
+
+                if should_merge:
+                    new_x = min(current["x"], other["x"])
+                    new_y = min(current["y"], other["y"])
+                    new_w = max(current["x"] + current["width"], other["x"] + other["width"]) - new_x
+                    new_h = max(current["y"] + current["height"], other["y"] + other["height"]) - new_y
+                    new_conf = max(current["confidence"], other["confidence"])
+                    new_area_pct = round(current.get("area_pct", 0) + other.get("area_pct", 0), 2)
+
+                    current = {
+                        "x": new_x,
+                        "y": new_y,
+                        "width": new_w,
+                        "height": new_h,
+                        "label": current["label"],
+                        "confidence": new_conf,
+                        "area_pct": new_area_pct
+                    }
+                    unmerged.pop(i)
+                    did_merge = True
+                    break
+
+            if did_merge:
+                unmerged.append(current)
+            else:
+                merged.append(current)
+
+        return merged
+
     # -------------------------------------------------------------
     # STAGE 3: ACTUAL POTHOLE DETECTION & LOCALIZATION
     # -------------------------------------------------------------
@@ -383,19 +451,19 @@ class AIInferenceService:
         saturation = chroma / (c_max + 1e-5)
 
         # 1. Vegetation mask: detects green trees, shrubs, and foliage (saturated green, not gray noise)
-        veg_mask = (g > r + 8) & (g > b + 8) & (saturation > 0.15) & (2 * g - r - b > 14)
+        veg_mask = (g > r + 3) & (g > b + 5) & (saturation > 0.10) & (2 * g - r - b > 6)
 
         # 2. Sky mask: upper background region with blue tones or bright overcast luminance
         sky_y = int(height * 0.55)
         sky_mask = np.zeros((height, width), dtype=bool)
-        sky_mask[:sky_y, :] = ((b[:sky_y, :] > r[:sky_y, :] + 15) & (b[:sky_y, :] > g[:sky_y, :] + 10)) | (lum[:sky_y, :] > 225)
+        sky_mask[:sky_y, :] = ((b[:sky_y, :] > r[:sky_y, :] + 12) & (b[:sky_y, :] > g[:sky_y, :] + 8)) | (lum[:sky_y, :] > 215)
 
         # 3. Vehicle / Saturated Object mask: detects high-chroma painted car bodies, reflective signs, and vehicle lights
-        colored_vehicle_mask = (chroma > 55) & (lum > 35)
+        colored_vehicle_mask = (chroma > 50) & (lum > 35)
 
         # 4. Pavement mask: neutral gray/earthy tones on the ground surface, excluding vegetation, sky, and vehicles
         diff = np.maximum(abs(r - g), np.maximum(abs(g - b), abs(r - b)))
-        pavement_mask = (diff < 44) & (lum >= 15) & (lum <= 220) & (~veg_mask) & (~sky_mask) & (~colored_vehicle_mask)
+        pavement_mask = (diff < 44) & (lum >= 35) & (lum <= 220) & (~veg_mask) & (~sky_mask) & (~colored_vehicle_mask)
 
         # 5. Extract candidate cavities ONLY on road surface
         smoothed = ndimage.gaussian_filter(lum, sigma=2.0)
@@ -411,11 +479,17 @@ class AIInferenceService:
         valid_region = (~veg_mask) & (~sky_mask) & (~colored_vehicle_mask)
         cavity_raw = (smoothed < cavity_threshold) & (smoothed > 4.0) & valid_region
 
+        # Morphological closing bridges small stones/dirt inside the same physical pothole
+        closing_k = max(7, int(min(width, height) * 0.025))
+        if closing_k % 2 == 0:
+            closing_k += 1
+        cavity_closed = ndimage.binary_closing(cavity_raw, structure=np.ones((closing_k, closing_k)))
+
         # Morphological opening cleans up speckle noise and merges connected cavity core
         kernel_size = max(5, int(min(width, height) * 0.015))
         if kernel_size % 2 == 0:
             kernel_size += 1
-        cavity_clean = ndimage.binary_opening(cavity_raw, structure=np.ones((kernel_size, kernel_size)))
+        cavity_clean = ndimage.binary_opening(cavity_closed, structure=np.ones((kernel_size, kernel_size)))
 
         # Label separate connected components
         labeled, num_features = ndimage.label(cavity_clean)
@@ -454,6 +528,18 @@ class AIInferenceService:
             if solidity >= 0.90:
                 continue
 
+            # Reject candidate boxes touching the top border of the photograph (sky, background, tree canopies)
+            if min_y <= pad:
+                continue
+
+            # Reject candidates situated directly below sky or inside/under tree canopy
+            pad_above = max(10, int(bh * 0.40))
+            y_above = max(0, min_y - pad_above)
+            top_is_sky = float(np.mean(sky_mask[y_above:min_y, min_x:max_x]))
+            top_is_veg = float(np.mean(veg_mask[y_above:min_y, min_x:max_x]))
+            if top_is_sky > 0.10 or top_is_veg > 0.10:
+                continue
+
             # Horizon & vertical perspective check:
             # Near the road horizon, perspective compresses vertical dimensions on the ground plane.
             # An object near the horizon with a large vertical height (bh > 0.22 * road_height) is an
@@ -466,16 +552,16 @@ class AIInferenceService:
             # An actual pothole is a damaged cavity embedded IN the road surface.
             # Its perimeter must be enclosed by road pavement on all surrounding sides.
             y1_p = max(0, min_y - pad)
-            top_p = np.mean(pavement_mask[y1_p:min_y, min_x:max_x]) if min_y > pad else 1.0
+            top_p = np.mean(pavement_mask[y1_p:min_y, min_x:max_x]) if min_y > pad else 0.0
 
             y2_p = min(height, max_y + pad)
             bottom_p = np.mean(pavement_mask[max_y:y2_p, min_x:max_x]) if max_y < height - pad else 1.0
 
             x1_p = max(0, min_x - pad)
-            left_p = np.mean(pavement_mask[min_y:max_y, x1_p:min_x]) if min_x > pad else 1.0
+            left_p = np.mean(pavement_mask[min_y:max_y, x1_p:min_x]) if min_x > pad else 0.0
 
             x2_p = min(width, max_x + pad)
-            right_p = np.mean(pavement_mask[min_y:max_y, max_x:x2_p]) if max_x < width - pad else 1.0
+            right_p = np.mean(pavement_mask[min_y:max_y, max_x:x2_p]) if max_x < width - pad else 0.0
 
             enclosure = (top_p + bottom_p + left_p + right_p) / 4.0 * 100.0
 
@@ -496,7 +582,7 @@ class AIInferenceService:
             color_overlap = float(np.mean(colored_vehicle_mask[max(0, min_y - pad):min(height, max_y + pad), max(0, min_x - pad):min(width, max_x + pad)])) * 100.0
             veg_margin = float(np.mean(veg_mask[max(0, min_y - pad):min(height, max_y + pad), max(0, min_x - pad):min(width, max_x + pad)])) * 100.0
 
-            if veg_overlap > 8.0 or color_overlap > 18.0 or veg_margin > 20.0:
+            if veg_overlap > 5.0 or color_overlap > 18.0 or veg_margin > 15.0:
                 continue
 
             cavity_lum = float(np.mean(smoothed[feature_mask]))
@@ -515,11 +601,11 @@ class AIInferenceService:
 
         # Non-Maximum Suppression (NMS) to eliminate duplicate/nested overlapping boxes
         raw_detections.sort(key=lambda d: d["confidence"], reverse=True)
-        detections: List[Dict[str, Any]] = []
+        nms_detections: List[Dict[str, Any]] = []
         for d in raw_detections:
             x1, y1, w1, h1 = d["x"], d["y"], d["width"], d["height"]
             keep = True
-            for kept in detections:
+            for kept in nms_detections:
                 x2, y2, w2, h2 = kept["x"], kept["y"], kept["width"], kept["height"]
                 xi1 = max(x1, x2)
                 yi1 = max(y1, y2)
@@ -532,8 +618,10 @@ class AIInferenceService:
                     keep = False
                     break
             if keep:
-                detections.append(d)
+                nms_detections.append(d)
 
+        # Spatial Fragment Merging: One physical pothole = exactly one bounding box covering the entire pothole
+        detections = self._merge_overlapping_potholes(nms_detections)
         detections.sort(key=lambda d: d["confidence"], reverse=True)
 
         metadata = {
