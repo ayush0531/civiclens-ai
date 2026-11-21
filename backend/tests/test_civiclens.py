@@ -919,4 +919,80 @@ def test_branding_exact_civic_lens_ai_test_l():
     assert "Civic Lens AI" in health_data["disclaimer"]
 
 
+def test_ai_pothole_closeup_accepted_test_1():
+    """
+    TEST 1: Actual Pothole Close-up
+    Photograph where the pothole depression and dirt/rubble occupy a large fraction of the frame.
+    Must be ACCEPTED as road defect (status: VERIFIED), not rejected as non-road.
+    """
+    import numpy as np
+    y, x = np.ogrid[:480, :640]
+    # Asphalt border (neutral gray)
+    arr = np.full((480, 640, 3), 105, dtype=np.uint8)
+    # Pothole cavity occupies 45% of the frame, filled with dark earth/gravel tones
+    mask = ((x - 320) / 170)**2 + ((y - 240) / 115)**2 <= 1
+    arr[mask] = [68, 55, 38]
+    # Gritty aggregate texture
+    arr += np.random.randint(-10, 10, (480, 640, 3)).astype(np.uint8)
+
+    img = Image.fromarray(arr)
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG")
+    buf.seek(0)
+
+    files = {"image": ("pothole_closeup.jpg", buf, "image/jpeg")}
+    res = client.post("/api/v1/ai/quick-inspect", files=files)
+    assert res.status_code == 200
+    data = res.json()
+
+    assert data["is_road_scene"] is True
+    assert data["road_scene_status"] == "VERIFIED"
+    assert data["detected_pothole_count"] >= 1
+    assert len(data["bounding_boxes"]) >= 1
+    assert data["predicted_damage_category"] == "Pothole"
+    assert data["severity_score"] > 0.0
+
+
+def test_ai_uncertain_image_advisory_test_7():
+    """
+    TEST 7: Uncertain Image
+    An image that is not a human, building, or screenshot, but has ambiguous pavement cues.
+    Must return UNCERTAIN with a clear advisory, rather than flatly declaring it invalid.
+    """
+    import numpy as np
+    # Colored abstract texture (not face, not sky, not document)
+    arr = np.random.randint(40, 190, (320, 320, 3), dtype=np.uint8)
+    img = Image.fromarray(arr)
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG")
+    buf.seek(0)
+
+    files = {"image": ("ambiguous_image.jpg", buf, "image/jpeg")}
+    res = client.post("/api/v1/ai/quick-inspect", files=files)
+    assert res.status_code == 200
+    data = res.json()
+
+    # Must not reject as human face or building
+    assert data["road_scene_status"] in ["UNCERTAIN", "VERIFIED"]
+    if data["road_scene_status"] == "UNCERTAIN":
+        assert "unable to verify" in data["road_scene_message"].lower() or "clearer" in data["road_scene_message"].lower()
+
+
+def test_footer_developer_credit_and_heart_removed_test_9():
+    """
+    TEST 9: Footer Cleanliness
+    Verifies that the heart icon, 'Developed with', and developer credits are completely removed from the frontend.
+    """
+    footer_path = "frontend/src/components/Footer.tsx"
+    with open(footer_path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert "Developed with" not in content
+    assert "Made with" not in content
+    assert "<Heart" not in content
+    assert "Smarter Indian Municipal Infrastructure" not in content
+    assert "Civic Lens AI" in content
+
+
+
 

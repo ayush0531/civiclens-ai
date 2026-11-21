@@ -175,14 +175,12 @@ class AIInferenceService:
     # -------------------------------------------------------------
     # STAGE 2: ROAD SCENE VERIFICATION & FALSE POSITIVE PREVENTION
     # -------------------------------------------------------------
-    def verify_road_scene(self, img: Image.Image) -> Dict[str, Any]:
+    def check_unrelated_scene(self, img: Image.Image) -> Dict[str, Any]:
         """
-        Validates whether the photograph actually depicts a road or pavement surface.
-        Prevents false positives on:
-        - Human portraits, selfies, hands, people.
-        - Buildings, architecture, rooms, indoor ceilings.
-        - Screenshots, digital documents, memes, graphics.
-        - Sky, dense vegetation, vehicles interior.
+        Unambiguously identifies non-road images:
+        - Human portraits, selfies, faces.
+        - Building facades, skyline architecture, indoor ceilings/walls.
+        - Digital screenshots, documents, flat graphics.
         """
         rgb_img = img.convert("RGB")
         width, height = rgb_img.size
@@ -193,31 +191,35 @@ class AIInferenceService:
         b = arr[:, :, 2]
         lum = 0.299 * r + 0.587 * g + 0.114 * b
 
-        # 1. Human / Selfie / Portrait Detection (Skin Color Segmentation)
+        # 1. Human / Selfie / Portrait Detection
         # Standard YCbCr & RGB human skin color envelope
-        skin_mask = (
-            (r > 95) & (g > 40) & (b > 20) &
-            (r > g) & (r - b > 15) & (abs(r - g) > 10) &
-            (lum > 60)
+        skin_color_mask = (
+            (r > 100) & (g > 55) & (b > 35) &
+            (r > g) & (r - b > 18) & (abs(r - g) > 10) &
+            (lum > 65)
         )
-        total_skin_pct = float(np.mean(skin_mask)) * 100.0
+        # Texture smoothness: Facial skin has smooth surface variance, unlike granular dirt/gravel/asphalt!
+        gray = lum
+        laplacian = np.abs(ndimage.laplace(ndimage.gaussian_filter(gray, sigma=1.0)))
+        smooth_skin_mask = skin_color_mask & (laplacian < 6.0)
+
+        total_skin_pct = float(np.mean(smooth_skin_mask)) * 100.0
 
         # Center crop skin percentage (classic portrait / selfie position)
         cw1, cw2 = int(width * 0.20), int(width * 0.80)
         ch1, ch2 = int(height * 0.15), int(height * 0.85)
-        center_skin_pct = float(np.mean(skin_mask[ch1:ch2, cw1:cw2])) * 100.0
+        center_skin_pct = float(np.mean(smooth_skin_mask[ch1:ch2, cw1:cw2])) * 100.0
 
-        if center_skin_pct > 20.0 or total_skin_pct > 14.0:
+        if center_skin_pct > 20.0 or total_skin_pct > 15.0:
             return {
-                "is_road_scene": False,
-                "status": "REJECTED",
+                "is_unrelated": True,
                 "rejection_type": "HUMAN_PORTRAIT",
-                "confidence": 0.95,
+                "confidence": 0.96,
                 "message": "This doesn't look like a road photograph. Please upload a clear picture of a road or pothole.",
                 "details": f"Human subject or selfie detected ({center_skin_pct:.1f}% skin tone in frame)."
             }
 
-        # 2. Building / Indoor / Sky Detection
+        # 2. Building / Skyline / Architecture Detection
         # Upper sky: bright blue region in upper half
         sky_mask = (b > r + 25) & (b > g + 15) & (lum > 110)
         sky_pct = float(np.mean(sky_mask[:int(height * 0.45), :])) * 100.0
@@ -226,63 +228,117 @@ class AIInferenceService:
         brick_mask = (r > g + 35) & (r > b + 35) & (lum > 50)
         brick_pct = float(np.mean(brick_mask)) * 100.0
 
-        if sky_pct > 55.0 and brick_pct > 20.0:
+        if sky_pct > 50.0 and brick_pct > 20.0:
             return {
-                "is_road_scene": False,
-                "status": "REJECTED",
+                "is_unrelated": True,
                 "rejection_type": "BUILDING_OR_ARCHITECTURE",
-                "confidence": 0.92,
+                "confidence": 0.94,
                 "message": "This doesn't look like a road photograph. Please upload a clear picture of a road or pothole.",
                 "details": "Building facade and skyline detected instead of road pavement."
             }
 
         # 3. Screenshot / Graphic / Document Detection
-        # High fraction of pure white (#FFF) or pure black (#000), or flat artificial solid colors
+        # High fraction of pure white (#FFF) or pure black (#000) flat artificial solid colors
         white_mask = (r > 245) & (g > 245) & (b > 245)
         black_mask = (r < 10) & (g < 10) & (b < 10)
         flat_doc_pct = float(np.mean(white_mask | black_mask)) * 100.0
 
         if flat_doc_pct > 30.0:
             return {
-                "is_road_scene": False,
-                "status": "REJECTED",
+                "is_unrelated": True,
                 "rejection_type": "SCREENSHOT_OR_DOCUMENT",
-                "confidence": 0.94,
+                "confidence": 0.95,
                 "message": "This doesn't look like a road photograph. Please upload a clear picture of a road or pothole.",
                 "details": "Digital screenshot or document graphic detected."
             }
 
-        # 4. Asphalt Pavement Surface Validation
-        # Asphalt/bitumen is predominantly neutral gray/dark-gray: |R-G| < 35, |G-B| < 35, |R-B| < 38
-        channel_diff = np.maximum(abs(r - g), np.maximum(abs(g - b), abs(r - b)))
-        asphalt_color_mask = (channel_diff < 36) & (lum >= 15) & (lum <= 215)
+        return {
+            "is_unrelated": False,
+            "rejection_type": None,
+            "confidence": 0.0,
+            "message": None,
+            "details": None
+        }
+
+    def verify_road_scene(
+        self,
+        img: Image.Image,
+        detections: Optional[List[Dict[str, Any]]] = None
+    ) -> Dict[str, Any]:
+        """
+        Validates whether the photograph depicts a road, pavement, or roadway defect.
         
-        # Ground plane: lower 60% of image must have asphalt pavement
-        bottom_asphalt_pct = float(np.mean(asphalt_color_mask[int(height * 0.4):, :])) * 100.0
-        total_asphalt_pct = float(np.mean(asphalt_color_mask)) * 100.0
-
-        # Granular pavement texture check (stddev in 5x5 local window)
-        gray_small = rgb_img.resize((160, 120)).convert("L")
-        gray_arr = np.array(gray_small, dtype=np.float32)
-        local_std = float(ndimage.standard_deviation(gray_arr))
-
-        if bottom_asphalt_pct < 25.0 and total_asphalt_pct < 28.0:
+        Strict Evaluation Contract:
+        1. If clearly unrelated (selfie/face, building/skyline, screenshot): REJECT.
+        2. If a pothole is detected (including close-ups): ACCEPT immediately as VERIFIED.
+        3. If road pavement is present without potholes: ACCEPT as VERIFIED ("No pothole detected").
+        4. If uncertain: Mark as UNCERTAIN ("Unable to verify this photograph. Please upload a clearer road image.").
+        """
+        # Step 1: Check for definitely unrelated non-road content
+        unrelated = self.check_unrelated_scene(img)
+        if unrelated["is_unrelated"]:
             return {
                 "is_road_scene": False,
                 "status": "REJECTED",
-                "rejection_type": "NON_ROAD_SCENE",
-                "confidence": 0.88,
-                "message": "This doesn't look like a road photograph. Please upload a clear picture of a road or pothole.",
-                "details": "Insufficient asphalt pavement or road surface detected in photograph."
+                "rejection_type": unrelated["rejection_type"],
+                "confidence": unrelated["confidence"],
+                "message": unrelated["message"],
+                "details": unrelated["details"]
             }
 
+        # Step 2: If actual pothole distress was detected by the computer vision pipeline, accept it!
+        # "A single low road-scene classification score must not override a valid pothole detection."
+        # "Allow genuine pothole close-up photographs even when the complete road surroundings are not visible."
+        if detections and len(detections) > 0:
+            return {
+                "is_road_scene": True,
+                "status": "VERIFIED",
+                "rejection_type": None,
+                "confidence": max(d["confidence"] for d in detections),
+                "message": "Road pavement and pothole damage successfully verified.",
+                "details": f"Road distress confirmed ({len(detections)} defect feature(s) localized)."
+            }
+
+        # Step 3: No pothole detected — determine if it is a genuine road surface or uncertain
+        rgb_img = img.convert("RGB")
+        width, height = rgb_img.size
+        arr = np.array(rgb_img, dtype=np.float32)
+
+        r = arr[:, :, 0]
+        g = arr[:, :, 1]
+        b = arr[:, :, 2]
+        lum = 0.299 * r + 0.587 * g + 0.114 * b
+
+        # Road surface characteristics:
+        # Asphalt, bitumen, and concrete exhibit neutral tone balance (|R-G| < 44, |G-B| < 44)
+        channel_diff = np.maximum(abs(r - g), np.maximum(abs(g - b), abs(r - b)))
+        neutral_pavement_mask = (channel_diff < 44) & (lum >= 15) & (lum <= 225)
+        neutral_pct = float(np.mean(neutral_pavement_mask)) * 100.0
+
+        # Granular surface texture: roads have mineral aggregate roughness
+        gray_small = rgb_img.resize((160, 120)).convert("L")
+        gray_arr = np.array(gray_small, dtype=np.float32)
+        local_texture_std = float(ndimage.standard_deviation(gray_arr))
+
+        if neutral_pct >= 18.0 or local_texture_std >= 8.5:
+            return {
+                "is_road_scene": True,
+                "status": "VERIFIED",
+                "rejection_type": None,
+                "confidence": round(min(0.99, max(0.70, neutral_pct / 100.0)), 2),
+                "message": "Road pavement scene successfully verified.",
+                "details": f"Pavement surface confirmed ({neutral_pct:.1f}% pavement coverage, texture roughness index {local_texture_std:.1f})."
+            }
+
+        # Step 4: Uncertain Result (neither a clear non-road nor high-confidence road)
+        # Show advisory without falsely branding the photograph as invalid
         return {
             "is_road_scene": True,
-            "status": "VERIFIED",
+            "status": "UNCERTAIN",
             "rejection_type": None,
-            "confidence": round(min(0.99, max(0.75, bottom_asphalt_pct / 100.0)), 2),
-            "message": "Road pavement scene successfully verified.",
-            "details": f"Asphalt surface confirmed ({bottom_asphalt_pct:.1f}% ground pavement coverage)."
+            "confidence": 0.50,
+            "message": "Unable to verify this photograph. Please upload a clearer road image.",
+            "details": "Pavement characteristics could not be confirmed with high confidence."
         }
 
     # -------------------------------------------------------------
@@ -295,7 +351,7 @@ class AIInferenceService:
     ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
         """
         Executes genuine pothole cavity localization and pavement distress feature detection.
-        Rejects non-road images completely.
+        Supports both wide road views and close-up pothole photographs.
         """
         if not is_road_scene:
             return [], {
@@ -310,21 +366,18 @@ class AIInferenceService:
         # Filter out high-frequency sensor noise to isolate actual surface cavities
         smoothed = ndimage.gaussian_filter(gray, sigma=2.0)
 
-        # Segment asphalt background to determine nominal road illumination
-        r, g, b = arr[:, :, 0], arr[:, :, 1], arr[:, :, 2]
-        gray_diff = np.maximum(abs(r - g), np.maximum(abs(g - b), abs(r - b)))
-        asphalt_mask = (gray_diff < 36) & (gray >= 15) & (gray <= 210)
-        road_pixels = smoothed[asphalt_mask]
-        
-        road_mean = float(np.mean(road_pixels)) if len(road_pixels) > 0 else 70.0
-        road_std = float(np.std(road_pixels)) if len(road_pixels) > 0 else 20.0
+        # Adaptive road pavement baseline calculation
+        # In road photography, unshaded road base sits between the 65th and 80th percentile of illumination
+        road_base = float(np.percentile(smoothed, 72))
+        road_std = float(np.std(smoothed))
 
-        # Potholes are physically recessed cavities where shadow/depth lowers reflectance
-        # Cavity threshold: substantially darker than surrounding road base
-        cavity_threshold = min(58.0, road_mean - 0.85 * max(8.0, road_std))
+        # Potholes are physically recessed cavities where depth and shadow lower reflectance.
+        # The cavity drop threshold adapts dynamically to ambient lighting:
+        lum_drop = max(14.0, 0.20 * road_base)
+        cavity_threshold = road_base - lum_drop
         cavity_raw = (smoothed < cavity_threshold) & (smoothed > 4.0)
 
-        # Morphological opening cleans up speckle noise and merges connected cavity core
+        # Dynamic morphological opening kernel scaled to image dimensions
         kernel_size = max(5, int(min(width, height) * 0.015))
         if kernel_size % 2 == 0:
             kernel_size += 1
@@ -340,8 +393,8 @@ class AIInferenceService:
             pixel_area = float(np.sum(feature_mask))
             area_pct = (pixel_area / total_frame_area) * 100.0
 
-            # Realistic pothole size filter: between 0.4% and 40% of the image frame
-            if 0.4 <= area_pct <= 42.0:
+            # Realistic pothole size filter: between 0.35% and 80.0% of the image frame (allowing close-ups)
+            if 0.35 <= area_pct <= 80.0:
                 rows, cols = np.where(feature_mask)
                 min_y, max_y = int(np.min(rows)), int(np.max(rows))
                 min_x, max_x = int(np.min(cols)), int(np.max(cols))
@@ -349,11 +402,11 @@ class AIInferenceService:
                 bh = max(1, max_y - min_y)
                 aspect = bw / float(bh)
 
-                # Potholes are roughly rounded/elliptical depressions
-                if 0.25 <= aspect <= 3.8:
+                # Potholes are roughly rounded or oblong depressions
+                if 0.20 <= aspect <= 4.5:
                     cavity_lum = float(np.mean(smoothed[feature_mask]))
-                    contrast = max(0.15, (road_mean - cavity_lum) / max(1.0, road_mean))
-                    confidence = round(min(0.96, max(0.65, 0.62 + 0.35 * contrast)), 2)
+                    contrast = max(0.15, (road_base - cavity_lum) / max(1.0, road_base))
+                    confidence = round(min(0.96, max(0.65, 0.60 + 0.38 * contrast)), 2)
 
                     detections.append({
                         "x": min_x,
@@ -367,14 +420,12 @@ class AIInferenceService:
 
         # If no pothole cavity was detected, check for linear crack distress
         if not detections:
-            # Gradient fissure detection
             gy, gx = np.gradient(ndimage.gaussian_filter(gray, 1.2))
             grad_mag = np.hypot(gx, gy)
-            fissure_mask = (gray < min(50.0, road_mean - 0.5 * road_std)) & (grad_mag > 6.0)
+            fissure_mask = (gray < min(55.0, road_base - 0.4 * max(6.0, road_std))) & (grad_mag > 6.0)
             fissure_ratio = float(np.mean(fissure_mask)) * 100.0
 
             if fissure_ratio >= 0.12:
-                # Classify crack orientation
                 gx_f = float(np.mean(np.abs(gx)[fissure_mask]))
                 gy_f = float(np.mean(np.abs(gy)[fissure_mask]))
                 
@@ -405,9 +456,9 @@ class AIInferenceService:
         detections.sort(key=lambda d: d["confidence"], reverse=True)
 
         metadata = {
-            "method": "COMPUTER_VISION_MORPHOLOGICAL_CAVITY_EXTRACTION",
+            "method": "COMPUTER_VISION_ADAPTIVE_CAVITY_EXTRACTION",
             "detected_count": len(detections),
-            "road_mean_luminance": round(road_mean, 1),
+            "road_base_luminance": round(road_base, 1),
             "road_std_luminance": round(road_std, 1),
             "cavity_threshold": round(cavity_threshold, 1)
         }
@@ -539,14 +590,30 @@ class AIInferenceService:
         # 1. Quality Screening
         quality_res = self.validate_image_quality(img_rgb, file_bytes)
 
-        # 2. Road Scene Verification & False Positive Prevention
-        road_scene_res = self.verify_road_scene(img_rgb)
+        # 2. Unrelated Non-Road Check (Human selfie, Building/skyline, Screenshot)
+        unrelated = self.check_unrelated_scene(img_rgb)
+        if unrelated["is_unrelated"]:
+            road_scene_res = {
+                "is_road_scene": False,
+                "status": "REJECTED",
+                "rejection_type": unrelated["rejection_type"],
+                "confidence": unrelated["confidence"],
+                "message": unrelated["message"],
+                "details": unrelated["details"]
+            }
+            detections = []
+            det_meta = {
+                "method": "UNRELATED_IMAGE_REJECTED",
+                "rejection_type": unrelated["rejection_type"]
+            }
+        else:
+            # 3. Actual Pothole & Road Distress Defect Localization
+            # Detects cavities in wide road scenes as well as pothole close-ups
+            detections, det_meta = self.detect_distress_features(img_rgb, is_road_scene=True)
 
-        # 3. Defect Detection
-        detections, det_meta = self.detect_distress_features(
-            img_rgb,
-            is_road_scene=road_scene_res["is_road_scene"]
-        )
+            # 4. Road Scene Verification Synthesized with Detection Results
+            # A valid pothole detection automatically confirms road scene (close-up protection)
+            road_scene_res = self.verify_road_scene(img_rgb, detections)
 
         elapsed_ms = round((time.perf_counter() - start_time) * 1000, 2)
 

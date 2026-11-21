@@ -796,7 +796,7 @@ export const NewReportPage: React.FC = () => {
                   </p>
                 </div>
               </div>
-            ) : aiInspectResult?.is_road_scene === false ? (
+            ) : aiInspectResult?.is_road_scene === false || aiInspectResult?.road_scene_status === 'REJECTED' ? (
               /* REJECTION STATE: Selfie, building, screenshot, non-road */
               <div className="rounded-2xl border-2 border-rose-300 bg-rose-50/70 p-6 space-y-4 animate-in fade-in">
                 <div className="flex items-start gap-3">
@@ -835,6 +835,48 @@ export const NewReportPage: React.FC = () => {
                     className="px-5 py-3 rounded-xl border border-rose-300 text-rose-800 font-bold text-xs hover:bg-rose-100"
                   >
                     Go Back
+                  </button>
+                </div>
+              </div>
+            ) : aiInspectResult?.road_scene_status === 'UNCERTAIN' ? (
+              /* UNCERTAIN STATE: Advisory with option to retry or continue */
+              <div className="rounded-2xl border-2 border-amber-300 bg-amber-50/80 p-6 space-y-4 animate-in fade-in">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-100 border border-amber-300 text-amber-800 flex items-center justify-center shrink-0">
+                    <AlertTriangle className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-extrabold text-amber-950">
+                      Unable to verify this photograph.
+                    </h3>
+                    <p className="text-xs text-amber-900 mt-1 leading-relaxed">
+                      Please upload a clearer road image. We could not verify pavement features or visible surface damage with high confidence.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-white rounded-xl border border-amber-200 text-xs text-slate-600">
+                  <span className="font-bold text-slate-800 block">Verification advisory:</span>
+                  <p className="mt-0.5">{aiInspectResult.road_scene_message || 'Unable to confirm road pavement features.'}</p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleRemovePhoto();
+                      setCurrentStep(1);
+                    }}
+                    className="flex-1 py-3 px-4 rounded-xl bg-amber-700 hover:bg-amber-800 text-white font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-sm"
+                  >
+                    <RefreshCw className="w-4 h-4" /> Upload Clearer Photo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentStep(3)}
+                    className="px-5 py-3 rounded-xl border border-amber-400 text-amber-900 font-bold text-xs hover:bg-amber-100"
+                  >
+                    Continue to AI Detection
                   </button>
                 </div>
               </div>
@@ -891,7 +933,7 @@ export const NewReportPage: React.FC = () => {
                 <ArrowLeft className="w-4 h-4" /> Back to Photo
               </button>
 
-              {aiInspectResult?.is_road_scene !== false && !inspecting && (
+              {aiInspectResult?.is_road_scene !== false && aiInspectResult?.road_scene_status !== 'REJECTED' && !inspecting && (
                 <button
                   type="button"
                   onClick={() => setCurrentStep(3)}

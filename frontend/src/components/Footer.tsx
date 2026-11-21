@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ShieldCheck, Cpu, MapPin, ExternalLink, Heart } from 'lucide-react';
+import { ShieldCheck, Cpu, MapPin, ExternalLink } from 'lucide-react';
 
 export const Footer: React.FC = () => {
   return (
@@ -68,9 +68,9 @@ export const Footer: React.FC = () => {
         </div>
 
         <div className="mt-8 pt-6 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-500 gap-3">
-          <p>&copy; {new Date().getFullYear()} Civic Lens AI — Intelligent Municipal RoadDefect Management.</p>
-          <p className="flex items-center gap-1">
-            Developed with <Heart className="w-3 h-3 text-rose-500 inline" /> for Smarter Indian Municipal Infrastructure
+          <p>&copy; {new Date().getFullYear()} Civic Lens AI — Intelligent Municipal Road Defect Management.</p>
+          <p className="text-slate-500">
+            Nagpur Municipal Pilot • Grievance Intelligence System
           </p>
         </div>
       </div>
