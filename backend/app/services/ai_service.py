@@ -387,9 +387,23 @@ class AIInferenceService:
 
                 gap_x = max(0, max(current["x"], other["x"]) - min(current["x"] + current["width"], other["x"] + other["width"]))
                 gap_y = max(0, max(current["y"], other["y"]) - min(current["y"] + current["height"], other["y"] + other["height"]))
-                max_allowed_gap = max(15, int(min(current["width"], current["height"], other["width"], other["height"]) * 0.35))
+                y_overlap = max(0, min(current["y"] + current["height"], other["y"] + other["height"]) - max(current["y"], other["y"]))
+                x_overlap = max(0, min(current["x"] + current["width"], other["x"] + other["width"]) - max(current["x"], other["x"]))
+                min_h = min(current["height"], other["height"])
+                min_w = min(current["width"], other["width"])
+                y_overlap_ratio = y_overlap / float(min_h) if min_h > 0 else 0
+                x_overlap_ratio = x_overlap / float(min_w) if min_w > 0 else 0
 
-                should_merge = (iou >= 0.15) or (ios >= 0.25) or (gap_x <= max_allowed_gap and gap_y <= max_allowed_gap)
+                max_dim = max(current["width"], current["height"], other["width"], other["height"])
+                allowed_gap = max(35, int(max_dim * 0.35))
+
+                is_adjacent_fragment = (
+                    (gap_x <= allowed_gap and y_overlap_ratio >= 0.35) or
+                    (gap_y <= allowed_gap and x_overlap_ratio >= 0.35) or
+                    (gap_x <= allowed_gap and gap_y <= allowed_gap)
+                )
+
+                should_merge = (iou >= 0.10) or (ios >= 0.20) or is_adjacent_fragment
 
                 if should_merge:
                     new_x = min(current["x"], other["x"])
@@ -554,17 +568,9 @@ class AIInferenceService:
             if top_is_sky > 0.10 or top_is_veg > 0.10:
                 continue
 
-            # Horizon & vertical perspective check:
-            # Near the road horizon, perspective compresses vertical dimensions on the ground plane.
-            # An object near the horizon with a large vertical height (bh > 0.22 * road_height) is an
-            # upright standing structure (vehicle, tree, building), not a surface depression.
-            dist_from_road_top = min_y - road_top
-            if dist_from_road_top < 0.25 * road_height and bh > 0.22 * road_height:
-                continue
-
             # Perimeter pavement enclosure test:
             # An actual pothole is a damaged cavity embedded IN the road surface.
-            # Its perimeter must be enclosed by road pavement on all surrounding sides.
+            # Its perimeter must be enclosed by road pavement on surrounding sides.
             y1_p = max(0, min_y - pad)
             top_p = np.mean(pavement_mask[y1_p:min_y, min_x:max_x]) if min_y > pad else 0.0
 
@@ -579,16 +585,20 @@ class AIInferenceService:
 
             enclosure = (top_p + bottom_p + left_p + right_p) / 4.0 * 100.0
 
-            # Reject vehicles, trees, and buildings standing upright above or beside the road
-            if min_y > pad and top_p < 0.30:
+            # Horizon & vertical perspective check:
+            # Near the road horizon, perspective compresses vertical dimensions on the ground plane.
+            # An upright standing structure (vehicle, tree, building) rising above the pavement near the horizon
+            # has low upper pavement enclosure and significant vertical height.
+            dist_from_road_top = min_y - road_top
+            if (top_is_sky > 0.05 or top_is_veg > 0.05 or top_p < 0.20) and dist_from_road_top < 0.25 * road_height and bh > 0.22 * road_height:
                 continue
-            if max_y < height - pad and bottom_p < 0.30:
+
+            # Reject non-road structures: must have surrounding pavement contact
+            if min_y > pad and top_p < 0.20 and bottom_p < 0.20:
                 continue
-            if min_x > pad and left_p < 0.30:
+            if min_x > pad and left_p < 0.20 and right_p < 0.20:
                 continue
-            if max_x < width - pad and right_p < 0.30:
-                continue
-            if enclosure < 45.0:
+            if enclosure < 35.0:
                 continue
 
             # Reject candidate boxes overlapping with green vegetation or colored vehicle bodies

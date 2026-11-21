@@ -992,7 +992,7 @@ export const NewReportPage: React.FC = () => {
               <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200">
                 <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Model Confidence</span>
                 <span className="text-sm font-bold text-slate-800">
-                  {aiInspectResult?.prediction_confidence ? `${(aiInspectResult.prediction_confidence * 100).toFixed(0)}%` : '85%'}
+                  {aiInspectResult?.prediction_confidence !== undefined ? `${(aiInspectResult.prediction_confidence * 100).toFixed(0)}%` : '—'}
                 </span>
               </div>
             </div>
