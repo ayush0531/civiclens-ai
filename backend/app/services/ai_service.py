@@ -11,6 +11,16 @@ import onnxruntime as ort
 from backend.app.config import settings
 
 # Standard pavement distress classification taxonomy
+# In RDD2022 benchmark taxonomy:
+# Class 0: D00 (Longitudinal crack), Class 1: D10 (Transverse crack),
+# Class 2: D20 (Alligator cracking), Class 3: D40 (Pothole).
+RDD2022_CLASSES = [
+    "Longitudinal crack",
+    "Transverse crack",
+    "Alligator cracking",
+    "Pothole",
+]
+
 TAXONOMY_CLASSES = [
     "Pothole",
     "Alligator cracking",
@@ -351,7 +361,10 @@ class AIInferenceService:
     ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
         """
         Executes genuine pothole cavity localization and pavement distress feature detection.
-        Supports both wide road views and close-up pothole photographs.
+        Accurately distinguishes actual road potholes from:
+        - Cars, motorcycles, and vehicles.
+        - Trees, foliage, and roadside plants.
+        - Sky, buildings, and background surroundings.
         """
         if not is_road_scene:
             return [], {
@@ -360,24 +373,45 @@ class AIInferenceService:
             }
 
         width, height = img.size
-        arr = np.array(img, dtype=np.float32)
-        gray = np.dot(arr[..., :3], [0.299, 0.587, 0.114])
+        rgb = np.array(img.convert("RGB"), dtype=np.float32)
+        r, g, b = rgb[:, :, 0], rgb[:, :, 1], rgb[:, :, 2]
+        lum = 0.299 * r + 0.587 * g + 0.114 * b
 
-        # Filter out high-frequency sensor noise to isolate actual surface cavities
-        smoothed = ndimage.gaussian_filter(gray, sigma=2.0)
+        c_max = np.maximum(r, np.maximum(g, b))
+        c_min = np.minimum(r, np.minimum(g, b))
+        chroma = c_max - c_min
+        saturation = chroma / (c_max + 1e-5)
 
-        # Adaptive road pavement baseline calculation
-        # In road photography, unshaded road base sits between the 65th and 80th percentile of illumination
-        road_base = float(np.percentile(smoothed, 72))
-        road_std = float(np.std(smoothed))
+        # 1. Vegetation mask: detects green trees, shrubs, and foliage (saturated green, not gray noise)
+        veg_mask = (g > r + 8) & (g > b + 8) & (saturation > 0.15) & (2 * g - r - b > 14)
 
-        # Potholes are physically recessed cavities where depth and shadow lower reflectance.
-        # The cavity drop threshold adapts dynamically to ambient lighting:
+        # 2. Sky mask: upper background region with blue tones or bright overcast luminance
+        sky_y = int(height * 0.55)
+        sky_mask = np.zeros((height, width), dtype=bool)
+        sky_mask[:sky_y, :] = ((b[:sky_y, :] > r[:sky_y, :] + 15) & (b[:sky_y, :] > g[:sky_y, :] + 10)) | (lum[:sky_y, :] > 225)
+
+        # 3. Vehicle / Saturated Object mask: detects high-chroma painted car bodies, reflective signs, and vehicle lights
+        colored_vehicle_mask = (chroma > 55) & (lum > 35)
+
+        # 4. Pavement mask: neutral gray/earthy tones on the ground surface, excluding vegetation, sky, and vehicles
+        diff = np.maximum(abs(r - g), np.maximum(abs(g - b), abs(r - b)))
+        pavement_mask = (diff < 44) & (lum >= 15) & (lum <= 220) & (~veg_mask) & (~sky_mask) & (~colored_vehicle_mask)
+
+        # 5. Extract candidate cavities ONLY on road surface
+        smoothed = ndimage.gaussian_filter(lum, sigma=2.0)
+        road_pixels = smoothed[pavement_mask]
+        road_base = float(np.percentile(road_pixels, 70)) if len(road_pixels) > 0 else float(np.percentile(smoothed, 70))
+        road_std = float(np.std(road_pixels)) if len(road_pixels) > 0 else float(np.std(smoothed))
+
+        # Dynamic cavity drop threshold adapting to road lighting
         lum_drop = max(14.0, 0.20 * road_base)
         cavity_threshold = road_base - lum_drop
-        cavity_raw = (smoothed < cavity_threshold) & (smoothed > 4.0)
 
-        # Dynamic morphological opening kernel scaled to image dimensions
+        # Only search within non-vegetation, non-sky, non-colored road regions
+        valid_region = (~veg_mask) & (~sky_mask) & (~colored_vehicle_mask)
+        cavity_raw = (smoothed < cavity_threshold) & (smoothed > 4.0) & valid_region
+
+        # Morphological opening cleans up speckle noise and merges connected cavity core
         kernel_size = max(5, int(min(width, height) * 0.015))
         if kernel_size % 2 == 0:
             kernel_size += 1
@@ -385,82 +419,131 @@ class AIInferenceService:
 
         # Label separate connected components
         labeled, num_features = ndimage.label(cavity_clean)
-        detections: List[Dict[str, Any]] = []
         total_frame_area = float(width * height)
+        pad = max(8, int(min(width, height) * 0.025))
+        raw_detections: List[Dict[str, Any]] = []
+
+        road_rows = np.where(np.any(pavement_mask, axis=1))[0]
+        road_top = int(road_rows[0]) if len(road_rows) > 0 else 0
+        road_height = max(1, (int(road_rows[-1]) - road_top) if len(road_rows) > 0 else height)
 
         for i in range(1, num_features + 1):
             feature_mask = (labeled == i)
             pixel_area = float(np.sum(feature_mask))
             area_pct = (pixel_area / total_frame_area) * 100.0
 
-            # Realistic pothole size filter: between 0.35% and 80.0% of the image frame (allowing close-ups)
-            if 0.35 <= area_pct <= 80.0:
-                rows, cols = np.where(feature_mask)
-                min_y, max_y = int(np.min(rows)), int(np.max(rows))
-                min_x, max_x = int(np.min(cols)), int(np.max(cols))
-                bw = max(1, max_x - min_x)
-                bh = max(1, max_y - min_y)
-                aspect = bw / float(bh)
+            # Realistic pothole size filter: between 0.35% and 78.0% of the image frame (allowing close-ups)
+            if not (0.35 <= area_pct <= 78.0):
+                continue
 
-                # Potholes are roughly rounded or oblong depressions
-                if 0.20 <= aspect <= 4.5:
-                    cavity_lum = float(np.mean(smoothed[feature_mask]))
-                    contrast = max(0.15, (road_base - cavity_lum) / max(1.0, road_base))
-                    confidence = round(min(0.96, max(0.65, 0.60 + 0.38 * contrast)), 2)
+            rows, cols = np.where(feature_mask)
+            min_y, max_y = int(np.min(rows)), int(np.max(rows))
+            min_x, max_x = int(np.min(cols)), int(np.max(cols))
+            bw = max(1, max_x - min_x)
+            bh = max(1, max_y - min_y)
+            aspect = bw / float(bh)
 
-                    detections.append({
-                        "x": min_x,
-                        "y": min_y,
-                        "width": bw,
-                        "height": bh,
-                        "label": "Pothole",
-                        "confidence": confidence,
-                        "area_pct": round(area_pct, 2)
-                    })
+            # Potholes are roughly rounded or oblong depressions
+            if not (0.20 <= aspect <= 4.5):
+                continue
 
-        # If no pothole cavity was detected, check for linear crack distress
-        if not detections:
-            gy, gx = np.gradient(ndimage.gaussian_filter(gray, 1.2))
-            grad_mag = np.hypot(gx, gy)
-            fissure_mask = (gray < min(55.0, road_base - 0.4 * max(6.0, road_std))) & (grad_mag > 6.0)
-            fissure_ratio = float(np.mean(fissure_mask)) * 100.0
+            # Geometric shape and solidity test:
+            # Natural potholes are erosion cavities with irregular / rounded perimeters (solidity ~0.50 to ~0.85).
+            # Solid right-angled shapes (solidity >= 0.90) are man-made rectangular objects (vehicles, windows, signs).
+            solidity = pixel_area / float(bw * bh)
+            if solidity >= 0.90:
+                continue
 
-            if fissure_ratio >= 0.12:
-                gx_f = float(np.mean(np.abs(gx)[fissure_mask]))
-                gy_f = float(np.mean(np.abs(gy)[fissure_mask]))
-                
-                rows, cols = np.where(fissure_mask)
-                min_y, max_y = int(np.min(rows)), int(np.max(rows))
-                min_x, max_x = int(np.min(cols)), int(np.max(cols))
-                bw = max(20, max_x - min_x)
-                bh = max(20, max_y - min_y)
+            # Horizon & vertical perspective check:
+            # Near the road horizon, perspective compresses vertical dimensions on the ground plane.
+            # An object near the horizon with a large vertical height (bh > 0.22 * road_height) is an
+            # upright standing structure (vehicle, tree, building), not a surface depression.
+            dist_from_road_top = min_y - road_top
+            if dist_from_road_top < 0.25 * road_height and bh > 0.22 * road_height:
+                continue
 
-                if gy_f > 1.8 * gx_f:
-                    crack_label = "Transverse crack"
-                elif gx_f > 1.8 * gy_f:
-                    crack_label = "Longitudinal crack"
-                else:
-                    crack_label = "Alligator cracking"
+            # Perimeter pavement enclosure test:
+            # An actual pothole is a damaged cavity embedded IN the road surface.
+            # Its perimeter must be enclosed by road pavement on all surrounding sides.
+            y1_p = max(0, min_y - pad)
+            top_p = np.mean(pavement_mask[y1_p:min_y, min_x:max_x]) if min_y > pad else 1.0
 
-                detections.append({
-                    "x": min_x,
-                    "y": min_y,
-                    "width": bw,
-                    "height": bh,
-                    "label": crack_label,
-                    "confidence": round(min(0.92, max(0.60, 0.60 + fissure_ratio * 0.8)), 2),
-                    "area_pct": round(float((bw * bh) / total_frame_area) * 100.0, 2)
-                })
+            y2_p = min(height, max_y + pad)
+            bottom_p = np.mean(pavement_mask[max_y:y2_p, min_x:max_x]) if max_y < height - pad else 1.0
 
-        # Sort detections by confidence descending
+            x1_p = max(0, min_x - pad)
+            left_p = np.mean(pavement_mask[min_y:max_y, x1_p:min_x]) if min_x > pad else 1.0
+
+            x2_p = min(width, max_x + pad)
+            right_p = np.mean(pavement_mask[min_y:max_y, max_x:x2_p]) if max_x < width - pad else 1.0
+
+            enclosure = (top_p + bottom_p + left_p + right_p) / 4.0 * 100.0
+
+            # Reject vehicles, trees, and buildings standing upright above or beside the road
+            if min_y > pad and top_p < 0.30:
+                continue
+            if max_y < height - pad and bottom_p < 0.30:
+                continue
+            if min_x > pad and left_p < 0.30:
+                continue
+            if max_x < width - pad and right_p < 0.30:
+                continue
+            if enclosure < 45.0:
+                continue
+
+            # Reject candidate boxes overlapping with green vegetation or colored vehicle bodies
+            veg_overlap = float(np.mean(veg_mask[min_y:max_y, min_x:max_x])) * 100.0
+            color_overlap = float(np.mean(colored_vehicle_mask[max(0, min_y - pad):min(height, max_y + pad), max(0, min_x - pad):min(width, max_x + pad)])) * 100.0
+            veg_margin = float(np.mean(veg_mask[max(0, min_y - pad):min(height, max_y + pad), max(0, min_x - pad):min(width, max_x + pad)])) * 100.0
+
+            if veg_overlap > 8.0 or color_overlap > 18.0 or veg_margin > 20.0:
+                continue
+
+            cavity_lum = float(np.mean(smoothed[feature_mask]))
+            contrast = max(0.15, (road_base - cavity_lum) / max(1.0, road_base))
+            confidence = round(min(0.96, max(0.65, 0.60 + 0.38 * contrast)), 2)
+
+            raw_detections.append({
+                "x": min_x,
+                "y": min_y,
+                "width": bw,
+                "height": bh,
+                "label": "Pothole",
+                "confidence": confidence,
+                "area_pct": round(area_pct, 2)
+            })
+
+        # Non-Maximum Suppression (NMS) to eliminate duplicate/nested overlapping boxes
+        raw_detections.sort(key=lambda d: d["confidence"], reverse=True)
+        detections: List[Dict[str, Any]] = []
+        for d in raw_detections:
+            x1, y1, w1, h1 = d["x"], d["y"], d["width"], d["height"]
+            keep = True
+            for kept in detections:
+                x2, y2, w2, h2 = kept["x"], kept["y"], kept["width"], kept["height"]
+                xi1 = max(x1, x2)
+                yi1 = max(y1, y2)
+                xi2 = min(x1 + w1, x2 + w2)
+                yi2 = min(y1 + h1, y2 + h2)
+                inter = max(0, xi2 - xi1) * max(0, yi2 - yi1)
+                union = (w1 * h1) + (w2 * h2) - inter
+                iou = inter / float(union) if union > 0 else 0
+                if iou > 0.35:
+                    keep = False
+                    break
+            if keep:
+                detections.append(d)
+
         detections.sort(key=lambda d: d["confidence"], reverse=True)
 
         metadata = {
-            "method": "COMPUTER_VISION_ADAPTIVE_CAVITY_EXTRACTION",
+            "method": "COMPUTER_VISION_ROAD_SURFACE_CAVITY_EXTRACTION",
             "detected_count": len(detections),
             "road_base_luminance": round(road_base, 1),
             "road_std_luminance": round(road_std, 1),
-            "cavity_threshold": round(cavity_threshold, 1)
+            "cavity_threshold": round(cavity_threshold, 1),
+            "pavement_coverage_pct": round(float(np.mean(pavement_mask)) * 100.0, 1),
+            "vegetation_coverage_pct": round(float(np.mean(veg_mask)) * 100.0, 1)
         }
 
         return detections, metadata

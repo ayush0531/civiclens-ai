@@ -994,5 +994,127 @@ def test_footer_developer_credit_and_heart_removed_test_9():
     assert "Civic Lens AI" in content
 
 
+def test_ai_accuracy_one_pothole_with_cars_and_trees_test_1():
+    """
+    ACCURACY TEST 1: One pothole with cars and trees in the background.
+    Expected: Exactly one pothole detection. Neither the car nor the trees are detected as potholes.
+    """
+    img = Image.new("RGB", (640, 480), (120, 120, 120))
+    d = ImageDraw.Draw(img)
+    # Sky & tree canopies
+    d.rectangle([0, 0, 640, 140], fill=(135, 195, 245))
+    d.ellipse([20, 30, 180, 220], fill=(34, 110, 45))   # tree 1
+    d.ellipse([460, 40, 620, 230], fill=(28, 100, 38))  # tree 2
+    # Road pavement
+    d.rectangle([0, 160, 640, 480], fill=(105, 105, 105))
+    # Car parked on road
+    d.rectangle([410, 210, 570, 270], fill=(180, 30, 30)) # red car body
+    d.rectangle([440, 180, 540, 215], fill=(30, 35, 40))   # dark windows
+    d.ellipse([430, 260, 460, 290], fill=(15, 15, 15))     # tire
+    # One actual pothole on the roadway
+    d.ellipse([180, 320, 290, 390], fill=(42, 38, 35))
+
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG")
+    buf.seek(0)
+
+    files = {"image": ("street_scene.jpg", buf, "image/jpeg")}
+    res = client.post("/api/v1/ai/quick-inspect", files=files)
+    assert res.status_code == 200
+    data = res.json()
+
+    assert data["is_road_scene"] is True
+    assert data["detected_pothole_count"] == 1
+    assert len(data["bounding_boxes"]) == 1
+    assert data["predicted_damage_category"] == "Pothole"
+    # Ensure the single bounding box is around the pothole (x ~ 180, y ~ 320), NOT the car or trees
+    box = data["bounding_boxes"][0]
+    assert 150 <= box["x"] <= 210
+    assert 300 <= box["y"] <= 340
+
+
+def test_ai_accuracy_road_with_cars_trees_zero_potholes_test_2():
+    """
+    ACCURACY TEST 2: Normal road with cars and trees but no potholes.
+    Expected: Exactly zero pothole detections. Neither cars nor trees trigger false detections.
+    """
+    img = Image.new("RGB", (640, 480), (120, 120, 120))
+    d = ImageDraw.Draw(img)
+    # Sky & trees
+    d.rectangle([0, 0, 640, 140], fill=(135, 195, 245))
+    d.ellipse([20, 30, 180, 220], fill=(34, 110, 45))
+    d.ellipse([460, 40, 620, 230], fill=(28, 100, 38))
+    # Road
+    d.rectangle([0, 160, 640, 480], fill=(105, 105, 105))
+    # Car (red)
+    d.rectangle([410, 210, 570, 270], fill=(180, 30, 30))
+    d.rectangle([440, 180, 540, 215], fill=(30, 35, 40))
+    # Black car
+    d.rectangle([120, 170, 260, 260], fill=(20, 20, 22))
+
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG")
+    buf.seek(0)
+
+    files = {"image": ("normal_road_with_cars.jpg", buf, "image/jpeg")}
+    res = client.post("/api/v1/ai/quick-inspect", files=files)
+    assert res.status_code == 200
+    data = res.json()
+
+    assert data["is_road_scene"] is True
+    assert data["detected_pothole_count"] == 0
+    assert len(data["bounding_boxes"]) == 0
+
+
+def test_ai_accuracy_three_potholes_detected_test_3():
+    """
+    ACCURACY TEST 3: Road containing three distinct potholes.
+    Expected: Detects three separate potholes.
+    """
+    img = Image.new("RGB", (640, 480), (105, 105, 105))
+    d = ImageDraw.Draw(img)
+    d.ellipse([80, 200, 180, 270], fill=(40, 38, 35))   # Pothole 1
+    d.ellipse([300, 320, 430, 400], fill=(38, 36, 33))  # Pothole 2
+    d.ellipse([490, 220, 590, 290], fill=(42, 40, 37))  # Pothole 3
+
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG")
+    buf.seek(0)
+
+    files = {"image": ("three_potholes.jpg", buf, "image/jpeg")}
+    res = client.post("/api/v1/ai/quick-inspect", files=files)
+    assert res.status_code == 200
+    data = res.json()
+
+    assert data["is_road_scene"] is True
+    assert data["detected_pothole_count"] == 3
+    assert len(data["bounding_boxes"]) == 3
+    assert len(data["potholes_breakdown"]) == 3
+
+
+def test_ai_accuracy_car_or_tree_photo_zero_potholes_test_4():
+    """
+    ACCURACY TEST 4: Photograph of a car or tree without a pothole.
+    Expected: Zero pothole detections.
+    """
+    img = Image.new("RGB", (640, 480), (135, 195, 245)) # sky
+    d = ImageDraw.Draw(img)
+    # Large tree
+    d.ellipse([100, 50, 540, 450], fill=(34, 115, 45))
+
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG")
+    buf.seek(0)
+
+    files = {"image": ("tree_photo.jpg", buf, "image/jpeg")}
+    res = client.post("/api/v1/ai/quick-inspect", files=files)
+    assert res.status_code == 200
+    data = res.json()
+
+    assert data["detected_pothole_count"] == 0
+    assert len(data["bounding_boxes"]) == 0
+
+
+
 
 
