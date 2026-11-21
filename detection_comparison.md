@@ -101,11 +101,13 @@
 
 | Test Case | Description & Content | Expected Output | Actual Output | Status |
 |---|---|---|---|---|
-| **Test 1** | One Large Pothole (`demo_road_2_pothole.jpg`) | 1 Pothole Detection | **1 Pothole** (`[231, 263, 225, 112]`, 79% conf) | **PASS** |
-| **Test 2** | Multiple Distinct Potholes (`test_3_potholes.jpg`) | 3 Distinct Detections | **3 Potholes** (Separate bounding boxes) | **PASS** |
-| **Test 3** | Normal Road Surface (`test_clean_road_lane.jpg`) | 0 Potholes Detected | **0 Potholes** (Road Verified, no defects) | **PASS** |
-| **Test 4** | Road with Cars & Trees (`test_cars_trees.jpg`) | 0 False Potholes | **0 Potholes** (Vehicles/trees rejected) | **PASS** |
-| **Test 5** | Person / Selfie Portrait (`test_selfie.jpg`) | Non-road Image Rejection | **REJECTED** (`is_road_scene: false`) | **PASS** |
+| **Test 1** | One Large Physical Pothole (`demo_road_2_pothole.jpg`) | 1 Pothole Detection | **1 Pothole** (`[231, 263, 225, 112]`, 79% conf) | **PASS** |
+| **Test 2** | Two Separate Potholes (`two_potholes.jpg`) | 2 Distinct Detections | **2 Potholes** (Separate bounding boxes) | **PASS** |
+| **Test 3** | Three Separate Potholes (`test_3_potholes.jpg`) | 3 Distinct Detections | **3 Potholes** (Separate bounding boxes) | **PASS** |
+| **Test 4** | Five Separate Potholes (`five_potholes.jpg`) | 5 Distinct Detections | **5 Potholes** (Separate bounding boxes) | **PASS** |
+| **Test 5** | Normal Road Surface (`test_clean_road_lane.jpg`) | 0 Potholes Detected | **0 Potholes** (Road Verified, no defects) | **PASS** |
+| **Test 6** | Road with Cars & Trees (`test_cars_trees.jpg`) | 0 False Potholes | **0 Potholes** (Vehicles/trees rejected) | **PASS** |
+| **Test 7** | Person / Selfie Portrait (`test_selfie.jpg`) | Non-road Image Rejection | **REJECTED** (`is_road_scene: false`) | **PASS** |
 
 ---
 

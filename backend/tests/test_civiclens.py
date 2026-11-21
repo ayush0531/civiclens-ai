@@ -1268,6 +1268,48 @@ def test_ai_water_filled_pothole_detected_test():
     assert 280 <= box["y"] <= 320
 
 
+def test_ai_two_and_five_potholes_counting():
+    """
+    CRITICAL COUNTING TEST:
+    1. An image with 2 separate potholes produces exactly 2 distinct detections.
+    2. An image with 5 separate potholes produces exactly 5 distinct detections.
+    """
+    # 1. Two separate potholes
+    img2 = Image.new("RGB", (640, 480), (105, 105, 105))
+    d2 = ImageDraw.Draw(img2)
+    d2.ellipse([100, 240, 240, 360], fill=(32, 30, 28))
+    d2.ellipse([380, 220, 520, 340], fill=(30, 28, 26))
+
+    buf2 = io.BytesIO()
+    img2.save(buf2, format="JPEG")
+    buf2.seek(0)
+    res2 = client.post("/api/v1/ai/quick-inspect", files={"image": ("two_potholes.jpg", buf2, "image/jpeg")})
+    assert res2.status_code == 200
+    data2 = res2.json()
+    assert data2["detected_pothole_count"] == 2
+    assert len(data2["bounding_boxes"]) == 2
+    assert data2["predicted_damage_category"] == "Pothole"
+
+    # 2. Five separate potholes
+    img5 = Image.new("RGB", (640, 480), (105, 105, 105))
+    d5 = ImageDraw.Draw(img5)
+    d5.ellipse([60, 200, 140, 270], fill=(35, 32, 28))
+    d5.ellipse([200, 180, 280, 250], fill=(33, 30, 27))
+    d5.ellipse([350, 190, 430, 260], fill=(34, 31, 28))
+    d5.ellipse([140, 320, 230, 400], fill=(30, 28, 25))
+    d5.ellipse([400, 310, 500, 390], fill=(32, 29, 26))
+
+    buf5 = io.BytesIO()
+    img5.save(buf5, format="JPEG")
+    buf5.seek(0)
+    res5 = client.post("/api/v1/ai/quick-inspect", files={"image": ("five_potholes.jpg", buf5, "image/jpeg")})
+    assert res5.status_code == 200
+    data5 = res5.json()
+    assert data5["detected_pothole_count"] == 5
+    assert len(data5["bounding_boxes"]) == 5
+    assert data5["predicted_damage_category"] == "Pothole"
+
+
 
 
 
