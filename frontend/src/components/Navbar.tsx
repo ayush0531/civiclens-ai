@@ -89,8 +89,8 @@ export const Navbar: React.FC = () => {
                       RoadDefect
                     </span>
                   </div>
-                  <p className="text-[10px] text-slate-500 hidden sm:block tracking-wide">
-                    Report. Detect. Prioritize. Improve Our Roads.
+                  <p className="text-[9px] sm:text-[10px] text-slate-500 tracking-tight sm:tracking-normal leading-tight">
+                    Pothole Detection and Predictive Maintenance System
                   </p>
                 </div>
               </Link>
