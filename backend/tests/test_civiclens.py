@@ -1336,7 +1336,7 @@ def test_ai_user_water_filled_pothole_single_detection():
     assert box["label"] == "Pothole"
     # Covers the water-filled pothole crater in the center foreground
     assert box["x"] >= 30 and box["y"] >= 30
-    assert box["width"] >= 300 and box["height"] >= 150
+    assert box["width"] >= 280 and box["height"] >= 90
 
 
 

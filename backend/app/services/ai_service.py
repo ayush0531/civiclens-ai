@@ -472,6 +472,87 @@ class AIInferenceService:
 
         return merged
 
+    def _run_yolo_onnx_detection(
+        self,
+        img: Image.Image,
+        conf_thresh: float = 0.35,
+        iou_thresh: float = 0.40
+    ) -> List[Dict[str, Any]]:
+        """
+        Executes deep-learning inference using trained YOLOv8 ONNX model.
+        Returns decoded, NMS-suppressed bounding boxes in original image coordinates.
+        """
+        if not self.onnx_session:
+            return []
+
+        try:
+            orig_w, orig_h = img.size
+            resized = img.convert("RGB").resize((640, 640))
+            arr = np.array(resized, dtype=np.float32) / 255.0
+            tensor = np.expand_dims(np.transpose(arr, (2, 0, 1)), 0)
+
+            input_name = self.onnx_session.get_inputs()[0].name
+            outputs = self.onnx_session.run(None, {input_name: tensor})
+            out0 = outputs[0][0]  # shape: (channels, anchors) e.g. (37, 8400) or (10, 6400)
+
+            preds = np.transpose(out0, (1, 0))
+            boxes = preds[:, 0:4]
+            scores = preds[:, 4]
+
+            valid = np.where(scores >= conf_thresh)[0]
+            if len(valid) == 0:
+                return []
+
+            sorted_idx = valid[np.argsort(-scores[valid])]
+            scale_x = orig_w / 640.0
+            scale_y = orig_h / 640.0
+
+            kept = []
+            for i in sorted_idx:
+                cx, cy, w, h = boxes[i]
+                score = round(float(scores[i]), 2)
+                bx = int(round((cx - w / 2) * scale_x))
+                by = int(round((cy - h / 2) * scale_y))
+                bw = int(round(w * scale_x))
+                bh = int(round(h * scale_y))
+
+                bx = max(0, min(orig_w - 1, bx))
+                by = max(0, min(orig_h - 1, by))
+                bw = max(1, min(orig_w - bx, bw))
+                bh = max(1, min(orig_h - by, bh))
+
+                # Discard candidate boxes located in upper sky / background horizon
+                if (by + bh * 0.5) < 0.28 * orig_h:
+                    continue
+
+                suppress = False
+                for k in kept:
+                    kx, ky, kw, kh = k["x"], k["y"], k["width"], k["height"]
+                    xi1 = max(bx, kx)
+                    yi1 = max(by, ky)
+                    xi2 = min(bx + bw, kx + kw)
+                    yi2 = min(by + bh, ky + kh)
+                    inter = max(0, xi2 - xi1) * max(0, yi2 - yi1)
+                    union = (bw * bh) + (kw * kh) - inter
+                    iou = inter / float(union) if union > 0 else 0
+                    if iou > iou_thresh:
+                        suppress = True
+                        break
+                if not suppress:
+                    kept.append({
+                        "x": bx,
+                        "y": by,
+                        "width": bw,
+                        "height": bh,
+                        "label": "Pothole",
+                        "confidence": score,
+                        "area_pct": round((bw * bh / float(orig_w * orig_h)) * 100.0, 2)
+                    })
+            return kept
+        except Exception as e:
+            print(f"[Civic Lens AI] YOLO ONNX inference warning: {e}")
+            return []
+
     # -------------------------------------------------------------
     # STAGE 3: ACTUAL POTHOLE DETECTION & LOCALIZATION
     # -------------------------------------------------------------
@@ -492,6 +573,20 @@ class AIInferenceService:
                 "method": "ROAD_SCENE_REJECTED",
                 "message": "Image was rejected during road scene verification. No defects analyzed."
             }
+
+        # 1. Primary Engine: Trained Deep Learning YOLOv8 Model Inference
+        if self.onnx_session:
+            yolo_dets = self._run_yolo_onnx_detection(img)
+            if yolo_dets:
+                merged_yolo = self._merge_overlapping_potholes(yolo_dets)
+                merged_yolo.sort(key=lambda d: d["confidence"], reverse=True)
+                metadata = {
+                    "method": "YOLOV8_DEEP_LEARNING_POTHOLE_INFERENCE",
+                    "detected_count": len(merged_yolo),
+                    "model_framework": "ONNX_RUNTIME_YOLOV8",
+                    "model_identifier": self.model_name
+                }
+                return merged_yolo, metadata
 
         orig_w, orig_h = img.size
         # Standardize internal detection canvas to (640, 480) for resolution-invariant morphological analysis
