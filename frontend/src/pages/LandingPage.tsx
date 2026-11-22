@@ -141,7 +141,7 @@ export const LandingPage: React.FC = () => {
           {[
             { to: '/authority', icon: ClipboardList, title: 'Authority workspace', body: 'Review the queue, filter by urgency and manage internal case progress.' },
             { to: '/map', icon: MapPin, title: 'Geospatial view', body: 'Explore report locations and spatial clusters on the Nagpur map.' },
-            { to: '/lab', icon: BarChart3, title: 'Model & methodology lab', body: 'Inspect engine configuration, evaluation information and research assumptions.' },
+            { to: '/analytics', icon: BarChart3, title: 'Analytics & Trends', body: 'Explore ward-level metrics, repair velocity, and infrastructure health trends.' },
           ].map((item) => (
             <Link key={item.to} to={item.to} className="flex gap-4 rounded-2xl border border-slate-200 p-5 transition hover:border-teal-300 hover:bg-teal-50/40">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-700"><item.icon className="h-5 w-5" /></div>

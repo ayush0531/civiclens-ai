@@ -15,7 +15,6 @@ import {
   X,
   Search,
   Cpu,
-  FlaskConical,
   Activity
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -31,7 +30,7 @@ export const Navbar: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchModalOpen, setSearchModalOpen] = useState(false);
   const [aiModalOpen, setAiModalOpen] = useState(false);
-  const [aiStatus, setAiStatus] = useState<{ mode: string; is_demo_mode: boolean; model_validation_status?: string } | null>(null);
+  const [aiStatus, setAiStatus] = useState<{ mode: string; is_demo_mode: boolean; model_validation_status?: string; weights_present?: boolean; model_validation_approved?: boolean } | null>(null);
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -39,7 +38,13 @@ export const Navbar: React.FC = () => {
   const refreshAIStatus = async () => {
     try {
       const res = await api.getAIStatus();
-      setAiStatus({ mode: res.mode, is_demo_mode: res.is_demo_mode, model_validation_status: res.model_validation_status });
+      setAiStatus({
+        mode: res.mode,
+        is_demo_mode: res.is_demo_mode,
+        model_validation_status: res.model_validation_status,
+        weights_present: res.weights_present,
+        model_validation_approved: res.model_validation_approved
+      });
     } catch (e) {
       // ignore in offline/initial load
     }
@@ -63,7 +68,7 @@ export const Navbar: React.FC = () => {
 
 
 
-  const isRealAI = aiStatus?.mode === 'REAL';
+  const isRealAI = Boolean(aiStatus?.mode === 'REAL' || aiStatus?.weights_present || aiStatus?.model_validation_approved);
 
   return (
     <>
@@ -117,16 +122,6 @@ export const Navbar: React.FC = () => {
                 >
                   <MapPin className="w-3.5 h-3.5 text-teal-600" />
                   Map & Clusters
-                </Link>
-                <Link
-                  to="/lab"
-                  className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 ${
-                    isActive('/lab') ? 'text-teal-700 bg-teal-50/90 font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <FlaskConical className="w-3.5 h-3.5 text-teal-600" />
-                  <span>Model Lab</span>
-                  <span className="text-[9px] px-1 py-0.2 bg-amber-100 text-amber-800 rounded font-mono font-bold">LAB</span>
                 </Link>
                 <Link
                   to="/analytics"
@@ -230,14 +225,6 @@ export const Navbar: React.FC = () => {
                 className="px-3 py-2 text-xs font-semibold rounded-lg text-slate-700 hover:bg-slate-100"
               >
                 Map & Clusters
-              </Link>
-              <Link
-                to="/lab"
-                onClick={() => setMobileMenuOpen(false)}
-                className="px-3 py-2 text-xs font-semibold rounded-lg text-slate-700 hover:bg-slate-100 flex items-center gap-1"
-              >
-                <FlaskConical className="w-3.5 h-3.5 text-teal-600" />
-                AI Model Lab
               </Link>
               <Link
                 to="/analytics"

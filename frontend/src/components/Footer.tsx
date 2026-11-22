@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ShieldCheck, Cpu, MapPin, ExternalLink } from 'lucide-react';
+import { ShieldCheck, Cpu, MapPin } from 'lucide-react';
 
 export const Footer: React.FC = () => {
   return (
@@ -39,16 +39,7 @@ export const Footer: React.FC = () => {
                 <Link to="/map" className="hover:text-teal-400 transition-colors">Nagpur Defect Map</Link>
               </li>
               <li>
-                <Link to="/lab" className="hover:text-teal-400 transition-colors">Model Diagnostics</Link>
-              </li>
-              <li>
                 <Link to="/analytics" className="hover:text-teal-400 transition-colors">Analytics & Trends</Link>
-              </li>
-              <li>
-                <a href="/docs" target="_blank" rel="noreferrer" className="hover:text-teal-400 transition-colors inline-flex items-center gap-1">
-                  <span>FastAPI Swagger Docs</span>
-                  <ExternalLink className="w-3 h-3" />
-                </a>
               </li>
             </ul>
           </div>

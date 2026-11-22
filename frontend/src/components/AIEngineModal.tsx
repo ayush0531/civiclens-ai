@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { 
   Cpu, 
   CheckCircle2, 
@@ -8,7 +7,6 @@ import {
   Layers, 
   Zap, 
   RefreshCw, 
-  ExternalLink,
   X,
   ShieldAlert
 } from 'lucide-react';
@@ -221,18 +219,10 @@ export const AIEngineModal: React.FC<AIEngineModalProps> = ({ isOpen, onClose, o
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-xs">
-          <Link
-            to="/lab"
-            onClick={onClose}
-            className="text-teal-700 hover:text-teal-800 font-semibold flex items-center gap-1"
-          >
-            <span>Open Model Evaluation Laboratory</span>
-            <ExternalLink className="w-3.5 h-3.5" />
-          </Link>
+        <div className="px-6 py-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-end text-xs">
           <button
             onClick={onClose}
-            className="px-3 py-1 bg-white border border-slate-200 rounded-lg text-slate-700 hover:bg-slate-50 font-medium"
+            className="px-4 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-700 hover:bg-slate-50 font-medium"
           >
             Close
           </button>
