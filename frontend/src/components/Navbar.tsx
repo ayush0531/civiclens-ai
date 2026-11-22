@@ -79,7 +79,7 @@ export const Navbar: React.FC = () => {
                 </div>
                 <div>
                   <div className="flex items-center gap-1.5">
-                    <span className="font-extrabold text-lg tracking-tight text-navy-900">Civic Lens AI</span>
+                    <span className="font-extrabold text-lg tracking-tight text-navy-900">CivicLens AI</span>
                     <span className="bg-gradient-to-r from-teal-600 to-teal-700 text-white text-[10px] font-mono font-bold px-1.5 py-0.5 rounded shadow-xs uppercase tracking-wider">
                       RoadDefect
                     </span>
@@ -252,7 +252,7 @@ export const Navbar: React.FC = () => {
                 className="px-3 py-2 text-xs font-semibold rounded-lg text-slate-700 hover:bg-slate-100 col-span-2 flex items-center gap-1.5"
               >
                 <BookOpen className="w-3.5 h-3.5 text-teal-600" />
-                About Civic Lens AI
+                About CivicLens AI
               </Link>
             </div>
 

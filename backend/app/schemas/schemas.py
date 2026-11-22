@@ -148,7 +148,7 @@ class ReportResponse(BaseModel):
     reopened_count: int = 0
     estimated_surface_area_sqm: float = 0.0
     external_submission_label: Optional[str] = "Not yet registered through NMC"
-    internal_status_label: Optional[str] = "Saved within Civic Lens AI"
+    internal_status_label: Optional[str] = "Saved within CivicLens AI"
     official_portal_url: Optional[str] = "https://nmcnagpur.gov.in/grievance/complaint_form.php"
     pwd_toll_free_number: Optional[str] = "1800 233 0080"
     pwd_portal_url: Optional[str] = "https://pwd.maharashtra.gov.in/en/toll-free-numbers-for-registering-pothole-complaints-on-pwd-roads/"
@@ -209,12 +209,12 @@ class PublicTrackResponse(BaseModel):
     road_jurisdiction: Optional[str] = "NMC"
     external_submission_status: str = "NOT_REGISTERED"
     external_submission_label: str = "Not yet registered through NMC"
-    internal_status_label: str = "Saved within Civic Lens AI"
+    internal_status_label: str = "Saved within CivicLens AI"
     official_portal_url: str = "https://nmcnagpur.gov.in/grievance/complaint_form.php"
     pwd_toll_free_number: str = "1800 233 0080"
     pwd_portal_url: str = "https://pwd.maharashtra.gov.in/en/toll-free-numbers-for-registering-pothole-complaints-on-pwd-roads/"
     external_submission_notice: str = (
-        "Demonstration & handoff environment: This report is recorded in Civic Lens AI for review within this application. "
+        "Demonstration & handoff environment: This report is recorded in CivicLens AI for review within this application. "
         "Official submission to Nagpur Municipal Corporation requires continuing to the official portal at "
         "https://nmcnagpur.gov.in/grievance/complaint_form.php and completing mobile OTP verification."
     )

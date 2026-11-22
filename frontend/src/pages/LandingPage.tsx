@@ -25,10 +25,10 @@ export const LandingPage: React.FC = () => {
   };
 
   const metrics = [
-    { label: 'Reports recorded', value: stats?.total_reports, note: 'Civic Lens AI database' },
+    { label: 'Reports recorded', value: stats?.total_reports, note: 'CivicLens AI database' },
     { label: 'High-priority cases', value: stats?.critical_severity_count, note: 'Severity classification' },
     { label: 'Assigned cases', value: stats?.assigned_count, note: 'Internal workflow' },
-    { label: 'Resolved internally', value: stats?.resolved_count, note: 'Civic Lens AI status' },
+    { label: 'Resolved internally', value: stats?.resolved_count, note: 'CivicLens AI status' },
   ];
 
   const engineIsReal = stats?.ai_inference_mode === 'REAL';
@@ -49,7 +49,7 @@ export const LandingPage: React.FC = () => {
               Prioritize the response.
             </h1>
             <p className="mt-6 max-w-2xl text-base leading-8 text-slate-300 sm:text-lg">
-              Civic Lens AI is a research prototype for photo-based road-defect assessment, geospatial duplicate screening and explainable maintenance prioritization across Nagpur.
+              CivicLens AI is a research prototype for photo-based road-defect assessment, geospatial duplicate screening and explainable maintenance prioritization across Nagpur.
             </p>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
               <Link to="/report-new" className="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-400 px-6 py-3.5 text-sm font-extrabold text-slate-950 shadow-lg shadow-teal-950/30 transition hover:bg-teal-300">
@@ -105,11 +105,11 @@ export const LandingPage: React.FC = () => {
           <div>
             <p className="text-xs font-extrabold uppercase tracking-[.18em] text-teal-700">Designed as an engineering workflow</p>
             <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950">From a road photograph to a prioritized case.</h2>
-            <p className="mt-4 text-sm leading-7 text-slate-600">Each stage produces a traceable output for the next stage. Citizens can track the Civic Lens AI record; authorized staff can review, assign and update cases within the prototype.</p>
+            <p className="mt-4 text-sm leading-7 text-slate-600">Each stage produces a traceable output for the next stage. Citizens can track the CivicLens AI record; authorized staff can review, assign and update cases within the prototype.</p>
             <form onSubmit={track} className="mt-7 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
-              <label htmlFor="quick-track" className="sr-only">Civic Lens AI reference number</label>
+              <label htmlFor="quick-track" className="sr-only">CivicLens AI reference number</label>
               <div className="flex gap-2">
-                <input id="quick-track" value={quickTrackId} onChange={(e) => setQuickTrackId(e.target.value)} placeholder="Enter Civic Lens AI reference…" className="min-w-0 flex-1 rounded-xl px-3 py-3 text-sm outline-none placeholder:text-slate-400" />
+                <input id="quick-track" value={quickTrackId} onChange={(e) => setQuickTrackId(e.target.value)} placeholder="Enter CivicLens AI reference…" className="min-w-0 flex-1 rounded-xl px-3 py-3 text-sm outline-none placeholder:text-slate-400" />
                 <button type="submit" disabled={!quickTrackId.trim()} className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-xs font-bold text-white transition hover:bg-teal-800 disabled:opacity-40"><Search className="h-4 w-4" /> Track</button>
               </div>
             </form>
@@ -120,7 +120,7 @@ export const LandingPage: React.FC = () => {
               { n: '02', icon: MapPin, title: 'Location context', body: 'Add locality, landmark and coordinates to place the defect in a geographic context.' },
               { n: '03', icon: Cpu, title: 'Computer-vision assessment', body: 'Run the configured inference engine once, retain its mode, outputs and limitations.' },
               { n: '04', icon: Activity, title: 'Severity & priority', body: 'Calculate an explainable maintenance-priority score and screen nearby reports for duplicates.' },
-              { n: '05', icon: ClipboardList, title: 'Case review & tracking', body: 'Create a Civic Lens AI reference and follow its internal status and audit trail.' },
+              { n: '05', icon: ClipboardList, title: 'Case review & tracking', body: 'Create a CivicLens AI reference and follow its internal status and audit trail.' },
               { n: '06', icon: ShieldCheck, title: 'Government handoff', body: 'Prepare a structured complaint summary. Official NMC registration remains separate until authorized integration is available.' },
             ].map((step) => (
               <article key={step.n} className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-teal-300 hover:shadow-md">

@@ -908,15 +908,15 @@ def test_complaint_tracking_retrieval_test_k():
 
 def test_branding_exact_civic_lens_ai_test_l():
     """
-    TEST L: Exact branding 'Civic Lens AI' (three separate words).
+    TEST L: Exact branding 'CivicLens AI' (three separate words).
     """
-    assert settings.PROJECT_NAME == "Civic Lens AI"
+    assert settings.PROJECT_NAME == "CivicLens AI"
 
     health_res = client.get("/api/v1/health")
     assert health_res.status_code == 200
     health_data = health_res.json()
-    assert health_data["service"] == "Civic Lens AI"
-    assert "Civic Lens AI" in health_data["disclaimer"]
+    assert health_data["service"] == "CivicLens AI"
+    assert "CivicLens AI" in health_data["disclaimer"]
 
 
 def test_ai_pothole_closeup_accepted_test_1():
@@ -991,7 +991,7 @@ def test_footer_developer_credit_and_heart_removed_test_9():
     assert "Made with" not in content
     assert "<Heart" not in content
     assert "Smarter Indian Municipal Infrastructure" not in content
-    assert "Civic Lens AI" in content
+    assert "CivicLens AI" in content
 
 
 def test_ai_accuracy_one_pothole_with_cars_and_trees_test_1():

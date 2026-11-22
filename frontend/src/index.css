@@ -41,7 +41,7 @@
 }
 
 
-/* Civic Lens AI presentation polish: accessible, consistent application-wide defaults. */
+/* CivicLens AI presentation polish: accessible, consistent application-wide defaults. */
 @layer base {
   html {
     scroll-behavior: smooth;

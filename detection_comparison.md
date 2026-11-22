@@ -1,4 +1,4 @@
-# Civic Lens AI — Detection Comparison Report (Before vs. After)
+# CivicLens AI — Detection Comparison Report (Before vs. After)
 
 **Target Image:** `backend/uploads/demo_road_2_pothole.jpg` (Resolution: 640 × 480 px)  
 **Evaluation Date:** November 22, 2026  

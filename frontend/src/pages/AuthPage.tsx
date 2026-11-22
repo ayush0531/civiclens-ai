@@ -47,7 +47,7 @@ export const AuthPage: React.FC = () => {
             <ShieldCheck className="w-6 h-6 text-teal-200" />
           </div>
           <h2 className="text-2xl font-extrabold text-navy-900">
-            {isLoginTab ? 'Sign in to Civic Lens AI' : 'Create Citizen Account'}
+            {isLoginTab ? 'Sign in to CivicLens AI' : 'Create Citizen Account'}
           </h2>
           <p className="mt-1 text-xs text-slate-500">
             Road Infrastructure Monitoring & Prioritization Platform

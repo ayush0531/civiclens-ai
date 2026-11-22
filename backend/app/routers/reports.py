@@ -238,7 +238,7 @@ def track_report_public(identifier: str, db: Session = Depends(get_db)):
     """
     Public Citizen Complaint Tracking Endpoint.
     Accepts:
-    1. Civic Lens AI Reference Number (e.g., CVL-2026-0001)
+    1. CivicLens AI Reference Number (e.g., CVL-2026-0001)
     2. Database Numeric ID (e.g. 1)
     3. Official NMC Complaint Reference (e.g., NMC-2026-XXXX)
     """
@@ -260,7 +260,7 @@ def track_report_public(identifier: str, db: Session = Depends(get_db)):
     if not report:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Complaint reference '{clean_id}' was not found in the Civic Lens AI system. Please verify your complaint ID or official reference."
+            detail=f"Complaint reference '{clean_id}' was not found in the CivicLens AI system. Please verify your complaint ID or official reference."
         )
 
     # Format public status history
@@ -334,7 +334,7 @@ def track_report_public(identifier: str, db: Session = Depends(get_db)):
 
     ext_status = report.external_submission_status or "NOT_REGISTERED"
     ext_label = OFFICIAL_STATUS_LABELS.get(ext_status, "Not yet registered through NMC")
-    int_label = CIVICLENS_INTERNAL_STATUS_LABELS.get(report.workflow_status, "Saved within Civic Lens AI")
+    int_label = CIVICLENS_INTERNAL_STATUS_LABELS.get(report.workflow_status, "Saved within CivicLens AI")
 
     is_breached = bool(report.sla_deadline_at and datetime.datetime.utcnow() > report.sla_deadline_at and report.workflow_status not in ["RESOLVED", "REJECTED"])
 
@@ -383,7 +383,7 @@ def track_report_public(identifier: str, db: Session = Depends(get_db)):
         pwd_toll_free_number=nmc_service.get_pwd_helpline()["toll_free_number"],
         pwd_portal_url=nmc_service.get_pwd_helpline()["official_url"],
         external_submission_notice=(
-            "Official registration notice: Civic Lens AI prepares your road-defect telemetry. "
+            "Official registration notice: CivicLens AI prepares your road-defect telemetry. "
             "To lodge an official civic complaint with Nagpur Municipal Corporation, continue to "
             "the official portal at https://nmcnagpur.gov.in/grievance/complaint_form.php and complete mobile OTP verification."
         )
@@ -398,7 +398,7 @@ def record_external_reference(
 ):
     """
     Records an official NMC complaint reference number entered by the citizen.
-    Links the official government reference with the Civic Lens AI record while
+    Links the official government reference with the CivicLens AI record while
     truthfully marking the official state as 'Registration reported by citizen — unverified'.
     """
     report = db.query(RoadDamageReport).filter(RoadDamageReport.id == id).first()

@@ -116,10 +116,10 @@ export const MapView: React.FC<Props> = ({
       // If 5 or more tiles fail, automatically switch to fallback provider
       if (tileErrorCounterRef.current >= 5) {
         if (providerIndex + 1 < TILE_PROVIDERS.length) {
-          console.warn(`[Civic Lens AI Map] Tile errors detected on ${provider.name}. Failing over to ${TILE_PROVIDERS[providerIndex + 1].name}...`);
+          console.warn(`[CivicLens AI Map] Tile errors detected on ${provider.name}. Failing over to ${TILE_PROVIDERS[providerIndex + 1].name}...`);
           setActiveProviderIndex(providerIndex + 1);
         } else {
-          console.warn('[Civic Lens AI Map] All tile providers failed. Entering offline tile mode.');
+          console.warn('[CivicLens AI Map] All tile providers failed. Entering offline tile mode.');
           setTilesUnavailable(true);
         }
       }
@@ -397,7 +397,7 @@ export const MapView: React.FC<Props> = ({
         mapInstanceRef.current.fitBounds(bounds.pad(0.12), { maxZoom: 15, animate: false });
         setHasFitInitialBounds(true);
       } catch (err) {
-        console.warn('[Civic Lens AI Map] fitBounds notice:', err);
+        console.warn('[CivicLens AI Map] fitBounds notice:', err);
       }
     }
   }, [markers, clusters, activeLayer, onMarkerClick, fitBoundsOnData, hasFitInitialBounds]);

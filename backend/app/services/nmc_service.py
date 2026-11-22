@@ -1,8 +1,8 @@
 """
-Civic Lens AI — Municipal Integration & Official Handoff Service
+CivicLens AI — Municipal Integration & Official Handoff Service
 Nagpur Municipal Corporation (NMC) & Maharashtra PWD Architecture
 
-This module implements the integration boundary between Civic Lens AI and official
+This module implements the integration boundary between CivicLens AI and official
 government complaint mechanisms.
 
 OFFICIAL CHANNELS:
@@ -14,9 +14,9 @@ OFFICIAL CHANNELS:
   URL: https://pwd.maharashtra.gov.in/en/toll-free-numbers-for-registering-pothole-complaints-on-pwd-roads/
 
 INTEGRATION STATUS ARCHITECTURE:
-Because NMC requires citizen mobile verification via OTP, Civic Lens AI operates in
+Because NMC requires citizen mobile verification via OTP, CivicLens AI operates in
 "Citizen-Assisted Handoff" mode. Direct unattended API injection is not authorized
-by NMC. This service strictly separates internal Civic Lens AI records from official
+by NMC. This service strictly separates internal CivicLens AI records from official
 government status, never claiming government acknowledgment without real verification.
 """
 
@@ -44,8 +44,8 @@ OFFICIAL_STATUS_LABELS: Dict[str, str] = {
 }
 
 CIVICLENS_INTERNAL_STATUS_LABELS: Dict[str, str] = {
-    "SAVED": "Saved within Civic Lens AI",
-    "SUBMITTED": "Saved within Civic Lens AI",
+    "SAVED": "Saved within CivicLens AI",
+    "SUBMITTED": "Saved within CivicLens AI",
     "AWAITING_OFFICIAL_REGISTRATION": "Awaiting official registration",
     "OFFICIAL_REFERENCE_RECORDED": "Official reference recorded by citizen",
     "MONITORING": "Monitoring",
@@ -53,9 +53,9 @@ CIVICLENS_INTERNAL_STATUS_LABELS: Dict[str, str] = {
     "ACTION_PLANNED": "Action Planned (Simulated Demonstration Workflow)",
     "ASSIGNED": "Assigned (Simulated Demonstration Workflow)",
     "IN_PROGRESS": "In Progress (Simulated Demonstration Workflow)",
-    "RESOLVED": "Closed within Civic Lens AI (Simulated Demonstration Workflow)",
-    "CLOSED_INTERNAL": "Closed within Civic Lens AI",
-    "REJECTED": "Rejected within Civic Lens AI"
+    "RESOLVED": "Closed within CivicLens AI (Simulated Demonstration Workflow)",
+    "CLOSED_INTERNAL": "Closed within CivicLens AI",
+    "REJECTED": "Rejected within CivicLens AI"
 }
 
 
@@ -102,8 +102,8 @@ class NMCIntegrationService:
             "============================================================",
             " CIVIC LENS AI — ROAD DEFECT COMPLAINT SUMMARY",
             "============================================================",
-            f"Civic Lens AI Internal Reference ID : {report.reference_number}",
-            f"Date Recorded in Civic Lens AI      : {created_str}",
+            f"CivicLens AI Internal Reference ID : {report.reference_number}",
+            f"Date Recorded in CivicLens AI      : {created_str}",
             f"Incident Observation Date           : {incident_date_str}",
             "",
             "1. DEFECT & LOCATION INFORMATION",
@@ -136,7 +136,7 @@ class NMCIntegrationService:
             "3. Paste or enter the Location, Landmark, and Description above.",
             "4. Upload your road defect photograph.",
             "5. Submit and copy your official NMC complaint number.",
-            "6. Return to Civic Lens AI and click 'Save Official Reference' to link both records.",
+            "6. Return to CivicLens AI and click 'Save Official Reference' to link both records.",
             "",
             "5. ALTERNATIVE HIGHWAY CONTACTS (PWD)",
             "------------------------------------------------------------",

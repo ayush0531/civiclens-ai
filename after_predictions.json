@@ -22,7 +22,7 @@
     ]
   },
   "runtime_pipeline_results": {
-    "engine": "Civic Lens AI Computer Vision Engine with Adaptive Spatial Merging",
+    "engine": "CivicLens AI Computer Vision Engine with Adaptive Spatial Merging",
     "detected_pothole_count": 1,
     "predicted_damage_category": "Pothole",
     "prediction_confidence": 0.79,

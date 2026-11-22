@@ -84,7 +84,7 @@ export const CitizenDashboard: React.FC = () => {
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
             <div className="space-y-2 max-w-xl">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-500/20 text-teal-200 border border-teal-400/30 text-[11px] font-bold uppercase tracking-wider">
-                <ShieldCheck className="w-3.5 h-3.5" /> Civic Lens AI Citizen Portal
+                <ShieldCheck className="w-3.5 h-3.5" /> CivicLens AI Citizen Portal
               </span>
               <h1 className="text-2xl sm:text-3xl font-black tracking-tight">Nagpur Road Grievance Portal</h1>
               <p className="text-slate-300 text-xs sm:text-sm leading-relaxed">

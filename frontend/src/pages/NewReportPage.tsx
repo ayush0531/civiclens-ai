@@ -438,7 +438,7 @@ export const NewReportPage: React.FC = () => {
       const finalTitle = title.trim() || `${defectCategory} near ${landmark || addressText || 'Nagpur'}`;
       const formData = new FormData();
       formData.append('title', finalTitle);
-      formData.append('description', description.trim() || `Reported ${defectCategory} in ${areaLocality}, Nagpur. Submitted via Civic Lens AI citizen portal.`);
+      formData.append('description', description.trim() || `Reported ${defectCategory} in ${areaLocality}, Nagpur. Submitted via CivicLens AI citizen portal.`);
       formData.append('landmark', landmark.trim() || addressText);
       formData.append('area_locality', areaLocality);
       formData.append('city', city);
@@ -573,7 +573,7 @@ export const NewReportPage: React.FC = () => {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-500/20 text-teal-200 border border-teal-400/30 text-[11px] font-bold uppercase tracking-wider mb-2">
-                <Sparkles className="w-3.5 h-3.5" /> Civic Lens AI Citizen Portal
+                <Sparkles className="w-3.5 h-3.5" /> CivicLens AI Citizen Portal
               </span>
               <h1 className="text-2xl sm:text-3xl font-black tracking-tight">Report a Road Problem</h1>
               <p className="text-slate-300 text-xs sm:text-sm mt-1 max-w-xl">
@@ -780,7 +780,7 @@ export const NewReportPage: React.FC = () => {
                 Checking Your Photograph
               </h2>
               <p className="text-xs text-slate-500 mt-1">
-                Civic Lens AI verifies image readability, focus, lighting, and confirms that the photo depicts a genuine road scene.
+                CivicLens AI verifies image readability, focus, lighting, and confirms that the photo depicts a genuine road scene.
               </p>
             </div>
 
@@ -1332,7 +1332,7 @@ export const NewReportPage: React.FC = () => {
                     Submit Your Road Complaint
                   </h2>
                   <p className="text-xs text-slate-500 mt-1">
-                    Please review the complaint summary below before submitting to the Civic Lens AI municipal registry.
+                    Please review the complaint summary below before submitting to the CivicLens AI municipal registry.
                   </p>
                 </div>
 
@@ -1397,7 +1397,7 @@ export const NewReportPage: React.FC = () => {
                     {submitting ? (
                       <>
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>Submitting to Civic Lens AI...</span>
+                        <span>Submitting to CivicLens AI...</span>
                       </>
                     ) : (
                       <>
@@ -1419,14 +1419,14 @@ export const NewReportPage: React.FC = () => {
                     Complaint Successfully Registered
                   </h2>
                   <p className="text-xs text-slate-600 max-w-md mx-auto">
-                    Your road complaint has been successfully registered with Civic Lens AI.
+                    Your road complaint has been successfully registered with CivicLens AI.
                   </p>
                 </div>
 
                 {/* Tracking ID Callout */}
                 <div className="p-6 rounded-2xl bg-teal-50/60 border border-teal-200 text-center space-y-2">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-teal-800 block">
-                    Civic Lens AI Complaint ID
+                    CivicLens AI Complaint ID
                   </span>
                   <div className="flex items-center justify-center gap-3">
                     <span className="font-mono text-2xl font-black text-slate-950">

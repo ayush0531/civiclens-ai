@@ -50,7 +50,7 @@ CLASS_COLOR_MAP = {
 
 class AIInferenceService:
     """
-    Civic Lens AI Computer Vision & Road Damage Intelligence Service.
+    CivicLens AI Computer Vision & Road Damage Intelligence Service.
     
     Provides:
     1. Stage 1: Optical quality screening (blur detection, exposure, resolution).
@@ -84,7 +84,7 @@ class AIInferenceService:
                 self.onnx_session = ort.InferenceSession(self.weights_path, sess_options=opts)
                 self.providers = self.onnx_session.get_providers()
             except Exception as e:
-                print(f"[Civic Lens AI] ONNX initialization note: {e}")
+                print(f"[CivicLens AI] ONNX initialization note: {e}")
 
     def is_demo_mode(self) -> bool:
         return self.mode != "REAL"
@@ -106,7 +106,7 @@ class AIInferenceService:
             "execution_providers": self.providers,
             "input_resolution": [640, 640],
             "supported_classes": TAXONOMY_CLASSES,
-            "disclaimer": "Civic Lens AI Computer Vision Engine — Multi-stage road defect analysis and spatial classification.",
+            "disclaimer": "CivicLens AI Computer Vision Engine — Multi-stage road defect analysis and spatial classification.",
             "benchmark_notice": "Calibrated on Nagpur municipal road pavement datasets and RDD2022 road damage taxonomy."
         }
 
@@ -554,7 +554,7 @@ class AIInferenceService:
                     })
             return kept
         except Exception as e:
-            print(f"[Civic Lens AI] YOLO ONNX inference warning: {e}")
+            print(f"[CivicLens AI] YOLO ONNX inference warning: {e}")
             return []
 
     # -------------------------------------------------------------
@@ -1069,8 +1069,8 @@ class AIInferenceService:
             draw.rectangle([x, max(0, y - banner_height), x + banner_width, y], fill=color)
             draw.text((x + 7, max(2, y - banner_height + 4)), tag_text, fill=(255, 255, 255))
 
-        # Civic Lens AI Watermark
-        tag_line = "Civic Lens AI • Pavement Intelligence"
+        # CivicLens AI Watermark
+        tag_line = "CivicLens AI • Pavement Intelligence"
         wm_box_h = 24
         wm_box_w = len(tag_line) * 8 + 18
         draw.rectangle([10, height - wm_box_h - 10, 10 + wm_box_w, height - 10], fill=(15, 23, 42, 220))

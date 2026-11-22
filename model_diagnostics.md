@@ -1,6 +1,6 @@
-# Civic Lens AI — Comprehensive AI/ML & Computer Vision Pipeline Diagnostics
+# CivicLens AI — Comprehensive AI/ML & Computer Vision Pipeline Diagnostics
 
-**Author:** Civic Lens AI Engineering Team  
+**Author:** CivicLens AI Engineering Team  
 **Evaluation Target:** Road Damage Detection Pipeline (`backend/app/services/ai_service.py`, `backend/models/road_damage_yolo.onnx`, `frontend/src/pages/NewReportPage.tsx`)  
 **Date:** November 22, 2026  
 **System Status:** Verified & Operational
@@ -9,7 +9,7 @@
 
 ## 1. Executive Summary & Root Cause Investigation
 
-When testing earlier builds with a single large continuous pothole, Civic Lens AI exhibited two failure modes:
+When testing earlier builds with a single large continuous pothole, CivicLens AI exhibited two failure modes:
 1. **Missed Large Potholes / False Uncertain Classification:**
    - Reports: `Potholes detected: 0`, `Primary damage: Other / uncertain`, `Model confidence: 85%`.
 2. **Fragmented Duplicate Detections & False Positives on Background Objects:**

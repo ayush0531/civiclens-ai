@@ -170,7 +170,7 @@ class VerificationPipelineService:
             primary_label = analysis_res.get("predicted_damage_category", "Surface deterioration")
             confidence = analysis_res.get("prediction_confidence", 0.50)
             latency_ms = analysis_res.get("inference_duration_ms", 0.0)
-            model_id = analysis_res.get("model_identifier", "Civic Lens AI Computer Vision Engine")
+            model_id = analysis_res.get("model_identifier", "CivicLens AI Computer Vision Engine")
             is_road = analysis_res.get("is_road_scene", True)
 
             if not is_road:

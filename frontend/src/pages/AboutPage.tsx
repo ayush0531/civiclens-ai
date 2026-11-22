@@ -28,10 +28,10 @@ export const AboutPage: React.FC = () => {
             Civic Infrastructure Intelligence Platform
           </div>
           <h1 className="text-3xl sm:text-4xl font-black text-slate-950 tracking-tight leading-tight">
-            About Civic Lens AI
+            About CivicLens AI
           </h1>
           <p className="text-base text-slate-600 leading-relaxed max-w-3xl">
-            Civic Lens AI is an AI-powered municipal infrastructure intelligence platform designed to streamline road defect reporting, automated triage, and maintenance prioritization for the city of Nagpur, Maharashtra.
+            CivicLens AI is an AI-powered municipal infrastructure intelligence platform designed to streamline road defect reporting, automated triage, and maintenance prioritization for the city of Nagpur, Maharashtra.
           </p>
           <div className="pt-2 flex flex-wrap gap-3">
             <Link
@@ -58,19 +58,19 @@ export const AboutPage: React.FC = () => {
           </div>
         </div>
 
-        {/* 1. What Civic Lens AI Does */}
+        {/* 1. What CivicLens AI Does */}
         <section className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
           <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3">
             <div className="p-2 rounded-xl bg-teal-50 text-teal-700">
               <Sparkles className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-extrabold text-slate-950">1. What Civic Lens AI Does</h2>
+              <h2 className="text-lg font-extrabold text-slate-950">1. What CivicLens AI Does</h2>
               <p className="text-xs text-slate-500">Transforming citizen photographs into actionable municipal work orders</p>
             </div>
           </div>
           <p className="text-sm text-slate-600 leading-relaxed">
-            Civic Lens AI bridges the gap between citizens reporting road hazards and municipal public works departments responsible for road maintenance. The platform automates the entire intake lifecycle: it verifies submitted images for authenticity, identifies damage categories using computer vision, measures surface defect dimensions, detects duplicate complaints on the same road segment, and computes an explainable maintenance priority score to help municipal teams deploy repair resources efficiently.
+            CivicLens AI bridges the gap between citizens reporting road hazards and municipal public works departments responsible for road maintenance. The platform automates the entire intake lifecycle: it verifies submitted images for authenticity, identifies damage categories using computer vision, measures surface defect dimensions, detects duplicate complaints on the same road segment, and computes an explainable maintenance priority score to help municipal teams deploy repair resources efficiently.
           </p>
         </section>
 
@@ -129,7 +129,7 @@ export const AboutPage: React.FC = () => {
             </div>
           </div>
           <p className="text-sm text-slate-600 leading-relaxed">
-            Civic Lens AI applies automated image processing and machine learning inference to analyze pavement distress:
+            CivicLens AI applies automated image processing and machine learning inference to analyze pavement distress:
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
             <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
@@ -165,7 +165,7 @@ export const AboutPage: React.FC = () => {
             </div>
           </div>
           <p className="text-sm text-slate-600 leading-relaxed">
-            Every submitted complaint receives a unique tracking code (e.g. <code className="font-mono font-bold text-teal-800">REP-2026-XXXX</code>) that citizens can track in real time without creating an account. Rather than first-come-first-served scheduling, Civic Lens AI calculates an explainable Maintenance Priority Score based on:
+            Every submitted complaint receives a unique tracking code (e.g. <code className="font-mono font-bold text-teal-800">REP-2026-XXXX</code>) that citizens can track in real time without creating an account. Rather than first-come-first-served scheduling, CivicLens AI calculates an explainable Maintenance Priority Score based on:
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-1 text-xs">
             <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
@@ -231,7 +231,7 @@ export const AboutPage: React.FC = () => {
         {/* Footer Navigation CTA */}
         <div className="bg-slate-100 rounded-2xl p-6 border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div>
-            <h3 className="text-sm font-bold text-slate-900">Ready to explore Civic Lens AI?</h3>
+            <h3 className="text-sm font-bold text-slate-900">Ready to explore CivicLens AI?</h3>
             <p className="text-xs text-slate-500 mt-0.5">Submit a test road damage report or explore real geocoded defects across Nagpur.</p>
           </div>
           <div className="flex items-center gap-3">

@@ -36,7 +36,7 @@ export const ModelLabPage: React.FC = () => {
     <main className="flex-1 bg-slate-50 px-4 py-9 sm:px-6">
       <div className="mx-auto max-w-6xl space-y-6">
         <header className="rounded-3xl bg-[#0b2234] p-7 text-white sm:p-10">
-          <div className="flex flex-wrap items-center gap-2 text-xs font-bold uppercase tracking-[.16em] text-teal-200"><Cpu className="h-4 w-4" /> Civic Lens AI research laboratory</div>
+          <div className="flex flex-wrap items-center gap-2 text-xs font-bold uppercase tracking-[.16em] text-teal-200"><Cpu className="h-4 w-4" /> CivicLens AI research laboratory</div>
           <h1 className="mt-4 text-3xl font-black tracking-tight sm:text-4xl">AI model validation & runtime diagnostics</h1>
           <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-300">This page separates model availability, runtime configuration and scientific evaluation. A model loading successfully is not proof of detection accuracy.</p>
         </header>
