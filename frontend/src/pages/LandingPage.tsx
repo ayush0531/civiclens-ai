@@ -151,12 +151,6 @@ export const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-5 py-12 sm:px-8">
-        <div className="flex flex-col gap-4 rounded-3xl bg-[#0b2234] p-7 text-white sm:p-9 md:flex-row md:items-center md:justify-between">
-          <div><p className="text-xs font-bold uppercase tracking-[.18em] text-teal-300">Academic prototype disclosure</p><h2 className="mt-2 text-xl font-black">Civic Lens AI records are not official NMC complaints.</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">This prototype does not claim to submit grievances to NMC or receive municipal acknowledgements. Citizens must use the official channel until a formally authorized integration is provided.</p></div>
-          <Link to="/about" className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-teal-300 px-5 py-3 text-sm font-extrabold text-slate-950 hover:bg-teal-200">Read project scope <ArrowRight className="h-4 w-4" /></Link>
-        </div>
-      </section>
     </main>
   );
 };
