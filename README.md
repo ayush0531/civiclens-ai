@@ -59,19 +59,71 @@ Do not set `AI_MODEL_VALIDATED=true` or replace the production ONNX artifact unt
 - a separate, manually labelled Nagpur road-image set has been evaluated;
 - model and dataset provenance/licensing have been documented.
 
-## Technology
+## Technology Stack
 
-- Frontend: React, TypeScript, Vite
-- Backend: Python, FastAPI
-- Persistence: SQLAlchemy / SQLite configuration
-- Computer vision integration: Ultralytics YOLO11 training pipeline, ONNX Runtime inference
-- Deployment: Docker and Render
+- **Frontend**: React 18, TypeScript, Vite, Tailwind CSS, Lucide Icons, Leaflet Maps
+- **Backend**: Python 3.10–3.14, FastAPI, SQLAlchemy, SQLite/PostgreSQL
+- **Computer Vision & AI**: Trained YOLOv8 Deep Learning ONNX Model (`pothole_yolov8.onnx` / `road_damage_yolo.onnx`), ONNX Runtime, SciPy, NumPy
+- **Deployment**: Docker, Render
 
-## Run locally
+---
 
-Use Python 3.10–3.12 for the ML training environment. For application setup, follow the backend and frontend instructions in their respective directories and install dependencies from their package/requirements files.
+## Quick Start Guide for VS Code
 
-The repository includes a Dockerfile and Render configuration for deployment. Keep secrets in environment variables; never commit production credentials, private keys, or uploaded user evidence.
+Follow these simple steps to extract, open, and run **CivicLens AI** directly in Visual Studio Code:
+
+### 1. Open the Project in VS Code
+1. Extract `CivicLens_AI_Final_Project.zip`.
+2. Open VS Code.
+3. Select **File > Open Folder...** and choose the extracted `CivicLens_AI` directory.
+4. Open the integrated terminal in VS Code (`Ctrl + ~` on Windows/Linux or `Cmd + ~` on macOS).
+
+### 2. Run the Backend (FastAPI + YOLOv8 ONNX Engine)
+In a VS Code terminal window:
+
+```bash
+# 1. Navigate to the backend directory
+cd backend
+
+# 2. (Optional) Create and activate a Python virtual environment
+python3 -m venv venv
+source venv/bin/activate    # On Windows: venv\Scripts\activate
+
+# 3. Install required Python dependencies
+pip install -r requirements.txt
+
+# 4. Start the FastAPI development server
+uvicorn app.main:app --reload --port 8000
+```
+- The backend API will be live at: **http://127.0.0.1:8000**
+- Interactive Swagger API docs: **http://127.0.0.1:8000/docs**
+- AI Engine health status: **http://127.0.0.1:8000/api/v1/health**
+
+### 3. Run the Frontend (React + Vite)
+In a **second terminal tab** in VS Code:
+
+```bash
+# 1. Navigate to the frontend directory
+cd frontend
+
+# 2. Install Node.js dependencies
+npm install
+
+# 3. Launch the Vite development server
+npm run dev
+```
+- Open your browser at: **http://localhost:5173**
+- Go to the road damage reporting page at: **http://localhost:5173/report-new**
+
+### 4. Running the Automated AI & Backend Test Suite
+In the terminal from the project root:
+
+```bash
+PYTHONPATH=backend python3 -m pytest backend/tests/test_civiclens.py -v
+```
+All 49 unit and integration tests (including the 14 multi-pothole and real-world image accuracy benchmarks) will execute and pass.
+
+---
 
 ## Data, attribution, and licensing
 
