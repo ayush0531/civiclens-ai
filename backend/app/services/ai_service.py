@@ -63,6 +63,10 @@ class AIInferenceService:
         self.requested_mode = settings.AI_INFERENCE_MODE.upper()
         self.mode = "DEMO"
         self.weights_path = settings.AI_ONNX_MODEL_PATH
+        if not os.path.isfile(self.weights_path):
+            alt_path = os.path.join(os.path.dirname(self.weights_path), "pothole_yolov8.onnx")
+            if os.path.isfile(alt_path):
+                self.weights_path = alt_path
         self.model_artifact_bytes = os.path.getsize(self.weights_path) if os.path.isfile(self.weights_path) else 0
         self.model_name = "CivicLens AI YOLO11-RDD2022 Computer Vision Engine"
         self.model_version = "2.0.0"
