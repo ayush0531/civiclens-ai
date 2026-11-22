@@ -9,7 +9,6 @@ import {
   ArrowRight, 
   Building2, 
   BarChart3, 
-  Database, 
   Layers,
   Sparkles,
   Search,
@@ -225,75 +224,6 @@ export const AboutPage: React.FC = () => {
               <p className="text-xs text-slate-600 leading-relaxed">
                 Repairs require post-work closure photographs. The system runs comparative texture verification to ensure defects are genuinely restored before case closure.
               </p>
-            </div>
-          </div>
-        </section>
-
-        {/* 6. Technologies Actually Implemented */}
-        <section className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
-          <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3">
-            <div className="p-2 rounded-xl bg-teal-50 text-teal-700">
-              <Database className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-lg font-extrabold text-slate-950">6. Technologies Implemented in the Application</h2>
-              <p className="text-xs text-slate-500">Full-stack architecture verified from the actual codebase</p>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-1">
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
-              <span className="text-xs font-bold text-teal-800 uppercase tracking-wide">Frontend Architecture</span>
-              <ul className="text-xs text-slate-600 space-y-1 pt-1">
-                <li>• React 18 with TypeScript</li>
-                <li>• Vite fast build tooling</li>
-                <li>• Tailwind CSS for modern responsive UI</li>
-                <li>• Lucide React icons</li>
-              </ul>
-            </div>
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
-              <span className="text-xs font-bold text-teal-800 uppercase tracking-wide">Backend & APIs</span>
-              <ul className="text-xs text-slate-600 space-y-1 pt-1">
-                <li>• FastAPI (Python 3) asynchronous REST API</li>
-                <li>• SQLAlchemy ORM with SQLite & PostgreSQL</li>
-                <li>• Pydantic v2 data validation schemas</li>
-                <li>• JWT role-based authentication (RBAC)</li>
-              </ul>
-            </div>
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
-              <span className="text-xs font-bold text-teal-800 uppercase tracking-wide">Computer Vision & AI</span>
-              <ul className="text-xs text-slate-600 space-y-1 pt-1">
-                <li>• ONNX Runtime (<code className="font-mono text-[11px]">CPUExecutionProvider</code>)</li>
-                <li>• OpenCV image processing & quality screening</li>
-                <li>• Bounding box localization & overlay generation</li>
-                <li>• Perceptual difference hashing for duplicates</li>
-              </ul>
-            </div>
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
-              <span className="text-xs font-bold text-teal-800 uppercase tracking-wide">GIS & Spatial Intelligence</span>
-              <ul className="text-xs text-slate-600 space-y-1 pt-1">
-                <li>• Leaflet interactive mapping & geocoding</li>
-                <li>• OpenStreetMap public tile integration</li>
-                <li>• Haversine distance geofencing (&lt;120m)</li>
-                <li>• 10 Nagpur municipal ward boundary polygons</li>
-              </ul>
-            </div>
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
-              <span className="text-xs font-bold text-teal-800 uppercase tracking-wide">Data Visualizations</span>
-              <ul className="text-xs text-slate-600 space-y-1 pt-1">
-                <li>• Recharts dynamic statistical charting</li>
-                <li>• Defect category frequency distribution</li>
-                <li>• Zonal density ranking tables</li>
-                <li>• Monthly submission vs resolution throughput</li>
-              </ul>
-            </div>
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
-              <span className="text-xs font-bold text-teal-800 uppercase tracking-wide">Municipal Integration Gateway</span>
-              <ul className="text-xs text-slate-600 space-y-1 pt-1">
-                <li>• Structured grievance summary export</li>
-                <li>• Citizen-assisted handoff to official NMC portal</li>
-                <li>• Dual-status internal vs official tracking</li>
-                <li>• Idempotent simulation adapter for evaluation</li>
-              </ul>
             </div>
           </div>
         </section>
